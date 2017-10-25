@@ -24,6 +24,7 @@ namespace Lykke.Job.TransactionHandler.Services
             public DbSettings Db { get; set; }
             public AssetsCacheSettings AssetsCache { get; set; }
             public string ExchangeOperationsServiceUrl { get; set; }
+            public string TrustedHotWallet { get; set; }
         }
 
         public class DbSettings

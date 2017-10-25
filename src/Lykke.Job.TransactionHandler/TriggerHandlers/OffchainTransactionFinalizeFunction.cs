@@ -23,6 +23,7 @@ using Lykke.Job.TransactionHandler.Core.Services.Quanta;
 using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Services.TrustedWallet;
 using Lykke.Job.TransactionHandler.Resources;
+using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.JobTriggers.Triggers.Attributes;
 using Lykke.Service.Assets.Client.Custom;
@@ -35,6 +36,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
     {
         private readonly IBitCoinTransactionsRepository _bitCoinTransactionsRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly AppSettings.TransactionHandlerSettings _transactionHandlerSettings;
         private readonly ICashOperationsRepository _cashOperationsRepository;
         private readonly ICashOutAttemptRepository _cashOutAttemptRepository;
         private readonly IClientTradesRepository _clientTradesRepository;
@@ -90,9 +92,10 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             IMarginTradingPaymentLogRepository marginTradingPaymentLog,
             IPaymentTransactionsRepository paymentTransactionsRepository,
             IAppNotifications appNotifications,
-            ICachedAssetsService assetsService, 
-            IBitcoinTransactionService bitcoinTransactionService, 
-            ITrustedWalletService trustedWalletService)
+            ICachedAssetsService assetsService,
+            IBitcoinTransactionService bitcoinTransactionService,
+            ITrustedWalletService trustedWalletService,
+            AppSettings.TransactionHandlerSettings transactionHandlerSettings)
         {
             _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
             _log = log;
@@ -121,6 +124,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             _appNotifications = appNotifications;
             _assetsService = assetsService;
             _bitcoinTransactionService = bitcoinTransactionService;
+            _transactionHandlerSettings = transactionHandlerSettings;
             _trustedWalletService = trustedWalletService ?? throw new ArgumentNullException(nameof(trustedWalletService));
         }
 
@@ -232,28 +236,33 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
         private async Task FinalizeTransferToTrustedWallet(IBitcoinTransaction transaction, TransferContextData context, IOffchainTransfer transfer)
         {
-            var sourceTransferContext = context.Transfers.First(x => x.ClientId == transfer.ClientId);
-            var destTransferContext = context.Transfers.First(x => x.ClientId != transfer.ClientId);
+            try
+            {
+                var clientId = context.Transfers.First(x => x.ClientId == transfer.ClientId).ClientId;
+                var walletId = context.Transfers.First(x => x.ClientId != transfer.ClientId).ClientId;
 
-            var action = sourceTransferContext?.Actions?.UpdateTrustedWalletBalance;
-            if (action == null)
-                throw new Exception();
+                var exchangeOperationResult = await _exchangeOperationsService.FinishTransferAsync(
+                    transfer.Id,
+                    clientId,
+                    _transactionHandlerSettings.TrustedHotWallet,
+                    (double)transfer.Amount,
+                    transfer.AssetId);
 
-            var exchangeOperationResult = await _exchangeOperationsService.FinishTransferAsync(
-                transfer.Id,
-                sourceTransferContext.ClientId, // client id
-                destTransferContext.ClientId,   // hot wallet
-                (double)transfer.Amount,
-                transfer.AssetId);
+                if (!exchangeOperationResult.IsOk())
+                {
+                    await _log.WriteWarningAsync(nameof(OffchainTransactionFinalizeFunction),
+                        nameof(FinalizeTransferToTrustedWallet), exchangeOperationResult.ToJson(), "ME operation failed");
+                    await _srvSlackNotifications.SendNotification(ChannelTypes.Errors, $"Transfer failed in ME, client: {transfer.ClientId}, transfer: {transfer.Id}, ME code result: {exchangeOperationResult.Code}");
+                }
 
-            if (!exchangeOperationResult.IsOk())
+                await _trustedWalletService.Deposit(walletId, transfer.AssetId, transfer.Amount);
+            }
+            catch (Exception exception)
             {
                 await _log.WriteWarningAsync(nameof(OffchainTransactionFinalizeFunction),
-                    nameof(FinalizeTransferToTrustedWallet), exchangeOperationResult.ToJson(), "ME operation failed");
-                await _srvSlackNotifications.SendNotification(ChannelTypes.Errors, $"Transfer failed in ME, client: {transfer.ClientId}, transfer: {transaction.TransactionId}, ME code result: {exchangeOperationResult.Code}");
+                    nameof(FinalizeTransferToTrustedWallet), exception.ToJson(), "Transfer to trusted failed");
+                throw;
             }
-
-            await _trustedWalletService.Deposit(action.WalletId, action.Asset, action.Amount);
 
             await _paymentTransactionsRepository.SetStatus(transaction.TransactionId, PaymentStatus.NotifyProcessed);
         }
