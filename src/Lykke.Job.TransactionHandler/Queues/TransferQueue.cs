@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
@@ -20,10 +18,8 @@ using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.MatchingEngine.Connector.Abstractions.Models;
-using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.Service.Assets.Client.Custom;
-using Lykke.Service.ExchangeOperations.Contracts;
-using Newtonsoft.Json;
+using Lykke.Service.ExchangeOperations.Client;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -46,7 +42,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly AppSettings.EthereumSettings _settings;
         private readonly SrvSlackNotifications _srvSlackNotifications;
-        private readonly IExchangeOperationsService _exchangeOperationsService;
+        private readonly IExchangeOperationsServiceClient _exchangeOperationsService;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
@@ -61,7 +57,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ISrvEthereumHelper srvEthereumHelper, ICachedAssetsService assetsService,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings,
-            SrvSlackNotifications srvSlackNotifications, IExchangeOperationsService exchangeOperationsService)
+            SrvSlackNotifications srvSlackNotifications, IExchangeOperationsServiceClient exchangeOperationsService)
         {
             _rabbitConfig = config;
             _log = log;
@@ -243,7 +239,9 @@ namespace Lykke.Job.TransactionHandler.Queues
                 var exchangeOperationResult = await _exchangeOperationsService.TransferAsync(queueMessage.ToClientid,
                     queueMessage.FromClientId, (double) txRequest.Volume, txRequest.AssetId);
 
-                MeStatusCodes status = (MeStatusCodes) exchangeOperationResult.Code;
+                MeStatusCodes status = exchangeOperationResult.Code.HasValue
+                    ? (MeStatusCodes)exchangeOperationResult.Code
+                    : 0;
 
                 if (status != MeStatusCodes.Ok)
                 {

@@ -172,7 +172,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 .WithParameter(TypedParameter.From(_settings.SlackIntegration));
 
             var exchangeOperationsService = new ExchangeOperationsServiceClient(_jobSettings.ExchangeOperationsServiceUrl);
-            builder.RegisterInstance(exchangeOperationsService).As<IExchangeOperationsService>().SingleInstance();
+            builder.RegisterInstance(exchangeOperationsService).As<IExchangeOperationsServiceClient>().SingleInstance();
 
             builder.Register<IAppNotifications>(x => new SrvAppNotifications(
                 _settings.AppNotifications.HubConnString,
