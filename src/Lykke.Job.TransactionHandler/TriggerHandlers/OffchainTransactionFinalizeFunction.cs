@@ -36,7 +36,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
     {
         private readonly IBitCoinTransactionsRepository _bitCoinTransactionsRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
-        private readonly AppSettings.TransactionHandlerSettings _transactionHandlerSettings;
+        private readonly AppSettings.TrustedWalletsSettings _trustedWalletsSettings;
         private readonly ICashOperationsRepository _cashOperationsRepository;
         private readonly ICashOutAttemptRepository _cashOutAttemptRepository;
         private readonly IClientTradesRepository _clientTradesRepository;
@@ -95,7 +95,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             ICachedAssetsService assetsService,
             IBitcoinTransactionService bitcoinTransactionService,
             ITrustedWalletService trustedWalletService,
-            AppSettings.TransactionHandlerSettings transactionHandlerSettings)
+            AppSettings.TrustedWalletsSettings trustedWalletsSettings)
         {
             _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
             _log = log;
@@ -124,7 +124,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             _appNotifications = appNotifications;
             _assetsService = assetsService;
             _bitcoinTransactionService = bitcoinTransactionService;
-            _transactionHandlerSettings = transactionHandlerSettings;
+            _trustedWalletsSettings = trustedWalletsSettings;
             _trustedWalletService = trustedWalletService ?? throw new ArgumentNullException(nameof(trustedWalletService));
         }
 
@@ -236,32 +236,27 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
         private async Task FinalizeTransferToTrustedWallet(IBitcoinTransaction transaction, TransferContextData context, IOffchainTransfer transfer)
         {
-            try
-            {
-                var clientId = context.Transfers.First(x => x.ClientId == transfer.ClientId).ClientId;
-                var walletId = context.Transfers.First(x => x.ClientId != transfer.ClientId).ClientId;
+            var clientId = context.Transfers.First(x => x.ClientId == transfer.ClientId).ClientId;
+            var walletId = context.Transfers.First(x => x.ClientId != transfer.ClientId).ClientId;
 
-                var exchangeOperationResult = await _exchangeOperationsService.FinishTransferAsync(
-                    transfer.Id,
-                    clientId,
-                    _transactionHandlerSettings.TrustedHotWallet,
-                    (double)transfer.Amount,
-                    transfer.AssetId);
+            var exchangeOperationResult = await _exchangeOperationsService.FinishTransferAsync(
+                transfer.Id,
+                clientId,
+                _trustedWalletsSettings.TrustedHotWallet,
+                (double)transfer.Amount,
+                transfer.AssetId);
 
-                if (!exchangeOperationResult.IsOk())
-                {
-                    await _log.WriteWarningAsync(nameof(OffchainTransactionFinalizeFunction),
-                        nameof(FinalizeTransferToTrustedWallet), exchangeOperationResult.ToJson(), "ME operation failed");
-                    await _srvSlackNotifications.SendNotification(ChannelTypes.Errors, $"Transfer failed in ME, client: {transfer.ClientId}, transfer: {transfer.Id}, ME code result: {exchangeOperationResult.Code}");
-                }
-
-                await _trustedWalletService.Deposit(walletId, transfer.AssetId, transfer.Amount);
-            }
-            catch (Exception exception)
+            if (!exchangeOperationResult.IsOk())
             {
                 await _log.WriteWarningAsync(nameof(OffchainTransactionFinalizeFunction),
-                    nameof(FinalizeTransferToTrustedWallet), exception.ToJson(), "Transfer to trusted failed");
-                throw;
+                    nameof(FinalizeTransferToTrustedWallet), exchangeOperationResult.ToJson(), "ME operation failed");
+                await _srvSlackNotifications.SendNotification(ChannelTypes.Errors, $"Transfer to hotwallet failed; client: {transfer.ClientId}, transfer: {transfer.Id}, ME code result: {exchangeOperationResult.Code}");
+            }
+
+            var depositToTrusted = await _trustedWalletService.Deposit(walletId, transfer.AssetId, transfer.Amount);
+            if (!depositToTrusted)
+            {
+                await _srvSlackNotifications.SendNotification(ChannelTypes.Errors, $"Deposit to trusted wallet failed; client: {walletId}, transfer: {transfer.Id}");
             }
 
             await _paymentTransactionsRepository.SetStatus(transaction.TransactionId, PaymentStatus.NotifyProcessed);

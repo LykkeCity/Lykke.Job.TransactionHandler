@@ -18,13 +18,13 @@ namespace Lykke.Job.TransactionHandler.Services
         public NotificationsSettings AppNotifications { get; set; }
         public RabbitMqSettings RabbitMq { get; set; }
         public PersonalDataServiceSettings PersonalDataServiceSettings { get; set; }
+        public TrustedWalletsSettings TrustedWallets { get; set; }
 
         public class TransactionHandlerSettings
         {
             public DbSettings Db { get; set; }
             public AssetsCacheSettings AssetsCache { get; set; }
             public string ExchangeOperationsServiceUrl { get; set; }
-            public string TrustedHotWallet { get; set; }
         }
 
         public class DbSettings
@@ -150,6 +150,11 @@ namespace Lykke.Job.TransactionHandler.Services
         public class AssetsSettings
         {
             public string ServiceUrl { get; set; }
+        }
+
+        public class TrustedWalletsSettings
+        {
+            public string TrustedHotWallet { get; set; }
         }
     }
 }

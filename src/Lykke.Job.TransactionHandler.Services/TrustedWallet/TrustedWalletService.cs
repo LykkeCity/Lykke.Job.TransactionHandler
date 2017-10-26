@@ -18,17 +18,30 @@ namespace Lykke.Job.TransactionHandler.Services.TrustedWallet
             _matchingEngineClient = matchingEngineClient ?? throw new ArgumentNullException(nameof(matchingEngineClient));
         }
 
-        public async Task Deposit(string walletId, string assetId, decimal amount)
+        public async Task<bool> Deposit(string walletId, string assetId, decimal amount)
         {
             var id = GetNextRequestId();
             var result = await _matchingEngineClient.CashInOutAsync(id, walletId, assetId, (double)amount);
-
-            if (result == null || result.Status != MatchingEngine.Connector.Abstractions.Models.MeStatusCodes.Ok)
+            if (result == null || result.Status != Lykke.MatchingEngine.Connector.Abstractions.Models.MeStatusCodes.Ok)
             {
                 await
-                    _log.WriteWarningAsync(nameof(TrustedWalletService), nameof(Deposit), "ME error",
-                        result.ToJson());
+                    _log.WriteWarningAsync(nameof(TrustedWalletService), nameof(Deposit), "ME CashInOut error",
+                        result?.ToJson());
             }
+            return result != null;
+        }
+
+        public async Task<bool> Withdraw(string walletId, string assetId, decimal amount)
+        {
+            var id = GetNextRequestId();
+            var result = await _matchingEngineClient.CashInOutAsync(id, walletId, assetId, (double)-amount);
+            if (result == null || result.Status != Lykke.MatchingEngine.Connector.Abstractions.Models.MeStatusCodes.Ok)
+            {
+                await
+                    _log.WriteWarningAsync(nameof(TrustedWalletService), nameof(Withdraw), "ME CashInOut error",
+                        result?.ToJson());
+            }
+            return result != null;
         }
 
         private string GetNextRequestId()
