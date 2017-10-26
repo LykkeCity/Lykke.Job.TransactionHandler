@@ -116,7 +116,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             await _log.WriteInfoAsync("TransferQueue", "ProcessMessage", queueMessage.ToJson(), "new transfer", DateTime.UtcNow);
 
-            var ethTxRequest = await _ethereumTransactionRequestRepository.GetByOrderAsync(queueMessage.Id);
+            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
             await _log.WriteInfoAsync("TransferQueue", "ProcessMessage", ethTxRequest.ToJson(), "ethTxRequest object", DateTime.UtcNow);
             
             if (ethTxRequest != null && ethTxRequest.OperationType == OperationType.TransferToTrusted)
