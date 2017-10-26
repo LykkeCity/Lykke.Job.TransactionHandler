@@ -114,7 +114,11 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(TransferQueueMessage queueMessage)
         {
+            await _log.WriteInfoAsync("TransferQueue", "ProcessMessage", queueMessage.ToJson(), "new transfer", DateTime.UtcNow);
+
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetByOrderAsync(queueMessage.Id);
+            await _log.WriteInfoAsync("TransferQueue", "ProcessMessage", ethTxRequest.ToJson(), "ethTxRequest object", DateTime.UtcNow);
+            
             if (ethTxRequest != null && ethTxRequest.OperationType == OperationType.TransferToTrusted)
             {
                 return await ProcessTransferToTrustedWallet(queueMessage, ethTxRequest);
@@ -205,6 +209,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessTransferToTrustedWallet(TransferQueueMessage queueMessage, IEthereumTransactionRequest txRequest)
         {
+            await _log.WriteInfoAsync("TransferQueue", "ProcessTransferToTrustedWallet", "", "started", DateTime.UtcNow);
             string ethError = string.Empty;
 
             try
@@ -215,6 +220,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                 var ethResponse = await _srvEthereumHelper.SendTransferAsync(txRequest.SignedTransfer.Id,
                     txRequest.SignedTransfer.Sign, asset, fromAddress, _settings.HotwalletAddress,
                     txRequest.Volume);
+
+                await _log.WriteInfoAsync("TransferQueue", "ProcessTransferToTrustedWallet", ethResponse.ToJson(), "ethResponse object", DateTime.UtcNow);
 
                 if (ethResponse.HasError)
                 {
@@ -229,7 +236,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
             catch (Exception e)
             {
-                await _log.WriteErrorAsync(nameof(TradeQueue), nameof(ProcessTransferToTrustedWallet), e.Message, e);
+                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessTransferToTrustedWallet), e.Message, e);
 
                 ethError = $"{e.GetType()}\n{e.Message}";
             }
