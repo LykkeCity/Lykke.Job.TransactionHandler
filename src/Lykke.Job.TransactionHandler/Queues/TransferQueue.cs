@@ -18,6 +18,7 @@ using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.MatchingEngine.Connector.Abstractions.Models;
+using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Service.ExchangeOperations.Client;
 
@@ -42,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly AppSettings.EthereumSettings _settings;
         private readonly SrvSlackNotifications _srvSlackNotifications;
-        private readonly IExchangeOperationsServiceClient _exchangeOperationsService;
+        private readonly IMatchingEngineClient _matchingEngineClient;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
@@ -57,7 +58,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ISrvEthereumHelper srvEthereumHelper, ICachedAssetsService assetsService,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings,
-            SrvSlackNotifications srvSlackNotifications, IExchangeOperationsServiceClient exchangeOperationsService)
+            SrvSlackNotifications srvSlackNotifications, IMatchingEngineClient matchingEngineClient)
         {
             _rabbitConfig = config;
             _log = log;
@@ -75,7 +76,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
             _settings = settings;
             _srvSlackNotifications = srvSlackNotifications;
-            _exchangeOperationsService = exchangeOperationsService;
+            _matchingEngineClient = matchingEngineClient;
         }
 
         public void Start()
@@ -243,20 +244,16 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             if (string.IsNullOrEmpty(ethError))
             {
-                var exchangeOperationResult = await _exchangeOperationsService.TransferAsync(queueMessage.ToClientid,
-                    queueMessage.FromClientId, (double) txRequest.Volume, txRequest.AssetId);
+                var meResult = await _matchingEngineClient.CashInOutAsync(Guid.NewGuid().ToString(),
+                    txRequest.AddressTo, txRequest.AssetId, (double) txRequest.Volume);
 
-                MeStatusCodes status = exchangeOperationResult.Code.HasValue
-                    ? (MeStatusCodes)exchangeOperationResult.Code
-                    : 0;
-
-                if (status != MeStatusCodes.Ok)
+                if (meResult.Status != MeStatusCodes.Ok)
                 {
                     await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessTransferToTrustedWallet),
-                        exchangeOperationResult.Message, null);
+                        meResult.Message, null);
 
                     await _srvSlackNotifications.SendNotification(ChannelTypes.TrustedWalletTransfer,
-                        exchangeOperationResult.Message, nameof(TransferQueue));
+                        meResult.Message, nameof(TransferQueue));
 
                     return false;
                 }
