@@ -115,12 +115,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(TransferQueueMessage queueMessage)
         {
-            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
-            if (ethTxRequest != null && ethTxRequest.OperationType == OperationType.TransferToTrusted)
-            {
-                return await ProcessEthTransferToTrustedWallet(ethTxRequest);
-            }
-
             var amount = queueMessage.Amount.ParseAnyDouble();
 
             //Get client wallets
@@ -201,6 +195,13 @@ namespace Lykke.Job.TransactionHandler.Queues
             else
                 await _bitcoinCommandSender.SendCommand(cmd);
 
+            // handling of transfers to trusted wallets
+            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
+            if (ethTxRequest != null && ethTxRequest.OperationType == OperationType.TransferToTrusted)
+            {
+                return await ProcessEthTransferToTrustedWallet(ethTxRequest);
+            }
+
             return true;
         }
 
@@ -224,8 +225,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
                     return false;
                 }
-
-                // todo: update txRequest.OperationIds
             }
             catch (Exception e)
             {
