@@ -115,14 +115,10 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(TransferQueueMessage queueMessage)
         {
-            await _log.WriteInfoAsync("TransferQueue", "ProcessMessage", queueMessage.ToJson(), "new transfer", DateTime.UtcNow);
-
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
-            await _log.WriteInfoAsync("TransferQueue", "ProcessMessage", ethTxRequest.ToJson(), "ethTxRequest object", DateTime.UtcNow);
-            
             if (ethTxRequest != null && ethTxRequest.OperationType == OperationType.TransferToTrusted)
             {
-                return await ProcessTransferToTrustedWallet(queueMessage, ethTxRequest);
+                return await ProcessEthTransferToTrustedWallet(ethTxRequest);
             }
 
             var amount = queueMessage.Amount.ParseAnyDouble();
@@ -208,9 +204,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             return true;
         }
 
-        private async Task<bool> ProcessTransferToTrustedWallet(TransferQueueMessage queueMessage, IEthereumTransactionRequest txRequest)
+        private async Task<bool> ProcessEthTransferToTrustedWallet(IEthereumTransactionRequest txRequest)
         {
-            await _log.WriteInfoAsync("TransferQueue", "ProcessTransferToTrustedWallet", "", "started", DateTime.UtcNow);
             string ethError = string.Empty;
 
             try
@@ -222,49 +217,31 @@ namespace Lykke.Job.TransactionHandler.Queues
                     txRequest.SignedTransfer.Sign, asset, fromAddress, _settings.HotwalletAddress,
                     txRequest.Volume);
 
-                await _log.WriteInfoAsync("TransferQueue", "ProcessTransferToTrustedWallet", ethResponse.ToJson(), "ethResponse object", DateTime.UtcNow);
-
                 if (ethResponse.HasError)
                 {
                     ethError = ethResponse.Error.ToJson();
-                    await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessTransferToTrustedWallet), ethError, null);
+                    await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferToTrustedWallet), ethError, null);
 
                     return false;
                 }
 
                 // todo: update txRequest.OperationIds
-                // todo: await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
             }
             catch (Exception e)
             {
-                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessTransferToTrustedWallet), e.Message, e);
-
+                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferToTrustedWallet), e.Message, e);
                 ethError = $"{e.GetType()}\n{e.Message}";
             }
 
-            if (string.IsNullOrEmpty(ethError))
+            if (!string.IsNullOrEmpty(ethError))
             {
-                var meResult = await _matchingEngineClient.CashInOutAsync(Guid.NewGuid().ToString(),
-                    txRequest.AddressTo, txRequest.AssetId, (double) txRequest.Volume);
+                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferToTrustedWallet), ethError,
+                    null);
 
-                if (meResult.Status != MeStatusCodes.Ok)
-                {
-                    await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessTransferToTrustedWallet),
-                        meResult.Message, null);
-
-                    await _srvSlackNotifications.SendNotification(ChannelTypes.TrustedWalletTransfer,
-                        meResult.Message, nameof(TransferQueue));
-
-                    return false;
-                }
-
-                return true;
+                return false;
             }
 
-            await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessTransferToTrustedWallet), ethError,
-                null);
-
-            return false;
+            return true;
         }
 
         public void Dispose()
