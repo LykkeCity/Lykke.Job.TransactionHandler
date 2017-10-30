@@ -7,7 +7,8 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
     {
         CashOut,
         Trade,
-        TransferToTrusted
+        TransferToTrusted,
+        TransferFromTrusted
     }
 
     public interface IEthereumTransactionRequest

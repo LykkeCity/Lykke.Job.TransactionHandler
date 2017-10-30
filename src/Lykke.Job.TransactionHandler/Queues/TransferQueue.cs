@@ -197,44 +197,67 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             // handling of transfers to trusted wallets
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
-            if (ethTxRequest != null && ethTxRequest.OperationType == OperationType.TransferToTrusted)
+            if (ethTxRequest != null)
             {
-                return await ProcessEthTransferToTrustedWallet(ethTxRequest);
+                switch (ethTxRequest.OperationType)
+                {
+                    case OperationType.TransferToTrusted:
+                        return await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.ToTrustedWallet);
+                    case OperationType.TransferFromTrusted:
+                        return await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.FromTrustedWallet);
+                    default:
+                        return true;
+                }
             }
 
             return true;
         }
 
-        private async Task<bool> ProcessEthTransferToTrustedWallet(IEthereumTransactionRequest txRequest)
+        private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
         {
             string ethError = string.Empty;
 
             try
             {
                 var asset = await _assetsService.TryGetAssetAsync(txRequest.AssetId);
-                var fromAddress = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
+                string addressFrom;
+                string addressTo;
+                switch (transferType)
+                {
+                    case TransferType.ToTrustedWallet:
+                        addressFrom = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
+                        addressTo = _settings.HotwalletAddress;
+                        break;
+                    case TransferType.FromTrustedWallet:
+                        addressFrom = _settings.HotwalletAddress;
+                        addressTo = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
+                        break;
+                    default:
+                        await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet),
+                            "Unknown transfer type", null);
+                        return false;
+                }
 
                 var ethResponse = await _srvEthereumHelper.SendTransferAsync(txRequest.SignedTransfer.Id,
-                    txRequest.SignedTransfer.Sign, asset, fromAddress, _settings.HotwalletAddress,
-                    txRequest.Volume);
+                    txRequest.SignedTransfer.Sign, asset, addressFrom, addressTo, txRequest.Volume);
 
                 if (ethResponse.HasError)
                 {
                     ethError = ethResponse.Error.ToJson();
-                    await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferToTrustedWallet), ethError, null);
+                    await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethError, null);
 
                     return false;
                 }
             }
             catch (Exception e)
             {
-                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferToTrustedWallet), e.Message, e);
+                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), e.Message, e);
                 ethError = $"{e.GetType()}\n{e.Message}";
             }
 
             if (!string.IsNullOrEmpty(ethError))
             {
-                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferToTrustedWallet), ethError,
+                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethError,
                     null);
 
                 return false;
