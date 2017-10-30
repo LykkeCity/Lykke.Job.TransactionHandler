@@ -215,31 +215,39 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
         {
-            string ethError = string.Empty;
+            var ethError = string.Empty;
 
             try
             {
                 var asset = await _assetsService.TryGetAssetAsync(txRequest.AssetId);
+                var clientAddress = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
+                var hotWalletAddress = _settings.HotwalletAddress;
+
                 string addressFrom;
                 string addressTo;
+                Guid transferId;
+                string sign;
                 switch (transferType)
                 {
                     case TransferType.ToTrustedWallet:
-                        addressFrom = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
-                        addressTo = _settings.HotwalletAddress;
+                        addressFrom = clientAddress;
+                        addressTo = hotWalletAddress;
+                        transferId = txRequest.SignedTransfer.Id;
+                        sign = txRequest.SignedTransfer.Sign;
                         break;
                     case TransferType.FromTrustedWallet:
-                        addressFrom = _settings.HotwalletAddress;
-                        addressTo = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
+                        addressFrom = hotWalletAddress;
+                        addressTo = clientAddress;
+                        transferId = txRequest.Id;
+                        sign = string.Empty;
                         break;
                     default:
                         await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet),
                             "Unknown transfer type", null);
                         return false;
                 }
-
-                var ethResponse = await _srvEthereumHelper.SendTransferAsync(txRequest.SignedTransfer.Id,
-                    txRequest.SignedTransfer.Sign, asset, addressFrom, addressTo, txRequest.Volume);
+                var ethResponse = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
+                    addressTo, txRequest.Volume);
 
                 if (ethResponse.HasError)
                 {
