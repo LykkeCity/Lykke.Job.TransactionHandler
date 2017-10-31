@@ -115,6 +115,8 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(TransferQueueMessage queueMessage)
         {
+            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), queueMessage.ToJson(),
+                "New transfer. Start proccessing.");
             var amount = queueMessage.Amount.ParseAnyDouble();
 
             //Get client wallets
@@ -197,6 +199,8 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             // handling of transfers to trusted wallets
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
+            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), ethTxRequest?.ToJson(),
+                "ethTxRequest object");
             if (ethTxRequest != null)
             {
                 switch (ethTxRequest.OperationType)
@@ -215,6 +219,9 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
         {
+            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), txRequest?.ToJson(),
+                $"ETH transfer processing. Start. transfertype = {transferType}");
+
             var ethError = string.Empty;
 
             try
@@ -246,8 +253,16 @@ namespace Lykke.Job.TransactionHandler.Queues
                             "Unknown transfer type", null);
                         return false;
                 }
+                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), addressFrom,
+                    $"addressFrom value");
+                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), addressTo,
+                    $"addressTo value");
+
                 var ethResponse = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
                     addressTo, txRequest.Volume);
+
+                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethResponse.ToJson(),
+                    $"ethResponse value");
 
                 if (ethResponse.HasError)
                 {
