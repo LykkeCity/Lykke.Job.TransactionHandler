@@ -128,17 +128,17 @@ namespace Lykke.Job.TransactionHandler.Queues
                 await
                     _transferEventsRepository.RegisterAsync(
                         TransferEvent.CreateNew(queueMessage.ToClientid,
-                        toWallet.MultiSig, null,
+                        toWallet?.MultiSig, null,
                         queueMessage.AssetId, amount, queueMessage.Id,
-                        toWallet.Address, toWallet.MultiSig, state: TransactionStates.SettledOffchain));
+                        toWallet?.Address, toWallet?.MultiSig, state: TransactionStates.SettledOffchain));
 
             var sourceTransfer =
                 await
                     _transferEventsRepository.RegisterAsync(
                         TransferEvent.CreateNew(queueMessage.FromClientId,
-                        fromWallet.MultiSig, null,
+                        fromWallet?.MultiSig, null,
                         queueMessage.AssetId, -amount, queueMessage.Id,
-                        fromWallet.Address, fromWallet.MultiSig, state: TransactionStates.SettledOffchain));
+                        fromWallet?.Address, fromWallet?.MultiSig, state: TransactionStates.SettledOffchain));
 
             //Craete or Update transfer context
             var transaction = await _bitCoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
@@ -171,8 +171,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                 Amount = amount,
                 AssetId = queueMessage.AssetId,
                 Context = contextJson,
-                SourceAddress = fromWallet.MultiSig,
-                DestinationAddress = toWallet.MultiSig,
+                SourceAddress = fromWallet?.MultiSig,
+                DestinationAddress = toWallet?.MultiSig,
                 TransactionId = Guid.Parse(queueMessage.Id)
             };
 
