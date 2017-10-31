@@ -199,8 +199,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             // handling of transfers to trusted wallets
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), ethTxRequest?.ToJson(),
-                "ethTxRequest object");
             if (ethTxRequest != null)
             {
                 switch (ethTxRequest.OperationType)
