@@ -219,9 +219,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
         {
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), txRequest?.ToJson(),
-                $"ETH transfer processing. Start. transfertype = {transferType}");
-
             var ethError = string.Empty;
 
             try
@@ -253,16 +250,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                             "Unknown transfer type", null);
                         return false;
                 }
-                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), addressFrom,
-                    $"addressFrom value");
-                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), addressTo,
-                    $"addressTo value");
-
                 var ethResponse = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
                     addressTo, txRequest.Volume);
-
-                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethResponse.ToJson(),
-                    $"ethResponse value");
 
                 if (ethResponse.HasError)
                 {
