@@ -115,18 +115,11 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(TransferQueueMessage queueMessage)
         {
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), queueMessage.ToJson(),
-                "New transfer. Start proccessing.");
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-1");
-
             var amount = queueMessage.Amount.ParseAnyDouble();
 
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-2");
             //Get client wallets
             var toWallet = await _walletCredentialsRepository.GetAsync(queueMessage.ToClientid);
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-3");
             var fromWallet = await _walletCredentialsRepository.GetAsync(queueMessage.FromClientId);
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-4");
 
             //Register transfer events
             var destTransfer =
@@ -136,7 +129,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                         toWallet?.MultiSig, null,
                         queueMessage.AssetId, amount, queueMessage.Id,
                         toWallet?.Address, toWallet?.MultiSig, state: TransactionStates.SettledOffchain));
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-5");
 
             var sourceTransfer =
                 await
@@ -145,24 +137,18 @@ namespace Lykke.Job.TransactionHandler.Queues
                         fromWallet?.MultiSig, null,
                         queueMessage.AssetId, -amount, queueMessage.Id,
                         fromWallet?.Address, fromWallet?.MultiSig, state: TransactionStates.SettledOffchain));
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-6");
 
             //Craete or Update transfer context
             var transaction = await _bitCoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
             if (transaction == null)
             {
-                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-6.1 transaction = null");
                 await _log.WriteWarningAsync(nameof(TransferQueue), nameof(ProcessMessage), queueMessage.ToJson(), "unkown transaction");
                 return false;
             }
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-7");
 
             var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId);
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-8");
-
             if (contextData == null)
             {
-                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-8.1 contextData = null");
                 contextData = TransferContextData
                     .Create(queueMessage.FromClientId, new TransferContextData.TransferModel
                     {
@@ -172,11 +158,9 @@ namespace Lykke.Job.TransactionHandler.Queues
                         ClientId = queueMessage.FromClientId
                     });
             }
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-9");
 
             contextData.Transfers[0].OperationId = destTransfer.Id;
             contextData.Transfers[1].OperationId = sourceTransfer.Id;
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-10");
 
             var contextJson = contextData.ToJson();
             var cmd = new TransferCommand
@@ -188,17 +172,13 @@ namespace Lykke.Job.TransactionHandler.Queues
                 DestinationAddress = toWallet?.MultiSig,
                 TransactionId = Guid.Parse(queueMessage.Id)
             };
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-11");
 
             await _bitCoinTransactionsRepository.UpdateAsync(transaction.TransactionId, cmd.ToJson(), null, "");
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-12");
 
             await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, contextData);
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-13");
 
             if (await _clientSettingsRepository.IsOffchainClient(queueMessage.ToClientid))
             {
-                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-13.1");
                 if (!await _clientAccountsRepository.IsTrusted(queueMessage.ToClientid))
                 {
                     try
@@ -216,17 +196,13 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
             else
             {
-                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-13.2");
                 await _bitcoinCommandSender.SendCommand(cmd);
             }
-
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-14");
 
             // handling of transfers to trusted wallets
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
             if (ethTxRequest != null)
             {
-                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-14.1");
                 switch (ethTxRequest.OperationType)
                 {
                     case OperationType.TransferToTrusted:
@@ -237,7 +213,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                         return true;
                 }
             }
-            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), null, "trace-15");
 
             return true;
         }
