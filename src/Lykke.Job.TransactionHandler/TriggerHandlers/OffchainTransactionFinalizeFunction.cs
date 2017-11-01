@@ -123,6 +123,9 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         [QueueTrigger("offchain-finalization", notify: true, maxDequeueCount: 1, maxPollingIntervalMs: 100)]
         public async Task Process(OffchainFinalizetionMessage message)
         {
+            await _log.WriteInfoAsync(nameof(OffchainTransactionFinalizeFunction), nameof(Process), message.ToJson(),
+                "Got OffchainFinalizetionMessage.");
+
             var transfer = await _offchainTransferRepository.GetTransfer(message.TransferId);
 
             if (transfer.Type == OffchainTransferType.HubCashout || transfer.Type == OffchainTransferType.CashinFromClient)
@@ -141,6 +144,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 return;
             }
 
+            await _log.WriteInfoAsync(nameof(OffchainTransactionFinalizeFunction), nameof(Process), transaction.ToJson(), "trace-1");
             switch (transaction.CommandType)
             {
                 case BitCoinCommands.Issue:
@@ -170,6 +174,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
         private async Task FinalizeTransfer(IBitcoinTransaction transaction, IOffchainTransfer transfer)
         {
+            await _log.WriteInfoAsync(nameof(OffchainTransactionFinalizeFunction), nameof(FinalizeTransfer), null, "trace-2");
             var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId);
 
             switch (contextData.TransferType)
@@ -228,6 +233,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
         private async Task FinalizeTransferToTrustedWallet(IBitcoinTransaction transaction, TransferContextData context, IOffchainTransfer transfer)
         {
+            await _log.WriteInfoAsync(nameof(OffchainTransactionFinalizeFunction), nameof(FinalizeTransferToTrustedWallet), null, "trace-3");
             var clientId = context.Transfers.First(x => x.ClientId == transfer.ClientId).ClientId;
             var walletId = context.Transfers.First(x => x.ClientId != transfer.ClientId).ClientId;
 
@@ -251,6 +257,8 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             {
                 await _paymentTransactionsRepository.SetStatus(transaction.TransactionId, PaymentStatus.NotifyProcessed);
             }
+
+            await _log.WriteInfoAsync(nameof(OffchainTransactionFinalizeFunction), nameof(FinalizeTransferToTrustedWallet), exchangeOperationResult.ToJson(), "trace-4");
         }
 
         private async Task FinalizeCommonTransfer(IBitcoinTransaction transaction, TransferContextData contextData)
