@@ -88,7 +88,8 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             IMarginTradingPaymentLogRepository marginTradingPaymentLog,
             IPaymentTransactionsRepository paymentTransactionsRepository,
             IAppNotifications appNotifications,
-            ICachedAssetsService assetsService, IBitcoinTransactionService bitcoinTransactionService)
+            ICachedAssetsService assetsService,
+            IBitcoinTransactionService bitcoinTransactionService)
         {
             _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
             _log = log;
@@ -176,6 +177,9 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 case TransferType.ToMarginAccount:
                     await FinalizeTransferToMargin(contextData, transfer);
                     return;
+                case TransferType.ToTrustedWallet:
+                    await FinalizeTransferToTrustedWallet(transaction, contextData, transfer);
+                    return;
                 case TransferType.Common:
                     await FinalizeCommonTransfer(transaction, contextData);
                     return;
@@ -220,6 +224,33 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 await _srvSlackNotifications.SendNotification(ChannelTypes.MarginTrading, errorLog.ToJson(), "Transaction handler");
             }
 
+        }
+
+        private async Task FinalizeTransferToTrustedWallet(IBitcoinTransaction transaction, TransferContextData context, IOffchainTransfer transfer)
+        {
+            var clientId = context.Transfers.First(x => x.ClientId == transfer.ClientId).ClientId;
+            var walletId = context.Transfers.First(x => x.ClientId != transfer.ClientId).ClientId;
+
+            var exchangeOperationResult = await _exchangeOperationsService.FinishTransferAsync(
+                transfer.Id,
+                clientId,
+                walletId,
+                (double)transfer.Amount,
+                transfer.AssetId);
+
+            if (!exchangeOperationResult.IsOk())
+            {
+                await _log.WriteWarningAsync(nameof(OffchainTransactionFinalizeFunction),
+                    nameof(FinalizeTransferToTrustedWallet), exchangeOperationResult.ToJson(), "ME operation failed");
+                await _srvSlackNotifications.SendNotification(ChannelTypes.Errors,
+                    $"Transfer to trusted wallet failed; client: {transfer.ClientId}, transfer: {transfer.Id}, ME code result: {exchangeOperationResult.Code}");
+
+                await _paymentTransactionsRepository.SetStatus(transaction.TransactionId, PaymentStatus.NotifyDeclined);
+            }
+            else
+            {
+                await _paymentTransactionsRepository.SetStatus(transaction.TransactionId, PaymentStatus.NotifyProcessed);
+            }
         }
 
         private async Task FinalizeCommonTransfer(IBitcoinTransaction transaction, TransferContextData contextData)

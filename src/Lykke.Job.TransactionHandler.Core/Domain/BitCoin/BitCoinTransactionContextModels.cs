@@ -127,7 +127,9 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
     {
         Common = 0,
         ToMarginAccount = 1,
-        FromMarginAccount = 2
+        FromMarginAccount = 2,
+        ToTrustedWallet = 3,
+        FromTrustedWallet = 4
     }
 
     public class TransferContextData : BaseContextData
@@ -260,7 +262,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
                 Amount = amount;
             }
         }
-
         #endregion
     }
 
