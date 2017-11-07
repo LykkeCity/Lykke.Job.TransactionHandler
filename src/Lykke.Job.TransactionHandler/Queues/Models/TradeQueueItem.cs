@@ -163,7 +163,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             {
                 DateTime = trade.Timestamp,
                 Price = trade.Price.GetValueOrDefault(),
-                LimitOrderId = trade.LimitOrderId,
+                LimitOrderId = trade.LimitOrderExternalId,
                 MarketOrderId = marketOrder.Id,
                 TransactionId = btcTransactionId
             };
