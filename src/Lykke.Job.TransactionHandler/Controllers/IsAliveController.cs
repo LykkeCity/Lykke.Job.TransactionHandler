@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Models;
@@ -36,12 +37,23 @@ namespace Lykke.Job.TransactionHandler.Controllers
                 });
             }
 
-            // NOTE: Feel free to extend IsAliveResponse, to display job-specific health status
+            // NOTE: Feel free to extend IsAliveResponse, to display job-specific indicators
             return Ok(new IsAliveResponse
             {
+                Name = Microsoft.Extensions.PlatformAbstractions.PlatformServices.Default.Application.ApplicationName,
                 Version = Microsoft.Extensions.PlatformAbstractions.PlatformServices.Default.Application.ApplicationVersion,
                 Env = Environment.GetEnvironmentVariable("ENV_INFO"),
-                HealthWarning = _healthService.GetHealthWarningMessage() ?? "No"
+#if DEBUG
+                IsDebug = true,
+#else
+                IsDebug = false,
+#endif
+                IssueIndicators = _healthService.GetHealthIssues()
+                    .Select(i => new IsAliveResponse.IssueIndicator
+                    {
+                        Type = i.Type,
+                        Value = i.Value
+                    })
             });
         }
     }
