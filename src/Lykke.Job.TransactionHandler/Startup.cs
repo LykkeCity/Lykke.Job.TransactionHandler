@@ -86,8 +86,6 @@ namespace Lykke.Job.TransactionHandler
 
                 ApplicationContainer = builder.Build();
 
-                StartSubscribers();
-
                 return new AutofacServiceProvider(ApplicationContainer);
             }
             catch (Exception ex)
@@ -123,7 +121,6 @@ namespace Lykke.Job.TransactionHandler
                 throw;
             }
         }
-
 
         private async Task StartApplication()
         {
@@ -189,6 +186,7 @@ namespace Lykke.Job.TransactionHandler
                 throw;
             }
         }
+
         private static ILog CreateLogWithSlack(IServiceCollection services, IReloadingManager<AppSettings> settings)
         {
             var consoleLogger = new LogToConsole();
