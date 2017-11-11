@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using Lykke.Job.TransactionHandler.Core.Domain.Health;
 using Lykke.Job.TransactionHandler.Core.Services;
 
 namespace Lykke.Job.TransactionHandler.Services
@@ -10,11 +12,13 @@ namespace Lykke.Job.TransactionHandler.Services
             return null;
         }
 
-        public string GetHealthWarningMessage()
+        public IEnumerable<HealthIssue> GetHealthIssues()
         {
-            // TODO: Check gathered health statistics, and return appropriate health warning message, or NULL if job is ok
-            return null;
-        }
+            var issues = new HealthIssuesCollection();
 
+            // TODO: Check gathered health statistics, and add appropriate health issues message to issues
+
+            return issues;
+        }
     }
 }

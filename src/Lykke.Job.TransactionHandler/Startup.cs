@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using AzureStorage.Tables;
 using Common.Log;
 using Lykke.Common.ApiLibrary.Middleware;
 using Lykke.Common.ApiLibrary.Swagger;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Models;
 using Lykke.Job.TransactionHandler.Modules;
 using Lykke.Job.TransactionHandler.Queues;
@@ -15,6 +15,7 @@ using Lykke.JobTriggers.Extenstions;
 using Lykke.Logs;
 using Lykke.SettingsReader;
 using Lykke.SlackNotification.AzureQueue;
+using Lykke.JobTriggers.Triggers;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
@@ -27,6 +28,9 @@ namespace Lykke.Job.TransactionHandler
         public IHostingEnvironment Environment { get; }
         public IContainer ApplicationContainer { get; set; }
         public IConfigurationRoot Configuration { get; }
+        public ILog Log { get; private set; }
+        private TriggerHost _triggerHost;
+        private Task _triggerHostTask;
 
         private readonly IEnumerable<Type> _subscribers = new List<Type>
         {
@@ -38,8 +42,6 @@ namespace Lykke.Job.TransactionHandler
         {
             var builder = new ConfigurationBuilder()
                 .SetBasePath(env.ContentRootPath)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
                 .AddEnvironmentVariables();
 
             Configuration = builder.Build();
@@ -48,99 +50,173 @@ namespace Lykke.Job.TransactionHandler
 
         public IServiceProvider ConfigureServices(IServiceCollection services)
         {
-            services.AddMvc()
-                .AddJsonOptions(options =>
+            try
+            {
+                services.AddMvc()
+                        .AddJsonOptions(options =>
+                        {
+                            options.SerializerSettings.ContractResolver =
+                                new Newtonsoft.Json.Serialization.DefaultContractResolver();
+                        });
+
+                services.AddSwaggerGen(options =>
                 {
-                    options.SerializerSettings.ContractResolver =
-                        new Newtonsoft.Json.Serialization.DefaultContractResolver();
+                    options.DefaultLykkeConfiguration("v1", "TransactionHandler API");
                 });
 
-            services.AddSwaggerGen(options =>
-            {
-                options.DefaultLykkeConfiguration("v1", "TransactionHandler API");
-            });
+                var builder = new ContainerBuilder();
+                var appSettings = Configuration.LoadSettings<AppSettings>();
+                Log = CreateLogWithSlack(services, appSettings);
 
-            var builder = new ContainerBuilder();
-            var appSettings = Environment.IsDevelopment()
-                ? Configuration.Get<AppSettings>()
-                : HttpSettingsLoader.Load<AppSettings>(Configuration.GetValue<string>("SettingsUrl"));
-            var log = CreateLogWithSlack(services, appSettings);
+                builder.RegisterModule(new JobModule(appSettings.CurrentValue, appSettings.Nested(x => x.TransactionHandlerJob.Db), Log));
 
-            builder.RegisterModule(new JobModule(appSettings, log));
-
-            if (string.IsNullOrWhiteSpace(appSettings.TransactionHandlerJob.Db.BitCoinQueueConnectionString))
-            {
-                builder.AddTriggers();
-            }
-            else
-            {
-                builder.AddTriggers(pool =>
+                if (string.IsNullOrWhiteSpace(appSettings.CurrentValue.TransactionHandlerJob.Db.BitCoinQueueConnectionString))
                 {
-                    pool.AddDefaultConnection(appSettings.TransactionHandlerJob.Db.BitCoinQueueConnectionString);
-                });
+                    builder.AddTriggers();
+                }
+                else
+                {
+                    builder.AddTriggers(pool =>
+                    {
+                        pool.AddDefaultConnection(appSettings.CurrentValue.TransactionHandlerJob.Db.BitCoinQueueConnectionString);
+                    });
+                }
+
+                builder.Populate(services);
+
+                ApplicationContainer = builder.Build();
+
+                return new AutofacServiceProvider(ApplicationContainer);
             }
-
-            builder.Populate(services);
-
-            ApplicationContainer = builder.Build();
-
-            StartSubscribers();
-
-            return new AutofacServiceProvider(ApplicationContainer);
+            catch (Exception ex)
+            {
+                Log?.WriteFatalErrorAsync(nameof(Startup), nameof(ConfigureServices), "", ex).Wait();
+                throw;
+            }
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime appLifetime)
         {
-            if (env.IsDevelopment())
+            try
             {
-                app.UseDeveloperExceptionPage();
+                if (env.IsDevelopment())
+                {
+                    app.UseDeveloperExceptionPage();
+                }
+
+                app.UseLykkeMiddleware("TransactionHandler", ex => new ErrorResponse { ErrorMessage = "Technical problem" });
+
+                app.UseMvc();
+                app.UseSwagger();
+                app.UseSwaggerUi();
+                app.UseStaticFiles();
+
+                appLifetime.ApplicationStarted.Register(() => StartApplication().Wait());
+                appLifetime.ApplicationStopping.Register(() => StopApplication().Wait());
+                appLifetime.ApplicationStopped.Register(() => CleanUp().Wait());
             }
-
-            app.UseLykkeMiddleware("TransactionHandler", ex => new ErrorResponse { ErrorMessage = "Technical problem" });
-
-            app.UseMvc();
-            app.UseSwagger();
-            app.UseSwaggerUi();
-
-            appLifetime.ApplicationStopped.Register(() =>
+            catch (Exception ex)
             {
-                StopSubscribers();
-                ApplicationContainer.Dispose();
-            });
+                Log?.WriteFatalErrorAsync(nameof(Startup), nameof(ConfigureServices), "", ex).Wait();
+                throw;
+            }
         }
 
-        private static ILog CreateLogWithSlack(IServiceCollection services, AppSettings settings)
+        private async Task StartApplication()
         {
-            var logToConsole = new LogToConsole();
+            try
+            {
+                // NOTE: Job not yet recieve and process IsAlive requests here
+
+                StartSubscribers();
+
+                _triggerHost = new TriggerHost(new AutofacServiceProvider(ApplicationContainer));
+                _triggerHostTask = _triggerHost.Start();
+
+                await Log.WriteMonitorAsync("", "", "Started");
+            }
+            catch (Exception ex)
+            {
+                await Log.WriteFatalErrorAsync(nameof(Startup), nameof(StartApplication), "", ex);
+                throw;
+            }
+        }
+
+        private async Task StopApplication()
+        {
+            try
+            {
+                // NOTE: Job still can recieve and process IsAlive requests here, so take care about it if you add logic here.
+
+                StopSubscribers();
+
+                _triggerHost?.Cancel();
+                await _triggerHostTask;
+            }
+            catch (Exception ex)
+            {
+                if (Log != null)
+                {
+                    await Log.WriteFatalErrorAsync(nameof(Startup), nameof(StopApplication), "", ex);
+                }
+                throw;
+            }
+        }
+
+        private async Task CleanUp()
+        {
+            try
+            {
+                // NOTE: Job can't recieve and process IsAlive requests here, so you can destroy all resources
+
+                if (Log != null)
+                {
+                    await Log.WriteMonitorAsync("", "", "Terminating");
+                }
+
+                ApplicationContainer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                if (Log != null)
+                {
+                    await Log.WriteFatalErrorAsync(nameof(Startup), nameof(CleanUp), "", ex);
+                    (Log as IDisposable)?.Dispose();
+                }
+                throw;
+            }
+        }
+
+        private static ILog CreateLogWithSlack(IServiceCollection services, IReloadingManager<AppSettings> settings)
+        {
+            var consoleLogger = new LogToConsole();
             var aggregateLogger = new AggregateLogger();
 
-            aggregateLogger.AddLog(logToConsole);
+            aggregateLogger.AddLog(consoleLogger);
 
+            // Creating slack notification service, which logs own azure queue processing messages to aggregate log
             var slackService = services.UseSlackNotificationsSenderViaAzureQueue(new AzureQueueIntegration.AzureQueueSettings
             {
-                ConnectionString = settings.SlackNotifications.AzureQueue.ConnectionString,
-                QueueName = settings.SlackNotifications.AzureQueue.QueueName
+                ConnectionString = settings.CurrentValue.SlackNotifications.AzureQueue.ConnectionString,
+                QueueName = settings.CurrentValue.SlackNotifications.AzureQueue.QueueName
             }, aggregateLogger);
 
-            var dbLogConnectionString = settings.TransactionHandlerJob.Db.LogsConnString;
+            var dbLogConnectionStringManager = settings.Nested(x => x.TransactionHandlerJob.Db.LogsConnString);
+            var dbLogConnectionString = dbLogConnectionStringManager.CurrentValue;
 
             // Creating azure storage logger, which logs own messages to concole log
             if (!string.IsNullOrEmpty(dbLogConnectionString) && !(dbLogConnectionString.StartsWith("${") && dbLogConnectionString.EndsWith("}")))
             {
-                const string appName = "Lykke.Job.TransactionHandler";
-
                 var persistenceManager = new LykkeLogToAzureStoragePersistenceManager(
-                    appName,
-                    AzureTableStorage<LogEntity>.Create(() => dbLogConnectionString, "TransactionHandlerLog", logToConsole),
-                    logToConsole);
+                    AzureTableStorage<LogEntity>.Create(dbLogConnectionStringManager, "TransactionHandlerLog", consoleLogger),
+                    consoleLogger);
 
-                var slackNotificationsManager = new LykkeLogToAzureSlackNotificationsManager(appName, slackService, logToConsole);
+                var slackNotificationsManager = new LykkeLogToAzureSlackNotificationsManager(slackService, consoleLogger);
 
                 var azureStorageLogger = new LykkeLogToAzureStorage(
-                    appName,
                     persistenceManager,
                     slackNotificationsManager,
-                    logToConsole);
+                    consoleLogger);
 
                 azureStorageLogger.Start();
 
