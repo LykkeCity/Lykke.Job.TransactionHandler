@@ -4,11 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
@@ -21,6 +19,7 @@ using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Service.Assets.Client.Models;
+using Lykke.Service.ClientAccount.Client;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -49,7 +48,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ILog _log;
         private readonly ICachedAssetsService _assetsService;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
-        private readonly IClientAccountsRepository _clientAccountsRepository;
+        private readonly IClientAccountClient _clientAccountClient;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TradeQueueItem> _subscriber;
@@ -69,7 +68,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             ICachedAssetsService assetsService,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
-            IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService, IClientAccountsRepository clientAccountsRepository)
+            IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient)
         {
             _rabbitConfig = config;
             _bitcoinCommandSender = bitcoinCommandSender;
@@ -86,7 +85,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _settings = settings;
             _ethClientEventLogs = ethClientEventLogs;
             _bitcoinTransactionService = bitcoinTransactionService;
-            _clientAccountsRepository = clientAccountsRepository;
+            _clientAccountClient = clientAccountClient;
             _log = log;
         }
 
@@ -143,7 +142,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             try
             {
                 // for trusted clients only write history (finally block)
-                if (await _clientAccountsRepository.IsTrusted(queueMessage.Order.ClientId))
+                if ((await _clientAccountClient.IsTrustedAsync(queueMessage.Order.ClientId)).Value)
                     return true;
 
                 // get operations only by market order user (limit user will be processed in limit trade queue)

@@ -66,6 +66,7 @@ using Lykke.Job.TransactionHandler.Services.Quanta;
 using Lykke.Job.TransactionHandler.Services.SolarCoin;
 using Lykke.MatchingEngine.Connector.Services;
 using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Service.ExchangeOperations.Contracts;
 using Lykke.Service.OperationsHistory.HistoryWriter.Abstractions;
@@ -205,6 +206,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<PersonalDataService>()
                 .As<IPersonalDataService>()
                 .WithParameter(TypedParameter.From(_settings.PersonalDataServiceSettings));
+
+            builder.RegisterLykkeServiceClient(_settings.ClientAccountClient.ServiceUrl);
         }
 
         private void BindRepositories(ContainerBuilder builder)
@@ -258,10 +261,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance<IChronoBankCommandProducer>(
                 new SrvChronoBankCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ChronoBankSrvConnString), "chronobank-out")));
 
-            builder.RegisterInstance<IClientAccountsRepository>(
-                new ClientsRepository(
-                    AzureTableStorage<ClientAccountEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "Traders", _log)));
-
             builder.RegisterInstance<IClientSettingsRepository>(
                 new ClientSettingsRepository(
                     AzureTableStorage<ClientSettingsEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "TraderSettings", _log)));
@@ -290,7 +289,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterInstance<IEmailCommandProducer>(
                 new EmailCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "emailsqueue")));
-            
+
             builder.RegisterInstance<IOffchainOrdersRepository>(
                 new OffchainOrderRepository(
                     AzureTableStorage<OffchainOrder>.Create(_dbSettingsManager.ConnectionString(x => x.OffchainConnString), "OffchainOrders", _log)));

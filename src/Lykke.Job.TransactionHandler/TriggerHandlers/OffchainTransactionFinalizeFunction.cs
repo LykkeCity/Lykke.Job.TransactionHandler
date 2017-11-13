@@ -8,7 +8,6 @@ using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.Assets;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
@@ -25,8 +24,8 @@ using Lykke.Job.TransactionHandler.Resources;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.JobTriggers.Triggers.Attributes;
 using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
-using Lykke.Service.ExchangeOperations.Contracts;
 using Lykke.Service.PersonalData.Contract;
 
 namespace Lykke.Job.TransactionHandler.TriggerHandlers
@@ -38,7 +37,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly ICashOperationsRepository _cashOperationsRepository;
         private readonly ICashOutAttemptRepository _cashOutAttemptRepository;
         private readonly IClientTradesRepository _clientTradesRepository;
-        private readonly IClientAccountsRepository _clientAccountsRepository;
+        private readonly IClientAccountClient _clientAccountClient;
         private readonly IPersonalDataService _personalDataService;
         private readonly IOffchainTransferRepository _offchainTransferRepository;
         private readonly ITransferEventsRepository _transferEventsRepository;
@@ -73,7 +72,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             ICashOutAttemptRepository cashOutAttemptRepository,
             ISrvEmailsFacade srvEmailsFacade,
             IClientTradesRepository clientTradesRepository,
-            IClientAccountsRepository clientAccountsRepository,
+            IClientAccountClient clientAccountClient,
             IPersonalDataService personalDataService,
             IOffchainTransferRepository offchainTransferRepository,
             IChronoBankService chronoBankService,
@@ -100,7 +99,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             _cashOutAttemptRepository = cashOutAttemptRepository;
             _srvEmailsFacade = srvEmailsFacade;
             _clientTradesRepository = clientTradesRepository;
-            _clientAccountsRepository = clientAccountsRepository;
+            _clientAccountClient = clientAccountClient;
             _personalDataService = personalDataService;
             _offchainTransferRepository = offchainTransferRepository;
             _chronoBankService = chronoBankService;
@@ -280,7 +279,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
                 if (transfer.Actions?.PushNotification != null)
                 {
-                    var clientAcc = await _clientAccountsRepository.GetByIdAsync(transfer.ClientId);
+                    var clientAcc = await _clientAccountClient.GetByIdAsync(transfer.ClientId);
                     var asset = await _assetsService.TryGetAssetAsync(transfer.Actions.PushNotification.AssetId);
 
                     await _appNotifications.SendAssetsCreditedNotification(new[] { clientAcc.NotificationsId },
@@ -397,9 +396,9 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private async Task PostSolarCashOut(string clientId, string address, double amount, string txId)
         {
             var slrAddress = new SolarCoinAddress(address);
-            var clientAcc = _clientAccountsRepository.GetByIdAsync(clientId);
+            var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
 
-            var sendEmailTask = _srvEmailsFacade.SendSolarCashOutCompletedEmail((await clientAcc).Email, slrAddress.Value, amount);
+            var sendEmailTask = _srvEmailsFacade.SendSolarCashOutCompletedEmail(clientAcc.Email, slrAddress.Value, amount);
             var solarRequestTask = _srvSolarCoinHelper.SendCashOutRequest(txId, slrAddress, amount);
 
             await Task.WhenAll(sendEmailTask, solarRequestTask);

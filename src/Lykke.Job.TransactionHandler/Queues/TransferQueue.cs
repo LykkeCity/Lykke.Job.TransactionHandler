@@ -5,7 +5,6 @@ using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
@@ -17,10 +16,9 @@ using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.Notifications;
-using Lykke.MatchingEngine.Connector.Abstractions.Models;
 using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.Service.Assets.Client.Custom;
-using Lykke.Service.ExchangeOperations.Client;
+using Lykke.Service.ClientAccount.Client;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -36,7 +34,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IOffchainRequestService _offchainRequestService;
         private readonly IClientSettingsRepository _clientSettingsRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
-        private readonly IClientAccountsRepository _clientAccountsRepository;
+        private readonly IClientAccountClient _clientAccountClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly ISrvEthereumHelper _srvEthereumHelper;
         private readonly ICachedAssetsService _assetsService;
@@ -54,7 +52,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IWalletCredentialsRepository walletCredentialsRepository,
             IBitCoinTransactionsRepository bitCoinTransactionsRepository,
             IOffchainRequestService offchainRequestService, IClientSettingsRepository clientSettingsRepository,
-            IBitcoinTransactionService bitcoinTransactionService, IClientAccountsRepository clientAccountsRepository,
+            IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ISrvEthereumHelper srvEthereumHelper, ICachedAssetsService assetsService,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings,
@@ -69,7 +67,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _offchainRequestService = offchainRequestService;
             _clientSettingsRepository = clientSettingsRepository;
             _bitcoinTransactionService = bitcoinTransactionService;
-            _clientAccountsRepository = clientAccountsRepository;
+            _clientAccountClient = clientAccountClient;
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
             _srvEthereumHelper = srvEthereumHelper;
             _assetsService = assetsService;
@@ -179,7 +177,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             if (await _clientSettingsRepository.IsOffchainClient(queueMessage.ToClientid))
             {
-                if (!await _clientAccountsRepository.IsTrusted(queueMessage.ToClientid))
+                if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value)
                 {
                     try
                     {
