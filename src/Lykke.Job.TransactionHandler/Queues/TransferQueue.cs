@@ -219,8 +219,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
         {
-            var ethError = string.Empty;
-
             try
             {
                 var asset = await _assetsService.TryGetAssetAsync(txRequest.AssetId);
@@ -255,22 +253,13 @@ namespace Lykke.Job.TransactionHandler.Queues
 
                 if (ethResponse.HasError)
                 {
-                    ethError = ethResponse.Error.ToJson();
-                    await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethError, null);
-
+                    await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethResponse.Error.ToJson(), null);
                     return false;
                 }
             }
             catch (Exception e)
             {
                 await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), e.Message, e);
-                ethError = $"{e.GetType()}\n{e.Message}";
-            }
-
-            if (!string.IsNullOrEmpty(ethError))
-            {
-                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethError,
-                    null);
 
                 return false;
             }
