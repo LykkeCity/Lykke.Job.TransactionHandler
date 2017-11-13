@@ -120,14 +120,14 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        public async Task<bool> ProcessMessage(TradeQueueItem queueMessage)
+        public async Task ProcessMessage(TradeQueueItem queueMessage)
         {
             await _marketOrdersRepository.CreateAsync(queueMessage.Order);
 
             if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
             {
                 await _log.WriteInfoAsync(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.Order.ToJson(), "Message processing being aborted, due to order status is not matched. Order was saved");
-                return true;
+                return;
             }
 
             var walletCredsMarket = await _walletCredentialsRepository.GetAsync(queueMessage.Trades[0].MarketClientId);
@@ -140,7 +140,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             {
                 // for trusted clients only write history (finally block)
                 if ((await _clientAccountClient.IsTrustedAsync(queueMessage.Order.ClientId)).Value)
-                    return true;
+                    return;
 
                 // get operations only by market order user (limit user will be processed in limit trade queue)
                 var operations = AggregateSwaps(queueMessage.Trades).Where(x => x.ClientId == queueMessage.Order.ClientId).ToList();
@@ -154,7 +154,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     var wasTransferOk = await ProcessEthGuaranteeTransfer(ethereumTxRequest, operations, clientTrades);
 
                     if (!wasTransferOk)
-                        return true;
+                        return;
                 }
 
                 var sellOperations = operations.Where(x => x.Amount < 0);
@@ -205,8 +205,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                 foreach (var item in notify)
                     await _offchainRequestService.NotifyUser(item);
             }
-
-            return true;
         }
 
         private async Task ProcessEthBuy(AggregatedTransfer operation, IAsset asset, IClientTrade[] clientTrades, string orderId)

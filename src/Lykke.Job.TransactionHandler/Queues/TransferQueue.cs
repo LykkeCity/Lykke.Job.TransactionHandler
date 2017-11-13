@@ -102,7 +102,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        public async Task<bool> ProcessMessage(TransferQueueMessage queueMessage)
+        public async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
             var amount = queueMessage.Amount.ParseAnyDouble();
 
@@ -132,7 +132,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             if (transaction == null)
             {
                 await _log.WriteWarningAsync(nameof(TransferQueue), nameof(ProcessMessage), queueMessage.ToJson(), "unkown transaction");
-                return false;
+                return;
             }
 
             var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId);
@@ -188,17 +188,15 @@ namespace Lykke.Job.TransactionHandler.Queues
                 switch (ethTxRequest.OperationType)
                 {
                     case OperationType.TransferToTrusted:
-                        return await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.ToTrustedWallet);
+                        await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.ToTrustedWallet);
+                        break;
                     case OperationType.TransferFromTrusted:
-                        return await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.FromTrustedWallet);
-                    default:
-                        return true;
+                        await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.FromTrustedWallet);
+                        break;
                 }
             }
 
             await _operationsApi.ApiOperationsCompleteByIdPostAsync(new Guid(transaction.TransactionId));
-
-            return true;
         }
 
         private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)

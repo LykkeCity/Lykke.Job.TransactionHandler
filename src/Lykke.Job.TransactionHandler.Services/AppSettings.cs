@@ -157,10 +157,10 @@ namespace Lykke.Job.TransactionHandler.Services
         {
             public string ServiceUrl { get; set; }
         }
+    }
 
-        public class ServiceSettings
-        {
-            public string OperationsUrl { get; set; }
-        }
+    public class ServiceSettings
+    {
+        public string OperationsUrl { get; set; }
     }
 }
