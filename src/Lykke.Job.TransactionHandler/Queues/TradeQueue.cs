@@ -33,7 +33,6 @@ namespace Lykke.Job.TransactionHandler.Queues
         private const bool QueueDurable = true;
 #endif
 
-        private readonly IBitcoinCommandSender _bitcoinCommandSender;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IBitCoinTransactionsRepository _bitcoinTransactionsRepository;
         private readonly IMarketOrdersRepository _marketOrdersRepository;
@@ -56,7 +55,6 @@ namespace Lykke.Job.TransactionHandler.Queues
         public TradeQueue(
             AppSettings.RabbitMqSettings config,
             ILog log,
-            IBitcoinCommandSender bitcoinCommandSender,
             IWalletCredentialsRepository walletCredentialsRepository,
             IBitCoinTransactionsRepository bitcoinTransactionsRepository,
             IMarketOrdersRepository marketOrdersRepository,
@@ -71,7 +69,6 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient)
         {
             _rabbitConfig = config;
-            _bitcoinCommandSender = bitcoinCommandSender;
             _walletCredentialsRepository = walletCredentialsRepository;
             _bitcoinTransactionsRepository = bitcoinTransactionsRepository;
             _marketOrdersRepository = marketOrdersRepository;

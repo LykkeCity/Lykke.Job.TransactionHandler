@@ -25,6 +25,7 @@ namespace Lykke.Job.TransactionHandler.Services
             public DbSettings Db { get; set; }
             public AssetsCacheSettings AssetsCache { get; set; }
             public string ExchangeOperationsServiceUrl { get; set; }
+            public ServiceSettings Services { get; set; }
         }
 
         public class DbSettings
@@ -155,6 +156,11 @@ namespace Lykke.Job.TransactionHandler.Services
         public class ClientAccountSettings
         {
             public string ServiceUrl { get; set; }
+        }
+
+        public class ServiceSettings
+        {
+            public string OperationsUrl { get; set; }
         }
     }
 }

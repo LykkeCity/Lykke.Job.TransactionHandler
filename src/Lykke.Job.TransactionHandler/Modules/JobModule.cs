@@ -68,7 +68,7 @@ using Lykke.MatchingEngine.Connector.Services;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
-using Lykke.Service.ExchangeOperations.Contracts;
+using Lykke.Service.Operations.Client.AutorestClient;
 using Lykke.Service.OperationsHistory.HistoryWriter.Abstractions;
 using Lykke.Service.OperationsHistory.HistoryWriter.Implementation;
 using Lykke.Service.PersonalData.Client;
@@ -136,8 +136,22 @@ namespace Lykke.Job.TransactionHandler.Modules
             BindRepositories(builder);
             BindServices(builder);
             BindCachedDicts(builder);
+            BindClients(builder);
 
             builder.Populate(_services);
+        }
+
+        private void BindClients(ContainerBuilder builder)
+        {
+            builder.RegisterType<PersonalDataService>()
+                .As<IPersonalDataService>()
+                .WithParameter(TypedParameter.From(_settings.PersonalDataServiceSettings));
+
+            builder.RegisterLykkeServiceClient(_settings.ClientAccountClient.ServiceUrl);
+
+            builder.RegisterType<OperationsAPI>()
+                .As<IOperationsAPI>()
+                .WithParameter("baseUri", new Uri(_settings.TransactionHandlerJob.Services.OperationsUrl));
         }
 
         public static void BindCachedDicts(ContainerBuilder builder)
@@ -202,12 +216,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             var historyWriter = new HistoryWriter(_dbSettingsManager.CurrentValue.HistoryLogsConnString, _log);
             builder.RegisterInstance(historyWriter).As<IHistoryWriter>();
-
-            builder.RegisterType<PersonalDataService>()
-                .As<IPersonalDataService>()
-                .WithParameter(TypedParameter.From(_settings.PersonalDataServiceSettings));
-
-            builder.RegisterLykkeServiceClient(_settings.ClientAccountClient.ServiceUrl);
         }
 
         private void BindRepositories(ContainerBuilder builder)

@@ -9,7 +9,7 @@
     <PackageReference Include="Lykke.Common" Version="3.0.2" />
     <PackageReference Include="Lykke.Service.ClientAccount.Client" Version="1.0.55" />
     <PackageReference Include="Lykke.Service.PersonalData" Version="1.0.15-beta9" />
-    <PackageReference Include="Lykke.EthereumCoreClient" Version="1.0.1" />
+    <PackageReference Include="Lykke.EthereumCoreClient" Version="1.0.4" />
     <PackageReference Include="Nethereum.Util" Version="2.0.0-rc5" />
     <PackageReference Include="RestSharp.NetCore" Version="105.2.3" />
     <PackageReference Include="System.ComponentModel" Version="4.3.0" />
