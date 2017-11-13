@@ -2,19 +2,25 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
+using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
+using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
+using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
-using Newtonsoft.Json;
+using Lykke.Job.TransactionHandler.Services.Notifications;
+using Lykke.MatchingEngine.Connector.Abstractions.Models;
+using Lykke.MatchingEngine.Connector.Abstractions.Services;
+using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.ExchangeOperations.Client;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -31,6 +37,13 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IClientSettingsRepository _clientSettingsRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IClientAccountsRepository _clientAccountsRepository;
+        private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
+        private readonly ISrvEthereumHelper _srvEthereumHelper;
+        private readonly ICachedAssetsService _assetsService;
+        private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
+        private readonly AppSettings.EthereumSettings _settings;
+        private readonly SrvSlackNotifications _srvSlackNotifications;
+        private readonly IMatchingEngineClient _matchingEngineClient;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
@@ -39,7 +52,13 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBitcoinCommandSender bitcoinCommandSender,
             ITransferEventsRepository transferEventsRepository,
             IWalletCredentialsRepository walletCredentialsRepository,
-            IBitCoinTransactionsRepository bitCoinTransactionsRepository, IOffchainRequestService offchainRequestService, IClientSettingsRepository clientSettingsRepository, IBitcoinTransactionService bitcoinTransactionService, IClientAccountsRepository clientAccountsRepository)
+            IBitCoinTransactionsRepository bitCoinTransactionsRepository,
+            IOffchainRequestService offchainRequestService, IClientSettingsRepository clientSettingsRepository,
+            IBitcoinTransactionService bitcoinTransactionService, IClientAccountsRepository clientAccountsRepository,
+            IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
+            ISrvEthereumHelper srvEthereumHelper, ICachedAssetsService assetsService,
+            IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings,
+            SrvSlackNotifications srvSlackNotifications, IMatchingEngineClient matchingEngineClient)
         {
             _rabbitConfig = config;
             _log = log;
@@ -51,6 +70,13 @@ namespace Lykke.Job.TransactionHandler.Queues
             _clientSettingsRepository = clientSettingsRepository;
             _bitcoinTransactionService = bitcoinTransactionService;
             _clientAccountsRepository = clientAccountsRepository;
+            _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
+            _srvEthereumHelper = srvEthereumHelper;
+            _assetsService = assetsService;
+            _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
+            _settings = settings;
+            _srvSlackNotifications = srvSlackNotifications;
+            _matchingEngineClient = matchingEngineClient;
         }
 
         public void Start()
@@ -100,17 +126,17 @@ namespace Lykke.Job.TransactionHandler.Queues
                 await
                     _transferEventsRepository.RegisterAsync(
                         TransferEvent.CreateNew(queueMessage.ToClientid,
-                        toWallet.MultiSig, null,
+                        toWallet?.MultiSig, null,
                         queueMessage.AssetId, amount, queueMessage.Id,
-                        toWallet.Address, toWallet.MultiSig, state: TransactionStates.SettledOffchain));
+                        toWallet?.Address, toWallet?.MultiSig, state: TransactionStates.SettledOffchain));
 
             var sourceTransfer =
                 await
                     _transferEventsRepository.RegisterAsync(
                         TransferEvent.CreateNew(queueMessage.FromClientId,
-                        fromWallet.MultiSig, null,
+                        fromWallet?.MultiSig, null,
                         queueMessage.AssetId, -amount, queueMessage.Id,
-                        fromWallet.Address, fromWallet.MultiSig, state: TransactionStates.SettledOffchain));
+                        fromWallet?.Address, fromWallet?.MultiSig, state: TransactionStates.SettledOffchain));
 
             //Craete or Update transfer context
             var transaction = await _bitCoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
@@ -121,7 +147,6 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
 
             var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId);
-
             if (contextData == null)
             {
                 contextData = TransferContextData
@@ -143,8 +168,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                 Amount = amount,
                 AssetId = queueMessage.AssetId,
                 Context = contextJson,
-                SourceAddress = fromWallet.MultiSig,
-                DestinationAddress = toWallet.MultiSig,
+                SourceAddress = fromWallet?.MultiSig,
+                DestinationAddress = toWallet?.MultiSig,
                 TransactionId = Guid.Parse(queueMessage.Id)
             };
 
@@ -158,18 +183,86 @@ namespace Lykke.Job.TransactionHandler.Queues
                 {
                     try
                     {
-                        await _offchainRequestService.CreateOffchainRequestAndNotify(transaction.TransactionId, queueMessage.ToClientid, queueMessage.AssetId, (decimal)amount, null, OffchainTransferType.CashinToClient);
+                        await _offchainRequestService.CreateOffchainRequestAndNotify(transaction.TransactionId,
+                            queueMessage.ToClientid, queueMessage.AssetId, (decimal) amount, null,
+                            OffchainTransferType.CashinToClient);
                     }
                     catch (Exception)
                     {
-                        await _log.WriteWarningAsync(nameof(TransferQueue), nameof(ProcessMessage), "", $"Transfer already exists {transaction.TransactionId}");
+                        await _log.WriteWarningAsync(nameof(TransferQueue), nameof(ProcessMessage), "",
+                            $"Transfer already exists {transaction.TransactionId}");
                     }
                 }
             }
             else
+            {
                 await _bitcoinCommandSender.SendCommand(cmd);
+            }
 
+            // handling of transfers to trusted wallets
+            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
+            if (ethTxRequest != null)
+            {
+                switch (ethTxRequest.OperationType)
+                {
+                    case OperationType.TransferToTrusted:
+                        return await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.ToTrustedWallet);
+                    case OperationType.TransferFromTrusted:
+                        return await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.FromTrustedWallet);
+                    default:
+                        return true;
+                }
+            }
 
+            return true;
+        }
+
+        private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
+        {
+            try
+            {
+                var asset = await _assetsService.TryGetAssetAsync(txRequest.AssetId);
+                var clientAddress = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
+                var hotWalletAddress = _settings.HotwalletAddress;
+
+                string addressFrom;
+                string addressTo;
+                Guid transferId;
+                string sign;
+                switch (transferType)
+                {
+                    case TransferType.ToTrustedWallet:
+                        addressFrom = clientAddress;
+                        addressTo = hotWalletAddress;
+                        transferId = txRequest.SignedTransfer.Id;
+                        sign = txRequest.SignedTransfer.Sign;
+                        break;
+                    case TransferType.FromTrustedWallet:
+                        addressFrom = hotWalletAddress;
+                        addressTo = clientAddress;
+                        transferId = txRequest.Id;
+                        sign = string.Empty;
+                        break;
+                    default:
+                        await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet),
+                            "Unknown transfer type", null);
+                        return false;
+                }
+                var ethResponse = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
+                    addressTo, txRequest.Volume);
+
+                if (ethResponse.HasError)
+                {
+                    await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethResponse.Error.ToJson(), null);
+                    return false;
+                }
+            }
+            catch (Exception e)
+            {
+                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), e.Message, e);
+
+                return false;
+            }
 
             return true;
         }
