@@ -2,11 +2,9 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
@@ -17,6 +15,7 @@ using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.ClientAccount.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -29,7 +28,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ILog _log;
         private readonly IMatchingEngineClient _matchingEngineClient;
         private readonly ICashOperationsRepository _cashOperationsRepository;
-        private readonly IClientAccountsRepository _clientAccountsRepository;
+        private readonly IClientAccountClient _clientAccountClient;
         private readonly ISrvEmailsFacade _srvEmailsFacade;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IPaymentTransactionsRepository _paymentTransactionsRepository;
@@ -44,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         public EthereumEventsQueue(AppSettings.RabbitMqSettings config, ILog log,
             IMatchingEngineClient matchingEngineClient,
             ICashOperationsRepository cashOperationsRepository,
-            IClientAccountsRepository clientAccountsRepository,
+            IClientAccountClient clientAccountClient,
             ISrvEmailsFacade srvEmailsFacade,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             IPaymentTransactionsRepository paymentTransactionsRepository,
@@ -56,7 +55,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _log = log;
             _matchingEngineClient = matchingEngineClient;
             _cashOperationsRepository = cashOperationsRepository;
-            _clientAccountsRepository = clientAccountsRepository;
+            _clientAccountClient = clientAccountClient;
             _srvEmailsFacade = srvEmailsFacade;
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
             _paymentTransactionsRepository = paymentTransactionsRepository;
@@ -205,7 +204,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     State = TransactionStates.SettledOnchain
                 });
 
-                var clientAcc = await _clientAccountsRepository.GetByIdAsync(clientId);
+                var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
                 await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.Email, amount, asset.Id);
 
                 await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
