@@ -65,7 +65,7 @@ using Lykke.Job.TransactionHandler.Services.Offchain;
 using Lykke.Job.TransactionHandler.Services.Quanta;
 using Lykke.Job.TransactionHandler.Services.SolarCoin;
 using Lykke.MatchingEngine.Connector.Services;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Service.Operations.Client;
@@ -116,13 +116,8 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             // NOTE: You can implement your own poison queue notifier. See https://github.com/LykkeCity/JobTriggers/blob/master/readme.md
             // builder.Register<PoisionQueueNotifierImplementation>().As<IPoisionQueueNotifier>();
-
-            _services.UseAssetsClient(new AssetServiceSettings
-            {
-                BaseUri = new Uri(_settings.Assets.ServiceUrl),
-                AssetPairsCacheExpirationPeriod = _jobSettings.AssetsCache.ExpirationPeriod,
-                AssetsCacheExpirationPeriod = _jobSettings.AssetsCache.ExpirationPeriod
-            });
+            
+            _services.RegisterAssetsClient(AssetServiceSettings.Create(new Uri(_settings.Assets.ServiceUrl), _jobSettings.AssetsCache.ExpirationPeriod));
 
             Mapper.Initialize(cfg =>
             {

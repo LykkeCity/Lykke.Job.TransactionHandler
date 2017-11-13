@@ -4,7 +4,6 @@ using System.Linq;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
-using Lykke.Service.Assets.Client.Custom;
 using Lykke.Service.Assets.Client.Models;
 using Newtonsoft.Json;
 
@@ -170,7 +169,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
         }
 
         public static IClientTrade[] ToDomainOffchain(this TradeQueueItem item, IWalletCredentials walletCredentialsMarket, IWalletCredentials walletCredentialsLimit,
-            IReadOnlyCollection<IAsset> assets)
+            IReadOnlyCollection<Asset> assets)
         {
             var trade = item.Trades[0];
 
@@ -183,25 +182,19 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
             foreach (var clientTrade in result)
             {
-                var isBtcAsset = IsBitcoinAsset(assets, clientTrade.AssetId);
-                // if client guarantee transaction, then it is already settled
-                if (clientTrade.ClientId == item.Order.ClientId && clientTrade.Amount < 0)
+                var asset = assets.FirstOrDefault(x => x.Id == clientTrade.AssetId);
+
+                if (asset == null)
+                    throw new ArgumentException("Unknown asset");
+
+                // if client guarantee transaction or trusted asset, then it is already settled
+                if (clientTrade.ClientId == item.Order.ClientId && clientTrade.Amount < 0 || asset.IsTrusted)
                     clientTrade.State = TransactionStates.SettledOffchain;
                 else
-                    clientTrade.State = isBtcAsset ? TransactionStates.InProcessOnchain : TransactionStates.InProcessOffchain;
+                    clientTrade.State = TransactionStates.InProcessOffchain;
             }
 
             return result.ToArray();
-        }
-
-        private static bool IsBitcoinAsset(IEnumerable<IAsset> assets, string assetId)
-        {
-            var asset = assets.FirstOrDefault(x => x.Id == assetId);
-
-            if (asset == null)
-                throw new ArgumentException("Unknown asset");
-
-            return asset.Blockchain == Blockchain.Bitcoin;
         }
     }
 }

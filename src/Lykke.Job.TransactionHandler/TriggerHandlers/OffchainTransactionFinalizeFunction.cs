@@ -23,7 +23,7 @@ using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Resources;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.JobTriggers.Triggers.Attributes;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Service.Operations.Client;
@@ -50,7 +50,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly CachedDataDictionary<string, IAssetSetting> _assetSettings;
         private readonly IPaymentTransactionsRepository _paymentTransactionsRepository;
         private readonly IAppNotifications _appNotifications;
-        private readonly ICachedAssetsService _assetsService;
+        private readonly IAssetsServiceWithCache _assetsServiceWithCache;
 
         private readonly IMarginDataServiceResolver _marginDataServiceResolver;
         private readonly IMarginTradingPaymentLogRepository _marginTradingPaymentLog;
@@ -91,9 +91,9 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             IMarginTradingPaymentLogRepository marginTradingPaymentLog,
             IPaymentTransactionsRepository paymentTransactionsRepository,
             IAppNotifications appNotifications,
-            ICachedAssetsService assetsService,
             IBitcoinTransactionService bitcoinTransactionService,
-            IOperationsClient operationsClient)
+            IOperationsClient operationsClient, 
+            IAssetsServiceWithCache assetsServiceWithCache)
         {
             _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
             _log = log;
@@ -120,9 +120,9 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             _marginTradingPaymentLog = marginTradingPaymentLog;
             _paymentTransactionsRepository = paymentTransactionsRepository;
             _appNotifications = appNotifications;
-            _assetsService = assetsService;
             _bitcoinTransactionService = bitcoinTransactionService;
             _operationsClient = operationsClient;
+            _assetsServiceWithCache = assetsServiceWithCache;
         }
 
         [QueueTrigger("offchain-finalization", notify: true, maxDequeueCount: 1, maxPollingIntervalMs: 100)]
@@ -301,7 +301,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
                 if (transfer.Actions?.PushNotification != null)
                 {
-                    var asset = await _assetsService.TryGetAssetAsync(transfer.Actions.PushNotification.AssetId);
+                    var asset = await _assetsServiceWithCache.TryGetAssetAsync(transfer.Actions.PushNotification.AssetId);
 
                     await _appNotifications.SendAssetsCreditedNotification(new[] { clientAcc.NotificationsId },
                             transfer.Actions.PushNotification.Amount, transfer.Actions.PushNotification.AssetId,

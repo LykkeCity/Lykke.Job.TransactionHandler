@@ -14,7 +14,8 @@ using Lykke.MatchingEngine.Connector.Abstractions.Models;
 using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client;
+using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -35,7 +36,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IClientTradesRepository _clientTradesRepository;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
-        private readonly ICachedAssetsService _assetsService;
+        private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly ITransferEventsRepository _transferEventsRepository;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
@@ -51,8 +52,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IWalletCredentialsRepository walletCredentialsRepository,
             IClientTradesRepository clientTradesRepository,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            ICachedAssetsService assetsService,
-            ITransferEventsRepository transferEventsRepository)
+            ITransferEventsRepository transferEventsRepository, IAssetsServiceWithCache assetsServiceWithCache)
         {
             _log = log;
             _matchingEngineClient = matchingEngineClient;
@@ -64,7 +64,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _walletCredentialsRepository = walletCredentialsRepository;
             _clientTradesRepository = clientTradesRepository;
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
-            _assetsService = assetsService;
+            _assetsServiceWithCache = assetsServiceWithCache;
             _rabbitConfig = config;
             _transferEventsRepository = transferEventsRepository;
         }
@@ -172,7 +172,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var bcnCreds = await _bcnClientCredentialsRepository.GetByAssetAddressAsync(queueMessage.FromAddress);
 
-            var asset = await _assetsService.TryGetAssetAsync(bcnCreds.AssetId);
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(bcnCreds.AssetId);
             var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
 
             await HandleCashInOperation(asset, (double)amount, bcnCreds.ClientId, bcnCreds.Address,
@@ -181,7 +181,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             return true;
         }
 
-        public async Task HandleCashInOperation(IAsset asset, double amount, string clientId, string clientAddress, string hash)
+        public async Task HandleCashInOperation(Asset asset, double amount, string clientId, string clientAddress, string hash)
         {
             var id = Guid.NewGuid().ToString("N");
 

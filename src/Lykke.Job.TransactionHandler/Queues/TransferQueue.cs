@@ -14,7 +14,7 @@ using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.Operations.Client;
@@ -35,10 +35,10 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IClientAccountClient _clientAccountClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly ISrvEthereumHelper _srvEthereumHelper;
-        private readonly ICachedAssetsService _assetsService;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IOperationsClient _operationsClient;
         private readonly AppSettings.EthereumSettings _settings;
+        private readonly IAssetsServiceWithCache _assetsServiceWithCache;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
@@ -50,9 +50,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             IOffchainRequestService offchainRequestService,
             IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            ISrvEthereumHelper srvEthereumHelper, ICachedAssetsService assetsService,
+            ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings, 
-            IOperationsClient operationsClient)
+            IOperationsClient operationsClient, IAssetsServiceWithCache assetsServiceWithCache)
         {
             _rabbitConfig = config;
             _log = log;
@@ -64,10 +64,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             _clientAccountClient = clientAccountClient;
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
             _srvEthereumHelper = srvEthereumHelper;
-            _assetsService = assetsService;
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
             _settings = settings;
             _operationsClient = operationsClient;
+            _assetsServiceWithCache = assetsServiceWithCache;
         }
 
         public void Start()
@@ -177,9 +177,11 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, contextData);
 
-            var asset = await _assetsService.TryGetAssetAsync(queueMessage.AssetId);
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
 
-            if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value && asset.Blockchain == Blockchain.Bitcoin)
+            if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value 
+                        && asset.Blockchain == Blockchain.Bitcoin
+                        && !asset.IsTrusted)
             {
                 try
                 {
@@ -225,7 +227,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             try
             {
-                var asset = await _assetsService.TryGetAssetAsync(txRequest.AssetId);
+                var asset = await _assetsServiceWithCache.TryGetAssetAsync(txRequest.AssetId);
                 var clientAddress = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
                 var hotWalletAddress = _settings.HotwalletAddress;
 
