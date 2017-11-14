@@ -130,18 +130,21 @@ namespace Lykke.Job.TransactionHandler.Queues
             await _log.WriteInfoAsync(nameof(EthereumEventsQueue), nameof(ProcessOutcomeOperation),
                 $"transferTx = {transferTx.ToJson()}", "transferTx value");
 
-            switch (transferTx.OperationType)
+            if (transferTx != null)
             {
-                case OperationType.CashOut:
-                    await SetCashoutHashes(transferTx, queueMessage.TransactionHash);
-                    break;
-                case OperationType.Trade:
-                    await SetTradeHashes(transferTx, queueMessage.TransactionHash);
-                    break;
-                case OperationType.TransferToTrusted:
-                case OperationType.TransferFromTrusted:
-                    await SetTransferHashes(transferTx, queueMessage.TransactionHash);
-                    break;
+                switch (transferTx.OperationType)
+                {
+                    case OperationType.CashOut:
+                        await SetCashoutHashes(transferTx, queueMessage.TransactionHash);
+                        break;
+                    case OperationType.Trade:
+                        await SetTradeHashes(transferTx, queueMessage.TransactionHash);
+                        break;
+                    case OperationType.TransferToTrusted:
+                    case OperationType.TransferFromTrusted:
+                        await SetTransferHashes(transferTx, queueMessage.TransactionHash);
+                        break;
+                }
             }
 
             return true;

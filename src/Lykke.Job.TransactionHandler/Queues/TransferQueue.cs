@@ -106,27 +106,34 @@ namespace Lykke.Job.TransactionHandler.Queues
         public async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
             var amount = queueMessage.Amount.ParseAnyDouble();
+            //Get eth request if it is ETH transfer
+            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
 
             //Get client wallets
             var toWallet = await _walletCredentialsRepository.GetAsync(queueMessage.ToClientid);
             var fromWallet = await _walletCredentialsRepository.GetAsync(queueMessage.FromClientId);
 
             //Register transfer events
+            var transferState = ethTxRequest == null
+                ? TransactionStates.SettledOffchain
+                : TransactionStates.SettledOnchain;
+
             var destTransfer =
                 await
                     _transferEventsRepository.RegisterAsync(
                         TransferEvent.CreateNew(queueMessage.ToClientid,
-                        toWallet?.MultiSig, null,
-                        queueMessage.AssetId, amount, queueMessage.Id,
-                        toWallet?.Address, toWallet?.MultiSig, state: TransactionStates.SettledOffchain));
+                            toWallet?.MultiSig, null,
+                            queueMessage.AssetId, amount, queueMessage.Id,
+                            toWallet?.Address, toWallet?.MultiSig,
+                            state: transferState));
 
             var sourceTransfer =
                 await
                     _transferEventsRepository.RegisterAsync(
                         TransferEvent.CreateNew(queueMessage.FromClientId,
-                        fromWallet?.MultiSig, null,
-                        queueMessage.AssetId, -amount, queueMessage.Id,
-                        fromWallet?.Address, fromWallet?.MultiSig, state: TransactionStates.SettledOffchain));
+                            fromWallet?.MultiSig, null,
+                            queueMessage.AssetId, -amount, queueMessage.Id,
+                            fromWallet?.Address, fromWallet?.MultiSig, state: transferState));
 
             //Craete or Update transfer context
             var transaction = await _bitCoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
@@ -184,8 +191,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 }
             }
 
-            // handling ofv ETH transfers to trusted wallets
-            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
+            // handling of ETH transfers to trusted wallets
             if (ethTxRequest != null)
             {
                 ethTxRequest.OperationIds = new[] { destTransfer.Id, sourceTransfer.Id };
