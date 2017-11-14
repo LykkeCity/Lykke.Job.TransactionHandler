@@ -36,6 +36,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IClientTradesRepository _clientTradesRepository;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly ICachedAssetsService _assetsService;
+        private readonly ITransferEventsRepository _transferEventsRepository;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
@@ -50,7 +51,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IWalletCredentialsRepository walletCredentialsRepository,
             IClientTradesRepository clientTradesRepository,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            ICachedAssetsService assetsService)
+            ICachedAssetsService assetsService,
+            ITransferEventsRepository transferEventsRepository)
         {
             _log = log;
             _matchingEngineClient = matchingEngineClient;
@@ -64,6 +66,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
             _assetsService = assetsService;
             _rabbitConfig = config;
+            _transferEventsRepository = transferEventsRepository;
         }
 
         public void Start()
@@ -127,6 +130,10 @@ namespace Lykke.Job.TransactionHandler.Queues
                 case OperationType.Trade:
                     await SetTradeHashes(transferTx, queueMessage.TransactionHash);
                     break;
+                case OperationType.TransferToTrusted:
+                case OperationType.TransferFromTrusted:
+                    await SetTransferHashes(transferTx, queueMessage.TransactionHash);
+                    break;
             }
 
             return true;
@@ -145,6 +152,14 @@ namespace Lykke.Job.TransactionHandler.Queues
             foreach (var id in txRequest.OperationIds)
             {
                 await _cashOperationsRepository.UpdateBlockchainHashAsync(txRequest.ClientId, id, hash);
+            }
+        }
+
+        private async Task SetTransferHashes(IEthereumTransactionRequest txRequest, string hash)
+        {
+            foreach (var id in txRequest.OperationIds)
+            {
+                await _transferEventsRepository.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
