@@ -15,6 +15,7 @@ using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.Operations.Client.AutorestClient;
 
@@ -166,7 +167,9 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, contextData);
 
-            if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value)
+            var asset = await _assetsService.TryGetAssetAsync(queueMessage.AssetId);
+
+            if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value && asset.Blockchain == Blockchain.Bitcoin)
             {
                 try
                 {
