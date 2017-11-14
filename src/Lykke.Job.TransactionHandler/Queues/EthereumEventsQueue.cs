@@ -105,6 +105,9 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(CoinEvent queueMessage)
         {
+            await _log.WriteInfoAsync(nameof(EthereumEventsQueue), nameof(ProcessMessage),
+                $"queueMessage = {queueMessage.ToJson()}", "ETH event processing started");
+
             switch (queueMessage.CoinEventType)
             {
                 case CoinEventType.CashinCompleted:
@@ -119,14 +122,19 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessOutcomeOperation(CoinEvent queueMessage)
         {
+            await _log.WriteInfoAsync(nameof(EthereumEventsQueue), nameof(ProcessOutcomeOperation),
+                $"queueMessage = {queueMessage.ToJson()}", "ETH outcome operation processing started");
+
             var transferTx = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.OperationId));
+
+            await _log.WriteInfoAsync(nameof(EthereumEventsQueue), nameof(ProcessOutcomeOperation),
+                $"transferTx = {transferTx.ToJson()}", "transferTx value");
 
             switch (transferTx.OperationType)
             {
                 case OperationType.CashOut:
                     await SetCashoutHashes(transferTx, queueMessage.TransactionHash);
                     break;
-
                 case OperationType.Trade:
                     await SetTradeHashes(transferTx, queueMessage.TransactionHash);
                     break;
@@ -157,8 +165,14 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task SetTransferHashes(IEthereumTransactionRequest txRequest, string hash)
         {
+            await _log.WriteInfoAsync(nameof(EthereumEventsQueue), nameof(SetTransferHashes),
+                $"txRequest = {txRequest.ToJson()}, hash = {hash}", "SetTransferHashes started");
+
             foreach (var id in txRequest.OperationIds)
             {
+                await _log.WriteInfoAsync(nameof(EthereumEventsQueue), nameof(SetTransferHashes),
+                    $"operationId = {id}", "Going to update hash for transfer operation");
+
                 await _transferEventsRepository.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
             }
         }
