@@ -127,7 +127,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        public async Task<bool> ProcessMessage(LimitQueueItem tradeItem)
+        public async Task ProcessMessage(LimitQueueItem tradeItem)
         {
             var trusted = new Dictionary<string, bool>();
             foreach (var limitOrderWithTrades in tradeItem.Orders)
@@ -199,8 +199,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                     await _log.WriteErrorAsync(nameof(LimitTradeQueue), nameof(ProcessMessage), limitOrderWithTrades.Order.ToJson(), e);
                 }
             }
-
-            return true;
         }
 
         private async Task<IClientTrade[]> SaveTrades(LimitQueueItem.LimitOrderWithTrades limitOrderWithTrades)
