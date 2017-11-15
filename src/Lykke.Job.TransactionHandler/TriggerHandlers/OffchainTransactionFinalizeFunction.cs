@@ -266,7 +266,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 await _transferEventsRepository.SetIsSettledIfExistsAsync(transfer.ClientId, transfer.OperationId, true);
 
                 var clientData = await _personalDataService.GetAsync(transfer.ClientId);
-                var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
+                var clientAcc = await _clientAccountClient.GetByIdAsync(transfer.ClientId);
 
                 if (transfer.Actions?.CashInConvertedOkEmail != null)
                 {
