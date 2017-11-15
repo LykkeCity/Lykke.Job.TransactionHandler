@@ -116,7 +116,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             //Register transfer events
             var transferState = ethTxRequest == null
                 ? TransactionStates.SettledOffchain
-                : TransactionStates.SettledOnchain;
+                : ethTxRequest.OperationType == OperationType.TransferBetweenTrusted
+                    ? TransactionStates.SettledNoChain
+                    : TransactionStates.SettledOnchain;
 
             var destTransfer =
                 await
@@ -205,6 +207,9 @@ namespace Lykke.Job.TransactionHandler.Queues
                     case OperationType.TransferFromTrusted:
                         await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.FromTrustedWallet);
                         break;
+                    case OperationType.TransferBetweenTrusted:
+                        await ProcessEthTransferTrustedWallet(ethTxRequest, TransferType.BetweenTrusted);
+                        break;
                 }
             }
 
@@ -213,6 +218,8 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
         {
+            if (transferType == TransferType.BetweenTrusted) return true;
+
             try
             {
                 var asset = await _assetsService.TryGetAssetAsync(txRequest.AssetId);
