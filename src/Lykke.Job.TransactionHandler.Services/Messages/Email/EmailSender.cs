@@ -14,9 +14,9 @@ namespace Lykke.Job.TransactionHandler.Services.Messages.Email
             _emailCommandProducer = emailCommandProducer;
         }
 
-        public async Task SendEmailAsync<T>(string email, T msgData) where T : IEmailMessageData
+        public async Task SendEmailAsync<T>(string partnerId, string email, T msgData) where T : IEmailMessageData
         {
-            await _emailCommandProducer.ProduceSendEmailCommand(email, msgData);
+            await _emailCommandProducer.ProduceSendEmailCommand(partnerId, email, msgData);
         }
     }
 }

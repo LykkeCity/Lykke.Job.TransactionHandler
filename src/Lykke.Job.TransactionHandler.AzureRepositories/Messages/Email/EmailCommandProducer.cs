@@ -29,9 +29,9 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Messages.Email
                 QueueType.Create(new SolarCashOutData().MessageId(), typeof(QueueRequestModel<SendEmailData<SolarCashOutData>>)));
         }
 
-        public Task ProduceSendEmailCommand<T>(string mailAddress, T msgData)
+        public Task ProduceSendEmailCommand<T>(string partnerId, string mailAddress, T msgData)
         {
-            var data = SendEmailData<T>.Create(mailAddress, msgData);
+            var data = SendEmailData<T>.Create(partnerId, mailAddress, msgData);
             var msg = new QueueRequestModel<SendEmailData<T>> { Data = data };
             return _queueExt.PutMessageAsync(msg);
         }
