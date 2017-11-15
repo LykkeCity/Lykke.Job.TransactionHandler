@@ -11,6 +11,7 @@ namespace Lykke.Job.TransactionHandler.Services
         public SlackNotificationsSettings SlackNotifications { get; set; }
         public SlackIntegrationSettings SlackIntegration { get; set; }
         public AssetsSettings Assets { get; set; }
+        public ClientAccountSettings ClientAccountClient { get; set; }
         public EthereumSettings Ethereum { get; set; }
         public BitcoinCoreSettings BitCoinCore { get; set; }
         public MarginTradingSettings MarginTrading { get; set; }
@@ -24,6 +25,7 @@ namespace Lykke.Job.TransactionHandler.Services
             public DbSettings Db { get; set; }
             public AssetsCacheSettings AssetsCache { get; set; }
             public string ExchangeOperationsServiceUrl { get; set; }
+            public ServiceSettings Services { get; set; }
         }
 
         public class DbSettings
@@ -58,7 +60,7 @@ namespace Lykke.Job.TransactionHandler.Services
         {
             public IpEndpointSettings IpEndpoint { get; set; }
         }
-        
+
         public class IpEndpointSettings
         {
             public string InternalHost { get; set; }
@@ -150,5 +152,15 @@ namespace Lykke.Job.TransactionHandler.Services
         {
             public string ServiceUrl { get; set; }
         }
+
+        public class ClientAccountSettings
+        {
+            public string ServiceUrl { get; set; }
+        }
+    }
+
+    public class ServiceSettings
+    {
+        public string OperationsUrl { get; set; }
     }
 }

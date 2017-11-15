@@ -4,11 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
@@ -21,6 +19,7 @@ using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Service.Assets.Client.Models;
+using Lykke.Service.ClientAccount.Client;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -34,7 +33,6 @@ namespace Lykke.Job.TransactionHandler.Queues
         private const bool QueueDurable = true;
 #endif
 
-        private readonly IBitcoinCommandSender _bitcoinCommandSender;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IBitCoinTransactionsRepository _bitcoinTransactionsRepository;
         private readonly IMarketOrdersRepository _marketOrdersRepository;
@@ -49,7 +47,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ILog _log;
         private readonly ICachedAssetsService _assetsService;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
-        private readonly IClientAccountsRepository _clientAccountsRepository;
+        private readonly IClientAccountClient _clientAccountClient;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TradeQueueItem> _subscriber;
@@ -57,7 +55,6 @@ namespace Lykke.Job.TransactionHandler.Queues
         public TradeQueue(
             AppSettings.RabbitMqSettings config,
             ILog log,
-            IBitcoinCommandSender bitcoinCommandSender,
             IWalletCredentialsRepository walletCredentialsRepository,
             IBitCoinTransactionsRepository bitcoinTransactionsRepository,
             IMarketOrdersRepository marketOrdersRepository,
@@ -69,10 +66,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             ICachedAssetsService assetsService,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
-            IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService, IClientAccountsRepository clientAccountsRepository)
+            IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient)
         {
             _rabbitConfig = config;
-            _bitcoinCommandSender = bitcoinCommandSender;
             _walletCredentialsRepository = walletCredentialsRepository;
             _bitcoinTransactionsRepository = bitcoinTransactionsRepository;
             _marketOrdersRepository = marketOrdersRepository;
@@ -86,7 +82,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _settings = settings;
             _ethClientEventLogs = ethClientEventLogs;
             _bitcoinTransactionService = bitcoinTransactionService;
-            _clientAccountsRepository = clientAccountsRepository;
+            _clientAccountClient = clientAccountClient;
             _log = log;
         }
 
@@ -124,14 +120,14 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        public async Task<bool> ProcessMessage(TradeQueueItem queueMessage)
+        public async Task ProcessMessage(TradeQueueItem queueMessage)
         {
             await _marketOrdersRepository.CreateAsync(queueMessage.Order);
 
             if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
             {
                 await _log.WriteInfoAsync(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.Order.ToJson(), "Message processing being aborted, due to order status is not matched. Order was saved");
-                return true;
+                return;
             }
 
             var walletCredsMarket = await _walletCredentialsRepository.GetAsync(queueMessage.Trades[0].MarketClientId);
@@ -143,8 +139,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             try
             {
                 // for trusted clients only write history (finally block)
-                if (await _clientAccountsRepository.IsTrusted(queueMessage.Order.ClientId))
-                    return true;
+                if ((await _clientAccountClient.IsTrustedAsync(queueMessage.Order.ClientId)).Value)
+                    return;
 
                 // get operations only by market order user (limit user will be processed in limit trade queue)
                 var operations = AggregateSwaps(queueMessage.Trades).Where(x => x.ClientId == queueMessage.Order.ClientId).ToList();
@@ -158,7 +154,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     var wasTransferOk = await ProcessEthGuaranteeTransfer(ethereumTxRequest, operations, clientTrades);
 
                     if (!wasTransferOk)
-                        return true;
+                        return;
                 }
 
                 var sellOperations = operations.Where(x => x.Amount < 0);
@@ -209,8 +205,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                 foreach (var item in notify)
                     await _offchainRequestService.NotifyUser(item);
             }
-
-            return true;
         }
 
         private async Task ProcessEthBuy(AggregatedTransfer operation, IAsset asset, IClientTrade[] clientTrades, string orderId)

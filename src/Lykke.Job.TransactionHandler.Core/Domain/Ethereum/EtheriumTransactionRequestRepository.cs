@@ -6,7 +6,10 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
     public enum OperationType
     {
         CashOut,
-        Trade
+        Trade,
+        TransferToTrusted,
+        TransferFromTrusted,
+        TransferBetweenTrusted
     }
 
     public interface IEthereumTransactionRequest
