@@ -126,8 +126,11 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.CashOperations
             var inserted = await _tableStorage.InsertAndGenerateRowKeyAsDateTimeAsync(newEntity, newEntity.DateTime,
                 RowKeyDateTimeFormat.Short);
 
-            var byMultisigEntity = TransferEventEntity.ByMultisig.Create(src, inserted.RowKey);
-            await _tableStorage.InsertAsync(byMultisigEntity);
+            if (!string.IsNullOrEmpty(src.Multisig))
+            {
+                var byMultisigEntity = TransferEventEntity.ByMultisig.Create(src, inserted.RowKey);
+                await _tableStorage.InsertAsync(byMultisigEntity);
+            }
 
             return newEntity;
         }
