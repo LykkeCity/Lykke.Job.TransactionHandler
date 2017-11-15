@@ -14,17 +14,17 @@ namespace Lykke.Job.TransactionHandler.Services.Messages.Email
             _emailSender = emailSender;
         }
 
-        public async Task SendNoRefundDepositDoneMail(string email, double amount, string assetBcnId)
+        public async Task SendNoRefundDepositDoneMail(string partnerId, string email, double amount, string assetBcnId)
         {
             var msgData = new NoRefundDepositDoneData
             {
                 Amount = amount,
                 AssetBcnId = assetBcnId
             };
-            await _emailSender.SendEmailAsync(email, msgData);
+            await _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
 
-        public async Task SendNoRefundOCashOutMail(string email, double amount, string assetId, string bcnHash)
+        public async Task SendNoRefundOCashOutMail(string partnerId, string email, double amount, string assetId, string bcnHash)
         {
             var msgData = new NoRefundOCashOutData
             {
@@ -33,10 +33,10 @@ namespace Lykke.Job.TransactionHandler.Services.Messages.Email
                 SrcBlockchainHash = bcnHash
             };
 
-            await _emailSender.SendEmailAsync(email, msgData);
+            await _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
 
-        public async Task SendTransferCompletedEmail(string email, string clientName, string assetId, double amountFiat,
+        public async Task SendTransferCompletedEmail(string partnerId, string email, string clientName, string assetId, double amountFiat,
             double amountLkk,
             double price, string srcHash)
         {
@@ -49,10 +49,10 @@ namespace Lykke.Job.TransactionHandler.Services.Messages.Email
                 ClientName = clientName,
                 SrcBlockchainHash = srcHash
             };
-            await _emailSender.SendEmailAsync(email, msgData);
+            await _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
 
-        public async Task SendDirectTransferCompletedEmail(string email, string clientName, string assetId,
+        public async Task SendDirectTransferCompletedEmail(string partnerId, string email, string clientName, string assetId,
             double amount, string srcHash)
         {
             var msgData = new DirectTransferCompletedData
@@ -63,10 +63,10 @@ namespace Lykke.Job.TransactionHandler.Services.Messages.Email
                 SrcBlockchainHash = srcHash
             };
 
-            await _emailSender.SendEmailAsync(email, msgData);
+            await _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
 
-        public Task SendSolarCashOutCompletedEmail(string email, string addressTo, double amount)
+        public Task SendSolarCashOutCompletedEmail(string partnerId, string email, string addressTo, double amount)
         {
             var msgData = new SolarCashOutData
             {
@@ -74,7 +74,7 @@ namespace Lykke.Job.TransactionHandler.Services.Messages.Email
                 Amount = amount
             };
 
-            return _emailSender.SendEmailAsync(email, msgData);
+            return _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
     }
 }
