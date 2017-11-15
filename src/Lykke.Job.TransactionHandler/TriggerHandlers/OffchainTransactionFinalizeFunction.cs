@@ -260,11 +260,12 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 await _transferEventsRepository.SetIsSettledIfExistsAsync(transfer.ClientId, transfer.OperationId, true);
 
                 var clientData = await _personalDataService.GetAsync(transfer.ClientId);
+                var clientAcc = await _clientAccountsRepository.GetByIdAsync(transfer.ClientId);
 
                 if (transfer.Actions?.CashInConvertedOkEmail != null)
                 {
                     await
-                        _srvEmailsFacade.SendTransferCompletedEmail(clientData.Email, clientData.FullName,
+                        _srvEmailsFacade.SendTransferCompletedEmail(clientAcc.PartnerId, clientData.Email, clientData.FullName,
                             transfer.Actions.CashInConvertedOkEmail.AssetFromId, transfer.Actions.CashInConvertedOkEmail.AmountFrom,
                             transfer.Actions.CashInConvertedOkEmail.AmountLkk, transfer.Actions.CashInConvertedOkEmail.Price, transaction.BlockchainHash);
                 }
@@ -272,14 +273,13 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 if (transfer.Actions?.SendTransferEmail != null)
                 {
                     await
-                        _srvEmailsFacade.SendDirectTransferCompletedEmail(clientData.Email, clientData.FullName,
+                        _srvEmailsFacade.SendDirectTransferCompletedEmail(clientAcc.PartnerId, clientData.Email, clientData.FullName,
                             transfer.Actions.SendTransferEmail.AssetId, transfer.Actions.SendTransferEmail.Amount,
                             transaction.BlockchainHash);
                 }
 
                 if (transfer.Actions?.PushNotification != null)
                 {
-                    var clientAcc = await _clientAccountsRepository.GetByIdAsync(transfer.ClientId);
                     var asset = await _assetsService.TryGetAssetAsync(transfer.Actions.PushNotification.AssetId);
 
                     await _appNotifications.SendAssetsCreditedNotification(new[] { clientAcc.NotificationsId },
@@ -330,7 +330,8 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 else
                 {
                     var clientData = await _personalDataService.GetAsync(contextData.ClientId);
-                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientData.Email, contextData.Amount, contextData.AssetId, transaction.BlockchainHash);
+                    var clientAcc = await _clientAccountsRepository.GetByIdAsync(contextData.ClientId);
+                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientData.Email, contextData.Amount, contextData.AssetId, transaction.BlockchainHash);
                 }
             }
         }
@@ -396,9 +397,9 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private async Task PostSolarCashOut(string clientId, string address, double amount, string txId)
         {
             var slrAddress = new SolarCoinAddress(address);
-            var clientAcc = _clientAccountsRepository.GetByIdAsync(clientId);
+            var clientAcc = await _clientAccountsRepository.GetByIdAsync(clientId);
 
-            var sendEmailTask = _srvEmailsFacade.SendSolarCashOutCompletedEmail((await clientAcc).Email, slrAddress.Value, amount);
+            var sendEmailTask = _srvEmailsFacade.SendSolarCashOutCompletedEmail(clientAcc.PartnerId, clientAcc.Email, slrAddress.Value, amount);
             var solarRequestTask = _srvSolarCoinHelper.SendCashOutRequest(txId, slrAddress, amount);
 
             await Task.WhenAll(sendEmailTask, solarRequestTask);

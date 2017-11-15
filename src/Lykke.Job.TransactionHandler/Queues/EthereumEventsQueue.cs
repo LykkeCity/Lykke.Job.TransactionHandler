@@ -206,7 +206,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 });
 
                 var clientAcc = await _clientAccountsRepository.GetByIdAsync(clientId);
-                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.Email, amount, asset.Id);
+                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientAcc.Email, amount, asset.Id);
 
                 await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
             }
