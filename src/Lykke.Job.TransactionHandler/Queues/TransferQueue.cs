@@ -249,6 +249,12 @@ namespace Lykke.Job.TransactionHandler.Queues
                             "Unknown transfer type", null);
                         return false;
                 }
+
+                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet),
+                    $"txRequest = {txRequest.ToJson()}", "txRequest object value");
+                await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet),
+                    $"transfer type = {transferType}, transferId = {transferId}, sign = {sign}, asset = {asset}, addressFrom = {addressFrom}, addressTo = {addressTo}, volume = {txRequest.Volume}");
+
                 var ethResponse = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
                     addressTo, txRequest.Volume);
 
