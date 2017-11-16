@@ -1,10 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <Version>1.0.1</Version>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Lykke.Common" Version="3.0.2" />
     <PackageReference Include="Lykke.Service.ClientAccount.Client" Version="1.0.55" />
@@ -14,9 +12,7 @@
     <PackageReference Include="RestSharp.NetCore" Version="105.2.3" />
     <PackageReference Include="System.ComponentModel" Version="4.3.0" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Lykke.Job.TransactionHandler.Core\Lykke.Job.TransactionHandler.Core.csproj" />
   </ItemGroup>
-
 </Project>
