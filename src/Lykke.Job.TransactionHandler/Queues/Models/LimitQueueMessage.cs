@@ -152,7 +152,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
                 DateTime = trade.Timestamp,
                 Price = trade.Price,
                 LimitOrderId = limitOrder.Id,
-                OppositeLimitOrderId = trade.OppositeOrderId,
+                OppositeLimitOrderId = trade.OppositeOrderExternalId,
                 TransactionId = btcTransactionId,
                 IsLimitOrderResult = true
             };
