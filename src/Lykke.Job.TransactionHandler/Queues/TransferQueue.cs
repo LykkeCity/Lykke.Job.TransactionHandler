@@ -17,6 +17,7 @@ using Lykke.Job.TransactionHandler.Services;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
+using Lykke.Service.Operations.Client;
 using Lykke.Service.Operations.Client.AutorestClient;
 
 namespace Lykke.Job.TransactionHandler.Queues
@@ -36,7 +37,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ISrvEthereumHelper _srvEthereumHelper;
         private readonly ICachedAssetsService _assetsService;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
-        private readonly IOperationsAPI _operationsApi;
+        private readonly IOperationsClient _operationsClient;
         private readonly AppSettings.EthereumSettings _settings;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
@@ -51,7 +52,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ISrvEthereumHelper srvEthereumHelper, ICachedAssetsService assetsService,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings, 
-            IOperationsAPI operationsApi)
+            IOperationsClient operationsClient)
         {
             _rabbitConfig = config;
             _log = log;
@@ -66,7 +67,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _assetsService = assetsService;
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
             _settings = settings;
-            _operationsApi = operationsApi;
+            _operationsClient = operationsClient;
         }
 
         public void Start()
@@ -212,13 +213,15 @@ namespace Lykke.Job.TransactionHandler.Queues
                         break;
                 }
             }
-
-            await _operationsApi.ApiOperationsCompleteByIdPostAsync(new Guid(transaction.TransactionId));
+            else
+            {
+                await _operationsClient.Complete(new Guid(transaction.TransactionId));
+            }            
         }
 
-        private async Task<bool> ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
+        private async Task ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
         {
-            if (transferType == TransferType.BetweenTrusted) return true;
+            if (transferType == TransferType.BetweenTrusted) return;
 
             try
             {
@@ -247,7 +250,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     default:
                         await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet),
                             "Unknown transfer type", null);
-                        return false;
+                        return;
                 }
 
                 await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet),
@@ -261,17 +264,15 @@ namespace Lykke.Job.TransactionHandler.Queues
                 if (ethResponse.HasError)
                 {
                     await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethResponse.Error.ToJson(), null);
-                    return false;
+                    return;
                 }
+                
+                await _operationsClient.Complete(transferId);                
             }
             catch (Exception e)
             {
-                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), e.Message, e);
-
-                return false;
-            }
-
-            return true;
+                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), e.Message, e);                
+            }            
         }
 
         public void Dispose()

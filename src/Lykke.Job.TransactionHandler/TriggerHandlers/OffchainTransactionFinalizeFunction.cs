@@ -26,6 +26,7 @@ using Lykke.JobTriggers.Triggers.Attributes;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
+using Lykke.Service.Operations.Client;
 using Lykke.Service.Operations.Client.AutorestClient;
 using Lykke.Service.PersonalData.Contract;
 
@@ -63,7 +64,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly IChronoBankService _chronoBankService;
         private readonly ISrvSolarCoinHelper _srvSolarCoinHelper;
         private readonly IQuantaService _quantaService;
-        private readonly IOperationsAPI _operationsApi;
+        private readonly IOperationsClient _operationsClient;
 
         public OffchainTransactionFinalizeFunction(
             IBitCoinTransactionsRepository bitCoinTransactionsRepository,
@@ -91,8 +92,8 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             IPaymentTransactionsRepository paymentTransactionsRepository,
             IAppNotifications appNotifications,
             ICachedAssetsService assetsService,
-            IBitcoinTransactionService bitcoinTransactionService, 
-            IOperationsAPI operationsApi)
+            IBitcoinTransactionService bitcoinTransactionService,
+            IOperationsClient operationsClient)
         {
             _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
             _log = log;
@@ -121,7 +122,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             _appNotifications = appNotifications;
             _assetsService = assetsService;
             _bitcoinTransactionService = bitcoinTransactionService;
-            _operationsApi = operationsApi;
+            _operationsClient = operationsClient;
         }
 
         [QueueTrigger("offchain-finalization", notify: true, maxDequeueCount: 1, maxPollingIntervalMs: 100)]
@@ -256,7 +257,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 await _paymentTransactionsRepository.SetStatus(transaction.TransactionId, PaymentStatus.NotifyProcessed);
             }
 
-            await _operationsApi.ApiOperationsCompleteByIdPostAsync(new Guid(transaction.TransactionId));
+            await _operationsClient.Complete(new Guid(transaction.TransactionId));
         }
 
         private async Task FinalizeCommonTransfer(IBitcoinTransaction transaction, TransferContextData contextData)
