@@ -68,6 +68,7 @@ using Lykke.MatchingEngine.Connector.Services;
 using Lykke.Service.Assets.Client.Custom;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
+using Lykke.Service.Operations.Client;
 using Lykke.Service.Operations.Client.AutorestClient;
 using Lykke.Service.OperationsHistory.HistoryWriter.Abstractions;
 using Lykke.Service.OperationsHistory.HistoryWriter.Implementation;
@@ -123,12 +124,15 @@ namespace Lykke.Job.TransactionHandler.Modules
                 AssetsCacheExpirationPeriod = _jobSettings.AssetsCache.ExpirationPeriod
             });
 
-            Mapper.Initialize(cfg => cfg.CreateMap<IBcnCredentialsRecord, BcnCredentialsRecordEntity>().IgnoreTableEntityFields());
-
-            Mapper.Initialize(cfg => cfg.CreateMap<IEthereumTransactionRequest, EthereumTransactionReqEntity>().IgnoreTableEntityFields()
-                .ForMember(x => x.SignedTransferVal, config => config.Ignore())
-                .ForMember(x => x.OperationIdsVal, config => config.Ignore()));
-
+            Mapper.Initialize(cfg =>
+            {
+                cfg.CreateMap<IBcnCredentialsRecord, BcnCredentialsRecordEntity>().IgnoreTableEntityFields();
+                cfg.AddProfile<ClientAutomapperProfile>();
+                cfg.CreateMap<IEthereumTransactionRequest, EthereumTransactionReqEntity>().IgnoreTableEntityFields()
+                    .ForMember(x => x.SignedTransferVal, config => config.Ignore())
+                    .ForMember(x => x.OperationIdsVal, config => config.Ignore());
+            });            
+            
             Mapper.Configuration.AssertConfigurationIsValid();
 
             BindRabbitMq(builder);
@@ -148,10 +152,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 .WithParameter(TypedParameter.From(_settings.PersonalDataServiceSettings));
 
             builder.RegisterLykkeServiceClient(_settings.ClientAccountClient.ServiceUrl);
-
-            builder.RegisterType<OperationsAPI>()
-                .As<IOperationsAPI>()
-                .WithParameter("baseUri", new Uri(_settings.TransactionHandlerJob.Services.OperationsUrl));
+            builder.RegisterOperationsClient(_settings.TransactionHandlerJob.Services.OperationsUrl);
         }
 
         public static void BindCachedDicts(ContainerBuilder builder)
