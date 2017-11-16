@@ -7,6 +7,8 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
     public interface IMarketOrder : IOrderBase
     {
         DateTime? MatchedAt { get; }
+
+        string MatchingId { get; set; }
     }
 
     public class MarketOrder : IMarketOrder
@@ -22,6 +24,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
         public bool Straight { get; set; }
 
         public DateTime? MatchedAt { get; set; }
+        public string MatchingId { get; set; }
     }
 
     public interface IMarketOrdersRepository
