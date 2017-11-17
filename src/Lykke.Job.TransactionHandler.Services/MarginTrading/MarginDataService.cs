@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Common;
+using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Services.Generated.MarginApi;
 using Lykke.Job.TransactionHandler.Services.Generated.MarginApi.Models;
@@ -19,10 +18,12 @@ namespace Lykke.Job.TransactionHandler.Services.MarginTrading
     public class MarginDataService : IMarginDataService
     {
         private readonly MarginDataServiceSettings _settings;
+        private readonly ILog _log;
 
-        public MarginDataService(MarginDataServiceSettings settings)
+        public MarginDataService(MarginDataServiceSettings settings, ILog log)
         {
             _settings = settings;
+            _log = log;
         }
 
         private MarginTradingApi Api => new MarginTradingApi(_settings.BaseUri);
@@ -53,40 +54,10 @@ namespace Lykke.Job.TransactionHandler.Services.MarginTrading
             {
                 return GetOperationResult(e.Response.Content);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return OperationResult.Error("Unknown margin trading error");
-            }
-        }
-
-        public async Task<OperationResult> WithdrawFromAccount(string clientId, string accountId, double amount,
-            MarginPaymentType paymentType)
-        {
-            var request = new AccountDepositWithdrawRequest
-            {
-                AccountId = accountId,
-                ClientId = clientId,
-                Amount = amount,
-                PaymentType = paymentType.ConvertToDto()
-            };
-
-            try
-            {
-                var result = await Api.ApiBackofficeMarginTradingAccountsWithdrawPostWithHttpMessagesAsync(_settings.ApiKey,
-                    request);
-
-                if (result.Body == true)
-                    return OperationResult.Success();
-                
-                return OperationResult.Error("Error deposit to margin account");
-            }
-            catch (HttpOperationException e)
-            {
-                return GetOperationResult(e.Response.Content);
-            }
-            catch (Exception)
-            {
-                return OperationResult.Error("Unknown margin trading error");
+                await _log.WriteErrorAsync(nameof(MarginDataService), "Deposit to margin account", request.ToString(), ex);
+                return OperationResult.Error($"Margin trading call error: {ex.Message}");
             }
         }
 
@@ -97,9 +68,10 @@ namespace Lykke.Job.TransactionHandler.Services.MarginTrading
                 var mtResponse = response.DeserializeJson<MtBackendResponse<string>>();
                 return OperationResult.Error(mtResponse.Message ?? mtResponse.Result);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return OperationResult.Error("Unknown margin trading error");
+                _log.WriteErrorAsync(nameof(MarginDataService), "Parse margin trading response", response, ex);
+                return OperationResult.Error($"Parse margin trading response error: {ex.Message}");
             }
         }
     }

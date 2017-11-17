@@ -5,7 +5,6 @@ namespace Lykke.Job.TransactionHandler.Core.Services.MarginTrading
     public interface IMarginDataService
     {
         Task<OperationResult> DepositToAccount(string clientId, string accountId, double amount, MarginPaymentType paymentType);
-        Task<OperationResult> WithdrawFromAccount(string clientId, string accountId, double amount, MarginPaymentType paymentType);
     }
 
     public enum MarginPaymentType
