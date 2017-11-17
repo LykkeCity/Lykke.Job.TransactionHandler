@@ -201,12 +201,25 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             if (sourceTransferContext?.Actions?.UpdateMarginBalance == null)
                 throw new Exception();
 
-            await _exchangeOperationsService.FinishTransferAsync(
+            var exchangeOperationResult = await _exchangeOperationsService.FinishTransferAsync(
                 transfer.Id,
                 sourceTransferContext.ClientId,
                 destTransferContext.ClientId,
                 (double)transfer.Amount,
                 transfer.AssetId);
+            
+            if (!exchangeOperationResult.IsOk())
+            {
+                var errorLog = MarginTradingPaymentLog.CreateError(transfer.ClientId,
+                    sourceTransferContext.Actions.UpdateMarginBalance.AccountId, DateTime.UtcNow,
+                    sourceTransferContext.Actions.UpdateMarginBalance.Amount,
+                    $"Transfer to margin wallet failed; transfer: {transfer.Id}, ME result: {exchangeOperationResult.ToJson()}");
+
+                await _marginTradingPaymentLog.CreateAsync(errorLog);
+                await _srvSlackNotifications.SendNotification(ChannelTypes.MarginTrading, errorLog.ToJson(), "Transaction handler");
+
+                return;
+            }
 
             var marginDataService = _marginDataServiceResolver.Resolve(false);
 
@@ -215,7 +228,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 sourceTransferContext.Actions.UpdateMarginBalance.Amount,
                 MarginPaymentType.Transfer);
 
-            if (depositToMarginResult)
+            if (depositToMarginResult.IsOk)
                 await _marginTradingPaymentLog.CreateAsync(MarginTradingPaymentLog.CreateOk(transfer.ClientId,
                     sourceTransferContext.Actions.UpdateMarginBalance.AccountId, DateTime.UtcNow,
                     sourceTransferContext.Actions.UpdateMarginBalance.Amount, transfer.ExternalTransferId));
@@ -223,7 +236,8 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             {
                 var errorLog = MarginTradingPaymentLog.CreateError(transfer.ClientId,
                     sourceTransferContext.Actions.UpdateMarginBalance.AccountId, DateTime.UtcNow,
-                    sourceTransferContext.Actions.UpdateMarginBalance.Amount, "Error deposit to margin account");
+                    sourceTransferContext.Actions.UpdateMarginBalance.Amount,
+                    $"Error deposit to margin account: {depositToMarginResult.ErrorMessage}");
 
                 await _marginTradingPaymentLog.CreateAsync(errorLog);
                 await _srvSlackNotifications.SendNotification(ChannelTypes.MarginTrading, errorLog.ToJson(), "Transaction handler");

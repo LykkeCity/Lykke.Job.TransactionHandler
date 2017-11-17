@@ -1,10 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
+using Common;
+using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Services.Generated.MarginApi;
 using Lykke.Job.TransactionHandler.Services.Generated.MarginApi.Models;
+using Microsoft.Rest;
 
 namespace Lykke.Job.TransactionHandler.Services.MarginTrading
 {
@@ -17,150 +18,18 @@ namespace Lykke.Job.TransactionHandler.Services.MarginTrading
     public class MarginDataService : IMarginDataService
     {
         private readonly MarginDataServiceSettings _settings;
+        private readonly ILog _log;
 
-        public MarginDataService(MarginDataServiceSettings settings)
+        public MarginDataService(MarginDataServiceSettings settings, ILog log)
         {
             _settings = settings;
+            _log = log;
         }
 
         private MarginTradingApi Api => new MarginTradingApi(_settings.BaseUri);
 
-        public async Task<IEnumerable<MarginAssetsInfoRecord>> GetAssetsInfoAsync()
-        {
-            var result = await Api.ApiBackofficeAssetsInfoGetAsync(_settings.ApiKey);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task<IEnumerable<OrderRecord>> GetPositionsByVolumeAsync(double volume)
-        {
-            var result = await Api.ApiBackofficePositionsByVolumeGetAsync(_settings.ApiKey, volume);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task<IEnumerable<OrderRecord>> GetPendingOrdersByVolumeAsync(double volume)
-        {
-            var result = await Api.ApiBackofficePendingOrdersByVolumeGetAsync(_settings.ApiKey, volume);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task<string> InitAccounts(string clientId, string tradingConditions)
-        {
-            var request = new InitAccountsRequest { ClientId = clientId, TradingConditionsId = tradingConditions };
-            var result = await Api.ApiBackofficeMarginTradingAccountsInitPostWithHttpMessagesAsync(_settings.ApiKey,
-                request);
-
-            return result.Body.Message;
-        }
-
-        #region Trading conditions
-
-        public async Task<IEnumerable<TradingConditionRecord>> GetTradingConditionsAsync()
-        {
-            var result = await Api.ApiBackofficeTradingConditionsGetallGetAsync(_settings.ApiKey);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task<TradingConditionRecord> GetTradingConditionAsync(string id)
-        {
-            var result = await Api.ApiBackofficeTradingConditionsGetByIdGetAsync(id, _settings.ApiKey);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task AddOrEditTradingConditionAsync(TradingConditionRecord model)
-        {
-            await Api.ApiBackofficeTradingConditionsAddPostAsync(_settings.ApiKey, model.ConvertToDomain());
-        }
-
-        #endregion
-
-        #region Account groups
-
-        public async Task<IEnumerable<AccountGroupRecord>> GetAccountGroupsAsync()
-        {
-            var result = await Api.ApiBackofficeAccountGroupsGetallGetAsync(_settings.ApiKey);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task<AccountGroupRecord> GetAccountGroupAsync(string tradingConditionId, string id)
-        {
-            var result = await Api.ApiBackofficeAccountGroupsGetByTradingConditionIdByIdGetAsync(tradingConditionId, id, _settings.ApiKey);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task AddOrEditAccountGroupAsync(AccountGroupRecord model)
-        {
-            await Api.ApiBackofficeAccountGroupsAddPostAsync(_settings.ApiKey, model.ConvertToDomain());
-        }
-
-        #endregion
-
-        #region Account assets
-
-        public async Task<IEnumerable<AccountAssetRecord>> GetAccountAssetsAsync(string tradingConditionId, string baseAssetId)
-        {
-            var result = await Api.ApiBackofficeAccountAssetsGetallByTradingConditionIdByAccountAssetIdGetAsync(tradingConditionId, baseAssetId, _settings.ApiKey);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task<AccountAssetRecord> GetAccountAssetAsync(string tradingConditionId, string baseAssetId, string instrument)
-        {
-            var result = await Api.ApiBackofficeAccountAssetsGetByTradingConditionIdByBaseAssetIdByInstrumetGetAsync(tradingConditionId, baseAssetId, instrument, _settings.ApiKey);
-
-            return result.ConvertToDto();
-        }
-
-        public async Task AssignInstrumentsAsync(string tradingConditionId, string baseAssetId, string[] instruments)
-        {
-            await Api.ApiBackofficeAccountAssetsAssignInstrumentsPostAsync(_settings.ApiKey, new AssignInstrumentsModel
-            {
-                TradingConditionId = tradingConditionId,
-                BaseAssetId = baseAssetId,
-                Instruments = instruments
-            });
-        }
-
-        public async Task AddOrEditAccountAssetAsync(AccountAssetRecord model)
-        {
-            await Api.ApiBackofficeAccountAssetsAddPostAsync(_settings.ApiKey, model.ConvertToDomain());
-        }
-
-        public async Task<IEnumerable<InstrumentRecord>> GetAllInstrumentsAsync()
-        {
-            var result = await Api.ApiBackofficeInstrumentsGetallGetAsync(_settings.ApiKey);
-
-            return result.ConvertToDto();
-        }
-
-        #endregion
-
-
-        #region Accounts
-
-        public async Task<IEnumerable<AccountRecord>> GetAccountsAsync(string clientId)
-        {
-            var result = await Api.ApiBackofficeMarginTradingAccountsGetallByClientIdGetAsync(clientId, _settings.ApiKey);
-            return result.ConvertToDto();
-        }
-
-        public async Task DeleteAccountAsync(string clientId, string accountId)
-        {
-            await Api.ApiBackofficeMarginTradingAccountsDeleteByClientIdByAccountIdPostAsync(clientId, accountId, _settings.ApiKey);
-        }
-
-        public async Task AddAccountAsync(AccountRecord model)
-        {
-            await Api.ApiBackofficeMarginTradingAccountsAddPostAsync(_settings.ApiKey, model.ConvertToDomain());
-        }
-
-        public async Task<bool> DepositToAccount(string clientId, string accountId, double amount, MarginPaymentType paymentType)
+        public async Task<OperationResult> DepositToAccount(string clientId, string accountId, double amount,
+            MarginPaymentType paymentType)
         {
             var request = new AccountDepositWithdrawRequest
             {
@@ -169,239 +38,47 @@ namespace Lykke.Job.TransactionHandler.Services.MarginTrading
                 Amount = amount,
                 PaymentType = paymentType.ConvertToDto()
             };
-            var result = await Api.ApiBackofficeMarginTradingAccountsDepositPostWithHttpMessagesAsync(_settings.ApiKey,
-                request);
 
-            return result.Body == true;
-        }
-
-        public async Task<bool> WithdrawFromAccount(string clientId, string accountId, double amount, MarginPaymentType paymentType)
-        {
-            var request = new AccountDepositWithdrawRequest
+            try
             {
-                AccountId = accountId,
-                ClientId = clientId,
-                Amount = amount,
-                PaymentType = paymentType.ConvertToDto()
-            };
-            var result = await Api.ApiBackofficeMarginTradingAccountsWithdrawPostWithHttpMessagesAsync(_settings.ApiKey,
-                request);
+                var result = await Api.ApiBackofficeMarginTradingAccountsDepositPostWithHttpMessagesAsync(
+                    _settings.ApiKey,
+                    request);
 
-            return result.Body == true;
-        }
-
-        public async Task<bool> ResetAccount(string clientId, string accountId)
-        {
-            var request = new AccounResetRequest
-            {
-                AccountId = accountId,
-                ClientId = clientId
-            };
-            var result = await Api.ApiBackofficeMarginTradingAccountsResetPostWithHttpMessagesAsync(_settings.ApiKey,
-                request);
-
-            return result.Body == true;
-        }
-
-        #endregion
-    }
-
-    internal static class DtoConvertor
-    {
-        public static IEnumerable<MarginAssetsInfoRecord> ConvertToDto(this IEnumerable<SummaryAssetInfo> assetInfos)
-        {
-            return assetInfos.Select(x => new MarginAssetsInfoRecord
-            {
-                AssetPairId = x.AssetPairId,
-                PnL = x.PnL.GetValueOrDefault(),
-                VolumeLong = x.VolumeLong.GetValueOrDefault(),
-                VolumeShort = x.VolumeShort.GetValueOrDefault()
-            });
-        }
-
-        public static IEnumerable<OrderRecord> ConvertToDto(this IEnumerable<OrderContract> orders)
-        {
-            return orders.Select(x => new OrderRecord
-            {
-                Instrument = x.Instrument,
-                OpenDate = x.OpenDate.GetValueOrDefault(),
-                OpenPrice = x.OpenPrice.GetValueOrDefault(),
-                PnL = x.PnL.GetValueOrDefault(),
-                Volume = x.Volume.GetValueOrDefault(),
-                ExpectedOpenPrice = x.ExpectedOpenPrice.GetValueOrDefault(),
-                CreateDate = x.CreateDate.GetValueOrDefault()
-            });
-        }
-
-        public static MarginTradingCondition ConvertToDomain(this TradingConditionRecord condition)
-        {
-            return new MarginTradingCondition
-            {
-                Id = condition.Id,
-                Name = condition.Name,
-                IsDefault = condition.IsDefault
-            };
-        }
-
-        public static TradingConditionRecord ConvertToDto(this MarginTradingCondition condition)
-        {
-            return new TradingConditionRecord
-            {
-                Id = condition.Id,
-                Name = condition.Name,
-                IsDefault = condition.IsDefault.GetValueOrDefault()
-            };
-        }
-
-        public static IEnumerable<TradingConditionRecord> ConvertToDto(this IEnumerable<MarginTradingCondition> conditions)
-        {
-            return conditions.Select(ConvertToDto);
-        }
-
-        public static MarginTradingAccountGroup ConvertToDomain(this AccountGroupRecord group)
-        {
-            return new MarginTradingAccountGroup
-            {
-                BaseAssetId = group.BaseAssetId,
-                MarginCall = group.MarginCall,
-                StopOut = group.StopOut,
-                TradingConditionId = group.TradingConditionId,
-                DepositTransferLimit = group.DepositTransferLimit
-            };
-        }
-
-        public static AccountGroupRecord ConvertToDto(this MarginTradingAccountGroup group)
-        {
-            return new AccountGroupRecord
-            {
-                BaseAssetId = group.BaseAssetId,
-                MarginCall = group.MarginCall.GetValueOrDefault(),
-                StopOut = group.StopOut.GetValueOrDefault(),
-                TradingConditionId = group.TradingConditionId,
-                DepositTransferLimit = group.DepositTransferLimit.GetValueOrDefault()
-            };
-        }
-
-        public static IEnumerable<AccountGroupRecord> ConvertToDto(this IEnumerable<MarginTradingAccountGroup> groups)
-        {
-            return groups.Select(ConvertToDto);
-        }
-
-
-        public static AccountAssetRecord ConvertToDto(this MarginTradingAccountAsset asset)
-        {
-            return new AccountAssetRecord
-            {
-                TradingConditionId = asset.TradingConditionId,
-                BaseAssetId = asset.BaseAssetId,
-                Instrument = asset.Instrument,
-                LeverageInit = asset.LeverageInit.GetValueOrDefault(),
-                LeverageMaintenance = asset.LeverageMaintenance.GetValueOrDefault(),
-                SwapLong = asset.SwapLong.GetValueOrDefault(),
-                SwapShort = asset.SwapShort.GetValueOrDefault(),
-                SwapLongPct = asset.SwapLongPct.GetValueOrDefault(),
-                SwapShortPct = asset.SwapShortPct.GetValueOrDefault(),
-                CommissionLong = asset.CommissionLong.GetValueOrDefault(),
-                CommissionShort = asset.CommissionShort.GetValueOrDefault(),
-                CommissionLot = asset.CommissionLot.GetValueOrDefault(),
-                DeltaBid = asset.DeltaBid.GetValueOrDefault(),
-                DeltaAsk = asset.DeltaAsk.GetValueOrDefault(),
-                PositionLimit = asset.PositionLimit.GetValueOrDefault(),
-                DealLimit = asset.DealLimit.GetValueOrDefault()
-            };
-        }
-
-        public static IEnumerable<AccountAssetRecord> ConvertToDto(this IEnumerable<MarginTradingAccountAsset> assets)
-        {
-            return assets.Select(ConvertToDto);
-        }
-
-        public static MarginTradingAccountAsset ConvertToDomain(this AccountAssetRecord asset)
-        {
-            return new MarginTradingAccountAsset
-            {
-                TradingConditionId = asset.TradingConditionId,
-                BaseAssetId = asset.BaseAssetId,
-                Instrument = asset.Instrument,
-                LeverageInit = asset.LeverageInit,
-                LeverageMaintenance = asset.LeverageMaintenance,
-                SwapLong = asset.SwapLong,
-                SwapShort = asset.SwapShort,
-                SwapLongPct = asset.SwapLongPct,
-                SwapShortPct = asset.SwapShortPct,
-                CommissionLong = asset.CommissionLong,
-                CommissionShort = asset.CommissionShort,
-                CommissionLot = asset.CommissionLot,
-                DeltaBid = asset.DeltaBid,
-                DeltaAsk = asset.DeltaAsk,
-                PositionLimit = asset.PositionLimit,
-                DealLimit = asset.DealLimit
-            };
-        }
-
-        public static InstrumentRecord ConvertToDto(this MarginTradingAsset asset)
-        {
-            return new InstrumentRecord
-            {
-
-                Id = asset.Id,
-                Name = asset.Name,
-                BaseAssetId = asset.BaseAssetId,
-                QuoteAssetId = asset.QuoteAssetId,
-                Accuracy = asset.Accuracy.GetValueOrDefault()
-            };
-        }
-
-        public static IEnumerable<InstrumentRecord> ConvertToDto(this IEnumerable<MarginTradingAsset> assets)
-        {
-            return assets.Select(ConvertToDto);
-        }
-
-        public static AccountRecord ConvertToDto(this MarginTradingAccount account)
-        {
-            return new AccountRecord
-            {
-
-                Id = account.Id,
-                ClientId = account.ClientId,
-                TradingConditionId = account.TradingConditionId,
-                BaseAssetId = account.BaseAssetId,
-                Balance = account.Balance.GetValueOrDefault(),
-                WithdrawTransferLimit = account.WithdrawTransferLimit.GetValueOrDefault()
-            };
-        }
-
-        public static IEnumerable<AccountRecord> ConvertToDto(this IEnumerable<MarginTradingAccount> accounts)
-        {
-            return accounts.Select(ConvertToDto);
-        }
-
-        public static MarginTradingAccount ConvertToDomain(this AccountRecord account)
-        {
-            return new MarginTradingAccount
-            {
-                Id = account.Id,
-                ClientId = account.ClientId,
-                TradingConditionId = account.TradingConditionId,
-                BaseAssetId = account.BaseAssetId,
-                Balance = account.Balance,
-                WithdrawTransferLimit = account.WithdrawTransferLimit
-            };
-        }
-
-        public static PaymentType ConvertToDto(this MarginPaymentType paymentType)
-        {
-            switch (paymentType)
-            {
-                case MarginPaymentType.Swift:
-                    return PaymentType.Swift;
-
-                case MarginPaymentType.Transfer:
-                    return PaymentType.Transfer;
+                if (result.Body == true)
+                    return OperationResult.Success();
+                
+                return OperationResult.Error("Error deposit to margin account");
             }
+            catch (HttpOperationException e)
+            {
+                return GetOperationResult(e.Response.Content);
+            }
+            catch (Exception ex)
+            {
+                await _log.WriteErrorAsync(nameof(MarginDataService), "Deposit to margin account", request.ToJson(), ex);
+                return OperationResult.Error($"Margin trading call error: {ex.Message}");
+            }
+        }
 
-            throw new ArgumentOutOfRangeException(nameof(paymentType), paymentType, string.Empty);
+        private OperationResult GetOperationResult(string response)
+        {
+            try
+            {
+                var mtResponse = response.DeserializeJson<MtBackendResponse<string>>();
+                return OperationResult.Error(mtResponse.Message ?? mtResponse.Result);
+            }
+            catch (Exception ex)
+            {
+                _log.WriteErrorAsync(nameof(MarginDataService), "Parse margin trading response", response, ex);
+                return OperationResult.Error($"Parse margin trading response error: {ex.Message}");
+            }
         }
     }
 
+    public class MtBackendResponse<T>
+    {
+        public T Result { get; set; }
+        public string Message { get; set; }
+    }
 }
