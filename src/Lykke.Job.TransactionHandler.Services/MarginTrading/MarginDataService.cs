@@ -56,7 +56,7 @@ namespace Lykke.Job.TransactionHandler.Services.MarginTrading
             }
             catch (Exception ex)
             {
-                await _log.WriteErrorAsync(nameof(MarginDataService), "Deposit to margin account", request.ToString(), ex);
+                await _log.WriteErrorAsync(nameof(MarginDataService), "Deposit to margin account", request.ToJson(), ex);
                 return OperationResult.Error($"Margin trading call error: {ex.Message}");
             }
         }
