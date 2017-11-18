@@ -20,11 +20,11 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
         public class MarketOrder : IMarketOrder
         {
-            [JsonProperty("id")]
+            [JsonProperty("externalId")]
             public string Id { get; set; }
 
-            [JsonProperty("externalId")]
-            public string ExternalId { get; set; }
+            [JsonProperty("id")]
+            public string MatchingId { get; set; }
 
             [JsonProperty("assetPairId")]
             public string AssetPairId { get; set; }
@@ -179,7 +179,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
             var result = new List<IClientTrade>();
 
-            result.AddRange(CreateTradeRecordsForClientWithVolumes(trade, item.Order, item.Order.ExternalId, walletCredentialsMarket, walletCredentialsLimit, true, marketVolume, limitVolume));
+            result.AddRange(CreateTradeRecordsForClientWithVolumes(trade, item.Order, item.Order.Id, walletCredentialsMarket, walletCredentialsLimit, true, marketVolume, limitVolume));
 
             foreach (var clientTrade in result)
             {

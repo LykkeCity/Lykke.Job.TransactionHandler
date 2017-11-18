@@ -65,12 +65,14 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
                 Price = marketOrder.Price,
                 Status = marketOrder.Status,
                 Straight = marketOrder.Straight,
-                Volume = marketOrder.Volume
+                Volume = marketOrder.Volume,
+                MatchingId = marketOrder.MatchingId
             };
         }
 
         public DateTime CreatedAt { get; set; }
         public DateTime? MatchedAt { get; set; }
+        public string MatchingId { get; set; }
 
         public double Price { get; set; }
         public string AssetPairId { get; set; }

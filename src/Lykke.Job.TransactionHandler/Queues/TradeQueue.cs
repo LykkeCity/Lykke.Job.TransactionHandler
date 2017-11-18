@@ -145,9 +145,9 @@ namespace Lykke.Job.TransactionHandler.Queues
                 // get operations only by market order user (limit user will be processed in limit trade queue)
                 var operations = AggregateSwaps(queueMessage.Trades).Where(x => x.ClientId == queueMessage.Order.ClientId).ToList();
 
-                await CreateTransaction(queueMessage.Order.ExternalId, operations, clientTrades);
+                await CreateTransaction(queueMessage.Order.Id, operations, clientTrades);
 
-                var ethereumTxRequest = await _ethereumTransactionRequestRepository.GetByOrderAsync(queueMessage.Order.ExternalId);
+                var ethereumTxRequest = await _ethereumTransactionRequestRepository.GetByOrderAsync(queueMessage.Order.Id);
 
                 if (ethereumTxRequest != null)
                 {
@@ -167,7 +167,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                         continue;   //guarantee transfer already sent for eth
 
                     // return change in offchain
-                    var offchainOrder = await _offchainOrdersRepository.GetOrder(queueMessage.Order.ExternalId);
+                    var offchainOrder = await _offchainOrdersRepository.GetOrder(queueMessage.Order.Id);
 
                     var change = offchainOrder.ReservedVolume - Math.Abs(operation.Amount);
 
@@ -189,12 +189,12 @@ namespace Lykke.Job.TransactionHandler.Queues
                     var asset = await _assetsService.TryGetAssetAsync(operation.AssetId);
                     if (asset.Blockchain == Blockchain.Ethereum)
                     {
-                        await ProcessEthBuy(operation, asset, clientTrades, queueMessage.Order.ExternalId);
+                        await ProcessEthBuy(operation, asset, clientTrades, queueMessage.Order.Id);
                         continue;
                     }
 
                     await _offchainRequestService.CreateOffchainRequestAndNotify(operation.TransferId, operation.ClientId,
-                        operation.AssetId, operation.Amount, queueMessage.Order.ExternalId, OffchainTransferType.FromHub);
+                        operation.AssetId, operation.Amount, queueMessage.Order.Id, OffchainTransferType.FromHub);
                     notify.Add(operation.ClientId);
                 }
             }
