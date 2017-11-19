@@ -4,8 +4,9 @@ using System.Threading.Tasks;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.EthereumCoreClient;
 using Lykke.EthereumCoreClient.Models;
-using Lykke.Service.Assets.Client.Custom;
+using Lykke.Service.Assets.Client.Models;
 using Nethereum.Util;
+using ErrorResponse = Lykke.Job.TransactionHandler.Core.Services.Ethereum.ErrorResponse;
 
 namespace Lykke.Job.TransactionHandler.Services.Ethereum
 {
@@ -40,7 +41,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             };
         }
 
-        public async Task<EthereumResponse<GetContractModel>> GetContractAsync(IAsset asset, string userAddress)
+        public async Task<EthereumResponse<GetContractModel>> GetContractAsync(Asset asset, string userAddress)
         {
             var response = await _ethereumApi.ApiTransitionCreatePostAsync(new CreateTransitionContractModel
             {
@@ -72,7 +73,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             throw new Exception("Unknown response");
         }
 
-        public async Task<EthereumResponse<OperationResponse>> SendTransferAsync(Guid id, string sign, IAsset asset, string fromAddress, string toAddress, decimal amount)
+        public async Task<EthereumResponse<OperationResponse>> SendTransferAsync(Guid id, string sign, Asset asset, string fromAddress, string toAddress, decimal amount)
         {
             var response = await _ethereumApi.ApiExchangeTransferPostAsync(new TransferModel
             {
@@ -102,7 +103,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             throw new Exception("Unknown response");
         }
 
-        public async Task<EthereumResponse<EthereumTransaction>> GetNewTxHashAndIdAsync(IAsset asset, string fromAddress, string toAddress, decimal amount)
+        public async Task<EthereumResponse<EthereumTransaction>> GetNewTxHashAndIdAsync(Asset asset, string fromAddress, string toAddress, decimal amount)
         {
             var response = await _ethereumApi.ApiHashCalculateAndGetIdPostAsync(new BaseCoinRequestParametersModel
             {
@@ -137,7 +138,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             throw new Exception("Unknown response");
         }
 
-        public async Task<EthereumResponse<OperationResponse>> SendCashOutAsync(Guid id, string sign, IAsset asset, string fromAddress, string toAddress, decimal amount)
+        public async Task<EthereumResponse<OperationResponse>> SendCashOutAsync(Guid id, string sign, Asset asset, string fromAddress, string toAddress, decimal amount)
         {
             var response = await _ethereumApi.ApiExchangeCashoutPostAsync(new CashoutModel
             {
@@ -167,7 +168,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             throw new Exception("Unknown response");
         }
 
-        public async Task<EthereumResponse<EstimationResponse>> EstimateCashOutAsync(Guid id, string sign, IAsset asset, string fromAddress, string toAddress, decimal amount)
+        public async Task<EthereumResponse<EstimationResponse>> EstimateCashOutAsync(Guid id, string sign, Asset asset, string fromAddress, string toAddress, decimal amount)
         {
             var response = await _ethereumApi.ApiExchangeEstimateCashoutGasPostAsync(new TransferModel
             {
@@ -204,7 +205,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             throw new Exception("Unknown response");
         }
 
-        public async Task<EthereumResponse<bool>> IsSignValid(Guid id, string sign, IAsset asset, string fromAddress, string toAddress, decimal amount)
+        public async Task<EthereumResponse<bool>> IsSignValid(Guid id, string sign, Asset asset, string fromAddress, string toAddress, decimal amount)
         {
             var response = await _ethereumApi.ApiExchangeCheckSignPostAsync(new CheckSignModel
             {
@@ -238,7 +239,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             throw new Exception("Unknown response");
         }
 
-        public async Task<EthereumResponse<OperationResponse>> SendTransferWithChangeAsync(decimal change, string signFrom, Guid id, IAsset asset, string fromAddress,
+        public async Task<EthereumResponse<OperationResponse>> SendTransferWithChangeAsync(decimal change, string signFrom, Guid id, Asset asset, string fromAddress,
             string toAddress, decimal amount)
         {
             var response = await _ethereumApi.ApiExchangeTransferWithChangePostAsync(new TransferWithChangeModel

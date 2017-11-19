@@ -5,7 +5,6 @@ using System.Text;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
-using Lykke.Service.Assets.Client.Custom;
 using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Queues.Models
@@ -105,11 +104,6 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             var result = new List<IClientTrade>();
 
             result.AddRange(CreateTradeRecordForClientWithVolumes(trade, item.Order, btcTransactionId, walletCredentialsLimitA, walletCredentialsLimitB, limitVolume, oppositeLimitVolume));
-
-            foreach (var clientTrade in result)
-            {
-                clientTrade.State = clientTrade.Amount < 0 ? TransactionStates.SettledOffchain : TransactionStates.InProcessOffchain;
-            }
 
             return result.ToArray();
         }
