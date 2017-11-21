@@ -14,10 +14,11 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
         EXTERNAL_FEE
     }
 
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum FeeSizeType
     {
-        Percentage = 0,
-        Absolute
+        PERCENTAGE = 0,
+        ABSOLUTE
     }
 
     public class FeeInstruction
