@@ -6,6 +6,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Newtonsoft.Json;
+using JetBrains.Annotations;
 
 namespace Lykke.Job.TransactionHandler.Queues.Models
 {
@@ -89,6 +90,14 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
             [JsonProperty("oppositeVolume")]
             public double OppositeVolume { get; set; }
+
+            [CanBeNull]
+            [JsonProperty("feeInstruction")]
+            public FeeInstruction FeeInstruction { get; set; }
+
+            [CanBeNull]
+            [JsonProperty("feeTransfer")]
+            public FeeTransfer FeeTransfer { get; set; }
         }
     }
 

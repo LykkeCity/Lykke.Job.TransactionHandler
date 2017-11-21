@@ -11,6 +11,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
+using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
@@ -55,6 +56,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ILimitTradeEventsRepository _limitTradeEventsRepository;
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly IFeeLogRepository _feeLogRepository;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<LimitQueueItem> _subscriber;
@@ -69,7 +71,12 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
             IEthClientEventLogs ethClientEventLogs,
-            ILimitOrdersRepository limitOrdersRepository, IClientTradesRepository clientTradesRepository, ILimitTradeEventsRepository limitTradeEventsRepository, IClientSettingsRepository clientSettingsRepository, IAppNotifications appNotifications, IClientAccountClient clientAccountClient, IOffchainOrdersRepository offchainOrdersRepository, IClientCacheRepository clientCacheRepository, IBitcoinTransactionService bitcoinTransactionService, IAssetsServiceWithCache assetsServiceWithCache)
+            ILimitOrdersRepository limitOrdersRepository, IClientTradesRepository clientTradesRepository,
+            ILimitTradeEventsRepository limitTradeEventsRepository, IClientSettingsRepository clientSettingsRepository,
+            IAppNotifications appNotifications, IClientAccountClient clientAccountClient,
+            IOffchainOrdersRepository offchainOrdersRepository, IClientCacheRepository clientCacheRepository,
+            IBitcoinTransactionService bitcoinTransactionService, IAssetsServiceWithCache assetsServiceWithCache,
+            IFeeLogRepository feeLogRepository)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -90,6 +97,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _clientCacheRepository = clientCacheRepository;
             _bitcoinTransactionService = bitcoinTransactionService;
             _assetsServiceWithCache = assetsServiceWithCache;
+            _feeLogRepository = feeLogRepository;
         }
 
         public void Start()
@@ -149,6 +157,18 @@ namespace Lykke.Job.TransactionHandler.Queues
                         prevOrderState = await _limitOrdersRepository.GetOrderAsync(meOrder.Id);
 
                     await _limitOrdersRepository.CreateOrUpdateAsync(meOrder);
+
+                    limitOrderWithTrades.Trades.ForEach(async ti =>
+                    {
+                        await _feeLogRepository.CreateAsync(new OrderFeeLog
+                        {
+                            OrderId = limitOrderWithTrades.Order.Id,
+                            OrderStatus = limitOrderWithTrades.Order.Status,
+                            FeeInstruction = ti.FeeInstruction?.ToJson(),
+                            FeeTransfer = ti.FeeTransfer?.ToJson(),
+                            Type = "limit"
+                        });
+                    });
 
                     var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), meOrder.Status);
 
