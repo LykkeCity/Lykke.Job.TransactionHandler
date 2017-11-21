@@ -9,6 +9,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
+using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
@@ -48,6 +49,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IClientAccountClient _clientAccountClient;
+        private readonly IFeeLogRepository _feeLogRepository;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TradeQueueItem> _subscriber;
@@ -65,7 +67,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
-            IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient, IAssetsServiceWithCache assetsServiceWithCache)
+            IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService,
+            IClientAccountClient clientAccountClient, IAssetsServiceWithCache assetsServiceWithCache,
+            IFeeLogRepository feeLogRepository)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -83,6 +87,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _clientAccountClient = clientAccountClient;
             _assetsServiceWithCache = assetsServiceWithCache;
             _log = log;
+            _feeLogRepository = feeLogRepository;
         }
 
         public void Start()
@@ -122,6 +127,18 @@ namespace Lykke.Job.TransactionHandler.Queues
         public async Task ProcessMessage(TradeQueueItem queueMessage)
         {
             await _marketOrdersRepository.CreateAsync(queueMessage.Order);
+
+            queueMessage.Trades.ForEach(async ti =>
+            {
+                await _feeLogRepository.CreateAsync(new OrderFeeLog
+                {
+                    OrderId = queueMessage.Order.Id,
+                    OrderStatus = queueMessage.Order.Status,
+                    FeeInstruction = ti.FeeInstruction?.ToJson(),
+                    FeeTransfer = ti.FeeTransfer?.ToJson(),
+                    Type = "market"
+                });
+            });
 
             if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
             {
