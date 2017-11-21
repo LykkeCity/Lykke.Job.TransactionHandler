@@ -2,14 +2,16 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
+using Newtonsoft.Json.Converters;
 
 namespace Lykke.Job.TransactionHandler.Queues.Models
 {
+    [JsonConverter(typeof(StringEnumConverter))]
     public enum FeeType
     {
-        NoFee = 0,
-        ClientFee,
-        ExternalFee
+        NO_FEE = 0,
+        CLIENT_FEE,
+        EXTERNAL_FEE
     }
 
     public enum FeeSizeType
