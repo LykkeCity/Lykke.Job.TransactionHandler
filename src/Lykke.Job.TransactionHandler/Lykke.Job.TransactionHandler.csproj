@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="Lykke.Common.ApiLibrary" Version="1.0.14" />
+    <PackageReference Include="Lykke.Job.EthereumCore.Contracts" Version="1.0.5-beta" />
     <PackageReference Include="Lykke.JobTriggers" Version="1.1.19" />
     <PackageReference Include="Lykke.Logs" Version="3.2.2" />
     <PackageReference Include="Lykke.MatchingEngineConnector" Version="1.0.17" />
