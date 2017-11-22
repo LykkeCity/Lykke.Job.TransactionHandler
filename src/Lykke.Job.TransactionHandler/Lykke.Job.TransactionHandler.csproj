@@ -25,7 +25,7 @@
     <PackageReference Include="Lykke.MatchingEngineConnector" Version="1.0.17" />
     <PackageReference Include="Lykke.MatchingEngineConnector.Abstractions" Version="1.0.17" />
     <PackageReference Include="Lykke.RabbitMqBroker" Version="4.0.5" />
-    <PackageReference Include="Lykke.Service.Assets.Client" Version="2.0.8.4" />
+    <PackageReference Include="Lykke.Service.Assets.Client" Version="2.1.0.12-beta" />
     <PackageReference Include="Lykke.Service.ExchangeOperations.Client" Version="1.0.22" />
     <PackageReference Include="Lykke.Service.ExchangeOperations.Contracts" Version="1.0.6" />
     <PackageReference Include="Lykke.Service.Operations.Client" Version="1.0.7" />
