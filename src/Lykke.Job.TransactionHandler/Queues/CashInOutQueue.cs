@@ -334,7 +334,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                         var response = await _srvEthereumHelper.HotWalletCashoutAsync(transaction.TransactionId,
                             _settings.HotwalletAddress,
                             context.Address,
-                            (decimal)amount,
+                            (decimal)Math.Abs(amount),
                             asset);
 
                         if (response.HasError)
