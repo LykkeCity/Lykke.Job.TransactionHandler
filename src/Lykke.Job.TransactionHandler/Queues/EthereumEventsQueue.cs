@@ -41,6 +41,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly ITransferEventsRepository _transferEventsRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly IAssetsService _assetsService;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
         private RabbitMqSubscriber<Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent> _subscriberHotWallet;
@@ -57,7 +58,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ITransferEventsRepository transferEventsRepository, 
             IAssetsServiceWithCache assetsServiceWithCache,
-            IBitcoinTransactionService bitcoinTransactionService)
+            IBitcoinTransactionService bitcoinTransactionService,
+            IAssetsService assetsService)
         {
             _log = log;
             _matchingEngineClient = matchingEngineClient;
@@ -73,6 +75,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _rabbitConfig = config;
             _transferEventsRepository = transferEventsRepository;
             _bitcoinTransactionService = bitcoinTransactionService;
+            _assetsService = assetsService;
         }
 
         public void Start()
@@ -182,7 +185,20 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessHotWalletCashin(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
         {
+            var bcnCreds = await _bcnClientCredentialsRepository.GetByAssetAddressAsync(queueMessage.FromAddress);
+            string tokenAddress = queueMessage.TokenAddress;
+            var token = await _assetsService.Erc20TokenGetByAddressAsync(tokenAddress);
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(token.AssetId);
+            var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
+
+            await HandleCashInOperation(asset, (double)amount, bcnCreds.ClientId, bcnCreds.Address,
+                queueMessage.TransactionHash);
+
             return true;
+        }
+
+        private async Task<bool> ProcessHotWalletCashout(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
+        {
             string transactionId = queueMessage.OperationId;
             CashOutContextData context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transactionId);
             string clientId = context.ClientId;
@@ -190,19 +206,6 @@ namespace Lykke.Job.TransactionHandler.Queues
             string cashOperationId = context.CashOperationId;
 
             await _cashOperationsRepository.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
-
-            return true;
-        }
-
-        private async Task<bool> ProcessHotWalletCashout(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
-        {
-            var bcnCreds = await _bcnClientCredentialsRepository.GetByAssetAddressAsync(queueMessage.FromAddress);
-
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(bcnCreds.AssetId);
-            var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
-
-            await HandleCashInOperation(asset, (double)amount, bcnCreds.ClientId, bcnCreds.Address,
-                queueMessage.TransactionHash);
 
             return true;
         }
