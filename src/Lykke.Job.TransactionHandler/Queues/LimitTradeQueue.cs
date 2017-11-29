@@ -158,17 +158,16 @@ namespace Lykke.Job.TransactionHandler.Queues
 
                     await _limitOrdersRepository.CreateOrUpdateAsync(meOrder);
 
-                    limitOrderWithTrades.Trades.ForEach(async ti =>
-                    {
-                        await _feeLogRepository.CreateAsync(new OrderFeeLog
+                    var feeLogTasks = limitOrderWithTrades.Trades.Select(ti =>
+                        _feeLogRepository.CreateAsync(new OrderFeeLog
                         {
                             OrderId = limitOrderWithTrades.Order.Id,
                             OrderStatus = limitOrderWithTrades.Order.Status,
-                            FeeInstruction = ti.FeeInstruction?.ToJson(),
                             FeeTransfer = ti.FeeTransfer?.ToJson(),
+                            FeeInstruction = ti.FeeInstruction?.ToJson(),
                             Type = "limit"
-                        });
-                    });
+                        }));
+                    await Task.WhenAll(feeLogTasks);
 
                     var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), meOrder.Status);
 

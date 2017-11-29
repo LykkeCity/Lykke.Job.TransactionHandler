@@ -128,17 +128,15 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             await _marketOrdersRepository.CreateAsync(queueMessage.Order);
 
-            queueMessage.Trades.ForEach(async ti =>
+            var feeLogTasks = queueMessage.Trades.Select(ti => _feeLogRepository.CreateAsync(new OrderFeeLog
             {
-                await _feeLogRepository.CreateAsync(new OrderFeeLog
-                {
-                    OrderId = queueMessage.Order.Id,
-                    OrderStatus = queueMessage.Order.Status,
-                    FeeInstruction = ti.FeeInstruction?.ToJson(),
-                    FeeTransfer = ti.FeeTransfer?.ToJson(),
-                    Type = "market"
-                });
-            });
+                OrderId = queueMessage.Order.Id,
+                OrderStatus = queueMessage.Order.Status,
+                FeeInstruction = ti.FeeInstruction?.ToJson(),
+                FeeTransfer = ti.FeeTransfer?.ToJson(),
+                Type = "market"
+            }));
+            await Task.WhenAll(feeLogTasks);
 
             if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
             {
