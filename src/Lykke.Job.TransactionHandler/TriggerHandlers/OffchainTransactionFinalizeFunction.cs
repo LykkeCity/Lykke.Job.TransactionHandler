@@ -189,7 +189,10 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                     await FinalizeCommonTransfer(transaction, contextData);
                     return;
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException(
+                        "contextData.TransferType", 
+                        contextData.TransferType.ToString(),
+                        $"TransactionId: {transaction.TransactionId}. Expected values are: ToMarginAccount, ToTrustedWallet, Common");
             }
         }
 
