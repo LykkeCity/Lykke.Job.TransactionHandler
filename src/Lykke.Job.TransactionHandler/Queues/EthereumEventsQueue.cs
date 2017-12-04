@@ -147,7 +147,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         public void Stop()
         {
             _subscriber?.Stop();
-            _subscriberHotWallet.Stop();
+            _subscriberHotWallet?.Stop();
         }
 
         public async Task<bool> ProcessHotWalletMessage(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
