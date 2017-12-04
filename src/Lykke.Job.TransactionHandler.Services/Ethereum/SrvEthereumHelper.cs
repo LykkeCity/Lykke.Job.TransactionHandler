@@ -2,8 +2,6 @@ using System;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
-using Lykke.EthereumCoreClient;
-using Lykke.EthereumCoreClient.Models;
 using Lykke.Service.Assets.Client.Models;
 using Nethereum.Util;
 using ErrorResponse = Lykke.Job.TransactionHandler.Core.Services.Ethereum.ErrorResponse;
@@ -11,6 +9,8 @@ using System.Numerics;
 using Lykke.Service.Assets.Client;
 using System.Collections.Generic;
 using System.Linq;
+using Lykke.Service.EthereumCore.Client.Models;
+using Lykke.Service.EthereumCore.Client;
 
 namespace Lykke.Job.TransactionHandler.Services.Ethereum
 {

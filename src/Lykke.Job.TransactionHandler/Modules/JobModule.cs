@@ -56,7 +56,6 @@ using Lykke.Job.TransactionHandler.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Services.BitCoin.BitCoinApiClient;
 using Lykke.Job.TransactionHandler.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
-using Lykke.EthereumCoreClient;
 using Lykke.Job.TransactionHandler.Services.Http;
 using Lykke.Job.TransactionHandler.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Services.Messages.Email;
@@ -76,6 +75,7 @@ using Lykke.Service.PersonalData.Client;
 using Lykke.Service.PersonalData.Contract;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
+using Lykke.Service.EthereumCore.Client;
 
 namespace Lykke.Job.TransactionHandler.Modules
 {
