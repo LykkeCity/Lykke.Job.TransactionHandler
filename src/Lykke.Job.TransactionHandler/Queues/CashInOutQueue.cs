@@ -42,6 +42,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IEthClientEventLogs _ethClientEventLogs;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IHistoryWriter _historyWriter;
+        private readonly AppSettings.EthereumSettings _settings;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
@@ -60,7 +61,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             IEthClientEventLogs ethClientEventLogs, 
             IHistoryWriter historyWriter,
-			IBitcoinTransactionService bitcoinTransactionService, IAssetsServiceWithCache assetsServiceWithCache)
+			IBitcoinTransactionService bitcoinTransactionService, 
+            IAssetsServiceWithCache assetsServiceWithCache,
+            AppSettings.EthereumSettings settings)
         {
             _rabbitConfig = config;
             _log = log;
@@ -78,6 +81,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _bitcoinTransactionService = bitcoinTransactionService;
             _assetsServiceWithCache = assetsServiceWithCache;
             _historyWriter = historyWriter;
+            _settings = settings;
         }
 
         public void Start()
@@ -322,27 +326,48 @@ namespace Lykke.Job.TransactionHandler.Queues
             if (asset.Blockchain == Blockchain.Ethereum)
             {
                 string errMsg = string.Empty;
-
-                try
+                
+                if (asset.Type == AssetType.Erc20Token)
                 {
-                    var address = await _bcnClientCredentialsRepository.GetClientAddress(msg.ClientId);
-                    var txRequest =
-                        await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transaction.TransactionId));
+                    try
+                    {
+                        var response = await _srvEthereumHelper.HotWalletCashoutAsync(transaction.TransactionId,
+                            _settings.HotwalletAddress,
+                            context.Address,
+                            (decimal)Math.Abs(amount),
+                            asset);
 
-                    txRequest.OperationIds = new[] { cashOperationId };
-                    await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
-
-                    var response = await _srvEthereumHelper.SendCashOutAsync(txRequest.Id,
-                        txRequest.SignedTransfer.Sign,
-                        asset, address, txRequest.AddressTo,
-                        txRequest.Volume);
-
-                    if (response.HasError)
-                        errMsg = response.Error.ToJson();
+                        if (response.HasError)
+                            errMsg = response.Error.ToJson();
+                    }
+                    catch (Exception e)
+                    {
+                        errMsg = $"{e.GetType()}\n{e.Message}";
+                    }
                 }
-                catch (Exception e)
+                else
                 {
-                    errMsg = $"{e.GetType()}\n{e.Message}";
+                    try
+                    {
+                        var address = await _bcnClientCredentialsRepository.GetClientAddress(msg.ClientId);
+                        var txRequest =
+                            await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transaction.TransactionId));
+
+                        txRequest.OperationIds = new[] { cashOperationId };
+                        await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
+
+                        var response = await _srvEthereumHelper.SendCashOutAsync(txRequest.Id,
+                            txRequest.SignedTransfer.Sign,
+                            asset, address, txRequest.AddressTo,
+                            txRequest.Volume);
+
+                        if (response.HasError)
+                            errMsg = response.Error.ToJson();
+                    }
+                    catch (Exception e)
+                    {
+                        errMsg = $"{e.GetType()}\n{e.Message}";
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(errMsg))
