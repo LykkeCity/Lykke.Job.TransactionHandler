@@ -233,18 +233,13 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new BcnClientCredentialsRepository(
                     AzureTableStorage<BcnCredentialsRecordEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "BcnClientCredentials", _log)));
 
-            //builder.RegisterInstance<ICashOperationsRepository>(
-            //    new CashOperationsRepository(
-            //        AzureTableStorage<CashInOutOperationEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "OperationsCash", _log),
-            //        AzureTableStorage<AzureIndex>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "OperationsCash", _log)));
+            builder.RegisterInstance<ICashOutAttemptRepository>(
+                new CashOutAttemptRepository(
+                    AzureTableStorage<CashOutAttemptEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BalancesInfoConnString), "CashOutAttempt", _log)));
 
-            //builder.RegisterInstance<ICashOutAttemptRepository>(
-            //    new CashOutAttemptRepository(
-            //        AzureTableStorage<CashOutAttemptEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BalancesInfoConnString), "CashOutAttempt", _log)));
-
-            //builder.RegisterInstance<IClientTradesRepository>(
-            //    new ClientTradesRepository(
-            //        AzureTableStorage<ClientTradeEntity>.Create(_dbSettingsManager.ConnectionString(x => x.HTradesConnString), "Trades", _log)));
+            builder.RegisterInstance<IClientTradesRepository>(
+                new ClientTradesRepository(
+                    AzureTableStorage<ClientTradeEntity>.Create(_dbSettingsManager.ConnectionString(x => x.HTradesConnString), "Trades", _log)));
 
             builder.RegisterInstance<ILimitTradeEventsRepository>(
                 new LimitTradeEventsRepository(
@@ -254,10 +249,10 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new ForwardWithdrawalRepository(
                     AzureTableStorage<ForwardWithdrawalEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BalancesInfoConnString), "ForwardWithdrawal", _log)));
 
-            //builder.RegisterInstance<ITransferEventsRepository>(
-            //    new TransferEventsRepository(
-            //        AzureTableStorage<TransferEventEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "Transfers", _log),
-            //        AzureTableStorage<AzureIndex>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "Transfers", _log)));
+            builder.RegisterInstance<ITransferEventsRepository>(
+                new TransferEventsRepository(
+                    AzureTableStorage<TransferEventEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "Transfers", _log),
+                    AzureTableStorage<AzureIndex>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "Transfers", _log)));
 
             builder.RegisterInstance<IChronoBankCommandProducer>(
                 new SrvChronoBankCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ChronoBankSrvConnString), "chronobank-out")));
