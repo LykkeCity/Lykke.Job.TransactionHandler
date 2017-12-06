@@ -42,7 +42,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-        private readonly ITransferEventsRepository _transferEventsRepository;
+        private readonly ITransferOperationsRepositoryClient _transferEventsRepositoryClient;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IAssetsService _assetsService;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
@@ -59,7 +59,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IWalletCredentialsRepository walletCredentialsRepository,
             ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            ITransferEventsRepository transferEventsRepository, 
+            ITransferOperationsRepositoryClient transferEventsRepositoryClient, 
             IAssetsServiceWithCache assetsServiceWithCache,
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsService assetsService)
@@ -76,7 +76,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
             _assetsServiceWithCache = assetsServiceWithCache;
             _rabbitConfig = config;
-            _transferEventsRepository = transferEventsRepository;
+            _transferEventsRepositoryClient = transferEventsRepositoryClient;
             _bitcoinTransactionService = bitcoinTransactionService;
             _assetsService = assetsService;
         }
@@ -257,7 +257,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             foreach (var id in txRequest.OperationIds)
             {
-                await _transferEventsRepository.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
+                await _transferEventsRepositoryClient.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
