@@ -30,7 +30,6 @@
     <PackageReference Include="Lykke.Service.ExchangeOperations.Client" Version="1.0.22" />
     <PackageReference Include="Lykke.Service.ExchangeOperations.Contracts" Version="1.0.6" />
     <PackageReference Include="Lykke.Service.Operations.Client" Version="1.0.7" />
-    <PackageReference Include="Lykke.Service.OperationsHistory.HistoryWriter" Version="1.0.16" />
     <PackageReference Include="Lykke.Service.PersonalData" Version="1.0.29" />
     <PackageReference Include="Lykke.SettingsReader" Version="1.0.43" />
     <PackageReference Include="Lykke.SlackNotification.AzureQueue" Version="1.0.6" />

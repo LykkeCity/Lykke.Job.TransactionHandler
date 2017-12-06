@@ -27,7 +27,7 @@ using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Service.Operations.Client;
-using Lykke.Service.Operations.Client.AutorestClient;
+using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Lykke.Service.PersonalData.Contract;
 
 namespace Lykke.Job.TransactionHandler.TriggerHandlers
@@ -36,7 +36,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
     {
         private readonly IBitCoinTransactionsRepository _bitCoinTransactionsRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
-        private readonly ICashOperationsRepository _cashOperationsRepository;
+        private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly ICashOutAttemptRepository _cashOutAttemptRepository;
         private readonly IClientTradesRepository _clientTradesRepository;
         private readonly IClientAccountClient _clientAccountClient;
@@ -69,7 +69,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         public OffchainTransactionFinalizeFunction(
             IBitCoinTransactionsRepository bitCoinTransactionsRepository,
             ILog log,
-            ICashOperationsRepository cashOperationsRepository,
+            ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             IExchangeOperationsServiceClient exchangeOperationsService,
             SrvSlackNotifications srvSlackNotifications,
             ICashOutAttemptRepository cashOutAttemptRepository,
@@ -97,7 +97,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         {
             _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
             _log = log;
-            _cashOperationsRepository = cashOperationsRepository;
+            _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
             _exchangeOperationsService = exchangeOperationsService;
             _srvSlackNotifications = srvSlackNotifications;
             _cashOutAttemptRepository = cashOutAttemptRepository;
@@ -170,7 +170,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         {
             var contextData = await _bitcoinTransactionService.GetTransactionContext<IssueContextData>(transaction.TransactionId);
 
-            await _cashOperationsRepository.SetIsSettledAsync(contextData.ClientId, contextData.CashOperationId, true);
+            await _cashOperationsRepositoryClient.SetIsSettledAsync(contextData.ClientId, contextData.CashOperationId, true);
         }
 
         private async Task FinalizeTransfer(IBitcoinTransaction transaction, IOffchainTransfer transfer)
