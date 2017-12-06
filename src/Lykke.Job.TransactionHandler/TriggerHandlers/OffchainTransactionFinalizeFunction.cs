@@ -38,7 +38,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly ICashOutAttemptOperationsRepositoryClient _cashOutAttemptRepositoryClient;
-        private readonly IClientTradesRepository _clientTradesRepository;
+        private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly IPersonalDataService _personalDataService;
         private readonly IOffchainTransferRepository _offchainTransferRepository;
@@ -74,7 +74,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             SrvSlackNotifications srvSlackNotifications,
             ICashOutAttemptOperationsRepositoryClient cashOutAttemptRepositoryClient,
             ISrvEmailsFacade srvEmailsFacade,
-            IClientTradesRepository clientTradesRepository,
+            ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             IClientAccountClient clientAccountClient,
             IPersonalDataService personalDataService,
             IOffchainTransferRepository offchainTransferRepository,
@@ -102,7 +102,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             _srvSlackNotifications = srvSlackNotifications;
             _cashOutAttemptRepositoryClient = cashOutAttemptRepositoryClient;
             _srvEmailsFacade = srvEmailsFacade;
-            _clientTradesRepository = clientTradesRepository;
+            _clientTradesRepositoryClient = clientTradesRepositoryClient;
             _clientAccountClient = clientAccountClient;
             _personalDataService = personalDataService;
             _offchainTransferRepository = offchainTransferRepository;
@@ -398,7 +398,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
                     await Task.WhenAll(
                         _offchainTransferRepository.CompleteTransfer(transferId),
-                        _clientTradesRepository.SetIsSettledAsync(operation.ClientId, operation.ClientTradeId, true)
+                        _clientTradesRepositoryClient.SetIsSettledAsync(operation.ClientId, operation.ClientTradeId, true)
                     );
                 }
                 catch (Exception e)

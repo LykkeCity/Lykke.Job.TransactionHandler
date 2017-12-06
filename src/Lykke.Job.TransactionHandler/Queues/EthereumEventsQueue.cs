@@ -39,7 +39,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IPaymentTransactionsRepository _paymentTransactionsRepository;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IClientTradesRepository _clientTradesRepository;
+        private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly ITransferEventsRepository _transferEventsRepository;
@@ -57,7 +57,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             IPaymentTransactionsRepository paymentTransactionsRepository,
             IWalletCredentialsRepository walletCredentialsRepository,
-            IClientTradesRepository clientTradesRepository,
+            ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ITransferEventsRepository transferEventsRepository, 
             IAssetsServiceWithCache assetsServiceWithCache,
@@ -72,7 +72,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
             _paymentTransactionsRepository = paymentTransactionsRepository;
             _walletCredentialsRepository = walletCredentialsRepository;
-            _clientTradesRepository = clientTradesRepository;
+            _clientTradesRepositoryClient = clientTradesRepositoryClient;
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
             _assetsServiceWithCache = assetsServiceWithCache;
             _rabbitConfig = config;
@@ -241,7 +241,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             foreach (var id in txRequest.OperationIds)
             {
-                await _clientTradesRepository.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
+                await _clientTradesRepositoryClient.UpdateBlockchainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
