@@ -208,7 +208,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterType<BitcoinTransactionService>().As<IBitcoinTransactionService>().SingleInstance();
 
-            builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryService, _log);
+            builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
         }
 
         private void BindRepositories(ContainerBuilder builder)

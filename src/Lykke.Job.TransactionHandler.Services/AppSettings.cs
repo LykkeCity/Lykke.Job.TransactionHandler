@@ -20,7 +20,7 @@ namespace Lykke.Job.TransactionHandler.Services
         public NotificationsSettings AppNotifications { get; set; }
         public RabbitMqSettings RabbitMq { get; set; }
         public PersonalDataServiceClientSettings PersonalDataServiceSettings { get; set; }
-        public OperationsRepositoryServiceClientSettings OperationsRepositoryService { get; set; }
+        public OperationsRepositoryServiceClientSettings OperationsRepositoryServiceClient { get; set; }
 
         public class TransactionHandlerSettings
         {
