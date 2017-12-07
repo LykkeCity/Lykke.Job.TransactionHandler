@@ -4,7 +4,6 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
@@ -22,7 +21,6 @@ using Newtonsoft.Json.Converters;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
-using TransactionStates = Lykke.Service.OperationsRepository.AutorestClient.Models.TransactionStates;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {

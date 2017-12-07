@@ -19,7 +19,6 @@ using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
-using TransactionStates = Lykke.Service.OperationsRepository.AutorestClient.Models.TransactionStates;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
