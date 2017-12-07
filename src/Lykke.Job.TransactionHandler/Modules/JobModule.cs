@@ -233,10 +233,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new BcnClientCredentialsRepository(
                     AzureTableStorage<BcnCredentialsRecordEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "BcnClientCredentials", _log)));
 
-            builder.RegisterInstance<ILimitTradeEventsRepository>(
-                new LimitTradeEventsRepository(
-                    AzureTableStorage<LimitTradeEventEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "LimitTradeEvents", _log)));
-
             builder.RegisterInstance<IForwardWithdrawalRepository>(
                 new ForwardWithdrawalRepository(
                     AzureTableStorage<ForwardWithdrawalEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BalancesInfoConnString), "ForwardWithdrawal", _log)));

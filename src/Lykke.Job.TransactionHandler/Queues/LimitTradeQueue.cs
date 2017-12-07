@@ -6,7 +6,6 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
@@ -26,7 +25,8 @@ using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
-using OrderStatus = Lykke.Job.TransactionHandler.Core.Domain.Exchange.OrderStatus;
+using OrderStatus = Lykke.Service.OperationsRepository.AutorestClient.Models.OrderStatus;
+using OrderType = Lykke.Service.OperationsRepository.AutorestClient.Models.OrderType;
 using TransactionStates = Lykke.Service.OperationsRepository.AutorestClient.Models.TransactionStates;
 
 namespace Lykke.Job.TransactionHandler.Queues
@@ -56,7 +56,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly ILimitOrdersRepository _limitOrdersRepository;
         private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
-        private readonly ILimitTradeEventsRepository _limitTradeEventsRepository;
+        private readonly ILimitTradeEventsRepositoryClient _limitTradeEventsRepositoryClient;
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
 
@@ -74,7 +74,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             AppSettings.EthereumSettings settings,
             IEthClientEventLogs ethClientEventLogs,
             ILimitOrdersRepository limitOrdersRepository, ITradeOperationsRepositoryClient clientTradesRepositoryClient,
-            ILimitTradeEventsRepository limitTradeEventsRepository, IClientSettingsRepository clientSettingsRepository,
+            ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient, IClientSettingsRepository clientSettingsRepository,
             IAppNotifications appNotifications, IClientAccountClient clientAccountClient,
             IOffchainOrdersRepository offchainOrdersRepository, IClientCacheRepository clientCacheRepository,
             IBitcoinTransactionService bitcoinTransactionService, IAssetsServiceWithCache assetsServiceWithCache)
@@ -90,7 +90,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _log = log;
             _limitOrdersRepository = limitOrdersRepository;
             _clientTradesRepositoryClient = clientTradesRepositoryClient;
-            _limitTradeEventsRepository = limitTradeEventsRepository;
+            _limitTradeEventsRepositoryClient = limitTradeEventsRepositoryClient;
             _clientSettingsRepository = clientSettingsRepository;
             _appNotifications = appNotifications;
             _clientAccountClient = clientAccountClient;
@@ -158,7 +158,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
                     await _limitOrdersRepository.CreateOrUpdateAsync(meOrder);
 
-                    var status = (Core.Domain.Exchange.OrderStatus)Enum.Parse(typeof(OrderStatus), meOrder.Status);
+                    var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), meOrder.Status);
 
                     ClientTrade[] trades = null;
                     if (status == OrderStatus.Processing || status == OrderStatus.Matched)
@@ -284,11 +284,11 @@ namespace Lykke.Job.TransactionHandler.Queues
         private async Task SendPush(IEnumerable<AggregatedTransfer> aggregatedTransfers, ILimitOrder order, ILimitOrder prevOrderState, OrderStatus status)
         {
             var clientId = order.ClientId;
-            var type = order.Volume > 0 ? Core.Domain.Exchange.OrderType.Buy : Core.Domain.Exchange.OrderType.Sell;
+            var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
             var typeString = type.ToString().ToLower();
             var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
 
-            var receivedAsset = type == Core.Domain.Exchange.OrderType.Buy ? assetPair.BaseAssetId : assetPair.QuotingAssetId;
+            var receivedAsset = type == OrderType.Buy ? assetPair.BaseAssetId : assetPair.QuotingAssetId;
             var receivedAssetEntity = await _assetsServiceWithCache.TryGetAssetAsync(receivedAsset);
 
             var priceAsset = await _assetsServiceWithCache.TryGetAssetAsync(assetPair.QuotingAssetId);
@@ -342,15 +342,15 @@ namespace Lykke.Job.TransactionHandler.Queues
             var order = limitOrderWithTrades.Order;
             var offchainOrder = await _offchainOrdersRepository.GetOrder(order.Id);
 
-            var type = order.Volume > 0 ? Core.Domain.Exchange.OrderType.Buy : Core.Domain.Exchange.OrderType.Sell;
+            var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
             var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
-            var neededAsset = type == Core.Domain.Exchange.OrderType.Buy ? assetPair.QuotingAssetId : assetPair.BaseAssetId;
+            var neededAsset = type == OrderType.Buy ? assetPair.QuotingAssetId : assetPair.BaseAssetId;
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(neededAsset);
 
             if (asset.IsTrusted)
                 return;
 
-            if (type == Core.Domain.Exchange.OrderType.Buy)
+            if (type == OrderType.Buy)
             {
                 var initial = offchainOrder.ReservedVolume;
 
@@ -401,11 +401,13 @@ namespace Lykke.Job.TransactionHandler.Queues
         private async Task CreateEvent(LimitQueueItem.LimitOrderWithTrades limitOrderWithTrades, OrderStatus status)
         {
             var order = limitOrderWithTrades.Order;
-            var type = order.Volume > 0 ? Core.Domain.Exchange.OrderType.Buy : Core.Domain.Exchange.OrderType.Sell;
+            var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
             var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
             var date = status == OrderStatus.InOrderBook ? limitOrderWithTrades.Order.CreatedAt : DateTime.UtcNow;
-            await _limitTradeEventsRepository.CreateEvent(order.Id, order.ClientId, type, order.Volume,
-                assetPair?.BaseAssetId, order.AssetPairId, order.Price, status, date);
+
+
+            await _limitTradeEventsRepositoryClient.CreateAsync(type, order.Volume, order.Price, status, date, order.Id,
+                order.ClientId, assetPair?.BaseAssetId, order.AssetPairId);
         }
 
         private async Task UpdateCache(IOrderBase meOrder)
