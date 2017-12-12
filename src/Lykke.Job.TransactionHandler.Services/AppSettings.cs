@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Net;
+using Lykke.Service.OperationsRepository.Client;
 using Lykke.Service.PersonalData.Settings;
 
 namespace Lykke.Job.TransactionHandler.Services
@@ -19,6 +20,7 @@ namespace Lykke.Job.TransactionHandler.Services
         public NotificationsSettings AppNotifications { get; set; }
         public RabbitMqSettings RabbitMq { get; set; }
         public PersonalDataServiceClientSettings PersonalDataServiceSettings { get; set; }
+        public OperationsRepositoryServiceClientSettings OperationsRepositoryServiceClient { get; set; }
 
         public class TransactionHandlerSettings
         {
@@ -42,7 +44,6 @@ namespace Lykke.Job.TransactionHandler.Services
             public string OffchainConnString { get; set; }
             public string QuantaSrvConnString { get; set; }
             public string SolarCoinConnString { get; set; }
-            public string HistoryLogsConnString { get; set; }
         }
 
         public class AssetsCacheSettings

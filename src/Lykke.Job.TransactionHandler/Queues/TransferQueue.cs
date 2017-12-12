@@ -4,7 +4,6 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
@@ -18,7 +17,8 @@ using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.Operations.Client;
-using Lykke.Service.Operations.Client.AutorestClient;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -29,7 +29,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ILog _log;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IBitCoinTransactionsRepository _bitCoinTransactionsRepository;
-        private readonly ITransferEventsRepository _transferEventsRepository;
+        private readonly ITransferOperationsRepositoryClient _transferEventsRepositoryClient;
         private readonly IOffchainRequestService _offchainRequestService;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IClientAccountClient _clientAccountClient;
@@ -44,7 +44,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
 
         public TransferQueue(AppSettings.RabbitMqSettings config, ILog log,
-            ITransferEventsRepository transferEventsRepository,
+            ITransferOperationsRepositoryClient transferEventsRepositoryClient,
             IWalletCredentialsRepository walletCredentialsRepository,
             IBitCoinTransactionsRepository bitCoinTransactionsRepository,
             IOffchainRequestService offchainRequestService,
@@ -56,7 +56,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             _rabbitConfig = config;
             _log = log;
-            _transferEventsRepository = transferEventsRepository;
+            _transferEventsRepositoryClient = transferEventsRepositoryClient;
             _walletCredentialsRepository = walletCredentialsRepository;
             _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
             _offchainRequestService = offchainRequestService;
@@ -123,20 +123,43 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var destTransfer =
                 await
-                    _transferEventsRepository.RegisterAsync(
-                        TransferEvent.CreateNew(queueMessage.ToClientid,
-                            toWallet?.MultiSig, null,
-                            queueMessage.AssetId, amount, queueMessage.Id,
-                            toWallet?.Address, toWallet?.MultiSig,
-                            state: transferState));
+                    _transferEventsRepositoryClient.RegisterAsync(
+                        new TransferEvent
+                        {
+                            Id = Guid.NewGuid().ToString("N"),
+                            ClientId = queueMessage.ToClientid,
+                            DateTime = DateTime.UtcNow,
+                            FromId = null,
+                            AssetId = queueMessage.AssetId,
+                            Amount = amount,
+                            TransactionId = queueMessage.Id,
+                            IsHidden = false,
+                            AddressFrom = toWallet?.Address,
+                            AddressTo = toWallet?.MultiSig,
+                            Multisig = toWallet?.MultiSig,
+                            IsSettled = false,
+                            State = transferState
+                        });
 
             var sourceTransfer =
                 await
-                    _transferEventsRepository.RegisterAsync(
-                        TransferEvent.CreateNew(queueMessage.FromClientId,
-                            fromWallet?.MultiSig, null,
-                            queueMessage.AssetId, -amount, queueMessage.Id,
-                            fromWallet?.Address, fromWallet?.MultiSig, state: transferState));
+                    _transferEventsRepositoryClient.RegisterAsync(
+                        new TransferEvent
+                        {
+                            Id = Guid.NewGuid().ToString("N"),
+                            ClientId = queueMessage.FromClientId,
+                            DateTime = DateTime.UtcNow,
+                            FromId = null,
+                            AssetId = queueMessage.AssetId,
+                            Amount = -amount,
+                            TransactionId = queueMessage.Id,
+                            IsHidden = false,
+                            AddressFrom = fromWallet?.Address,
+                            AddressTo = fromWallet?.MultiSig,
+                            Multisig = fromWallet?.MultiSig,
+                            IsSettled = false,
+                            State = transferState
+                        });
 
             //Craete or Update transfer context
             var transaction = await _bitCoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);

@@ -4,7 +4,6 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
@@ -20,6 +19,8 @@ using Lykke.Service.ClientAccount.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
+using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -30,16 +31,16 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private readonly ILog _log;
         private readonly IMatchingEngineClient _matchingEngineClient;
-        private readonly ICashOperationsRepository _cashOperationsRepository;
+        private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly ISrvEmailsFacade _srvEmailsFacade;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IPaymentTransactionsRepository _paymentTransactionsRepository;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IClientTradesRepository _clientTradesRepository;
+        private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-        private readonly ITransferEventsRepository _transferEventsRepository;
+        private readonly ITransferOperationsRepositoryClient _transferEventsRepositoryClient;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IAssetsService _assetsService;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
@@ -48,32 +49,32 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public EthereumEventsQueue(AppSettings.RabbitMqSettings config, ILog log,
             IMatchingEngineClient matchingEngineClient,
-            ICashOperationsRepository cashOperationsRepository,
+            ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             IClientAccountClient clientAccountClient,
             ISrvEmailsFacade srvEmailsFacade,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             IPaymentTransactionsRepository paymentTransactionsRepository,
             IWalletCredentialsRepository walletCredentialsRepository,
-            IClientTradesRepository clientTradesRepository,
+            ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            ITransferEventsRepository transferEventsRepository, 
+            ITransferOperationsRepositoryClient transferEventsRepositoryClient, 
             IAssetsServiceWithCache assetsServiceWithCache,
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsService assetsService)
         {
             _log = log;
             _matchingEngineClient = matchingEngineClient;
-            _cashOperationsRepository = cashOperationsRepository;
+            _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
             _clientAccountClient = clientAccountClient;
             _srvEmailsFacade = srvEmailsFacade;
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
             _paymentTransactionsRepository = paymentTransactionsRepository;
             _walletCredentialsRepository = walletCredentialsRepository;
-            _clientTradesRepository = clientTradesRepository;
+            _clientTradesRepositoryClient = clientTradesRepositoryClient;
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
             _assetsServiceWithCache = assetsServiceWithCache;
             _rabbitConfig = config;
-            _transferEventsRepository = transferEventsRepository;
+            _transferEventsRepositoryClient = transferEventsRepositoryClient;
             _bitcoinTransactionService = bitcoinTransactionService;
             _assetsService = assetsService;
         }
@@ -205,7 +206,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             string hash = queueMessage.TransactionHash;
             string cashOperationId = context.CashOperationId;
 
-            await _cashOperationsRepository.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
+            await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
 
             return true;
         }
@@ -238,7 +239,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             foreach (var id in txRequest.OperationIds)
             {
-                await _clientTradesRepository.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
+                await _clientTradesRepositoryClient.UpdateBlockchainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
@@ -246,7 +247,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             foreach (var id in txRequest.OperationIds)
             {
-                await _cashOperationsRepository.UpdateBlockchainHashAsync(txRequest.ClientId, id, hash);
+                await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
@@ -254,7 +255,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             foreach (var id in txRequest.OperationIds)
             {
-                await _transferEventsRepository.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
+                await _transferEventsRepositoryClient.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
@@ -301,7 +302,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             else
             {
                 var walletCreds = await _walletCredentialsRepository.GetAsync(clientId);
-                await _cashOperationsRepository.RegisterAsync(new CashInOutOperation
+                await _cashOperationsRepositoryClient.RegisterAsync(new CashInOutOperation
                 {
                     Id = id,
                     ClientId = clientId,

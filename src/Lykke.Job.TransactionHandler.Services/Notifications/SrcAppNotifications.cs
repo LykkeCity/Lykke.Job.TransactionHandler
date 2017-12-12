@@ -2,9 +2,9 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Common;
-using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Newtonsoft.Json;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
 
 namespace Lykke.Job.TransactionHandler.Services.Notifications
 {
