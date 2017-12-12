@@ -66,7 +66,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
-            IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient, IAssetsServiceWithCache assetsServiceWithCache)
+            IEthClientEventLogs ethClientEventLogs, 
+            IBitcoinTransactionService bitcoinTransactionService, 
+            IClientAccountClient clientAccountClient, 
+            IAssetsServiceWithCache assetsServiceWithCache)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;

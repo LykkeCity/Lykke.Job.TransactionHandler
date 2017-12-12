@@ -74,11 +74,16 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
             IEthClientEventLogs ethClientEventLogs,
-            ILimitOrdersRepository limitOrdersRepository, ITradeOperationsRepositoryClient clientTradesRepositoryClient,
-            ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient, IClientSettingsRepository clientSettingsRepository,
-            IAppNotifications appNotifications, IClientAccountClient clientAccountClient,
-            IOffchainOrdersRepository offchainOrdersRepository, IClientCacheRepository clientCacheRepository,
-            IBitcoinTransactionService bitcoinTransactionService, IAssetsServiceWithCache assetsServiceWithCache)
+            ILimitOrdersRepository limitOrdersRepository, 
+            ITradeOperationsRepositoryClient clientTradesRepositoryClient,
+            ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient,
+            IClientSettingsRepository clientSettingsRepository,
+            IAppNotifications appNotifications, 
+            IClientAccountClient clientAccountClient,
+            IOffchainOrdersRepository offchainOrdersRepository, 
+            IClientCacheRepository clientCacheRepository,
+            IBitcoinTransactionService bitcoinTransactionService, 
+            IAssetsServiceWithCache assetsServiceWithCache)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -407,8 +412,18 @@ namespace Lykke.Job.TransactionHandler.Queues
             var date = status == OrderStatus.InOrderBook ? limitOrderWithTrades.Order.CreatedAt : DateTime.UtcNow;
 
 
-            await _limitTradeEventsRepositoryClient.CreateAsync(type, order.Volume, order.Price, status, date, order.Id,
-                order.ClientId, assetPair?.BaseAssetId, order.AssetPairId);
+            await _limitTradeEventsRepositoryClient.CreateAsync(new LimitTradeEventInsertRequest
+            {
+                Volume = order.Volume,
+                Type = type,
+                OrderId = order.Id,
+                Status = status,
+                AssetId = assetPair?.BaseAssetId,
+                ClientId = order.ClientId,
+                Price = order.Price,
+                AssetPair = order.AssetPairId,
+                DateTime = date
+            });
         }
 
         private async Task UpdateCache(IOrderBase meOrder)
