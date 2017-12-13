@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
@@ -9,14 +10,18 @@ using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
+using Lykke.Job.TransactionHandler.Core.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
+using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
+using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
+using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 
@@ -41,6 +46,10 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly AppSettings.EthereumSettings _settings;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
+        private readonly IClientAccountClient _clientAccountClient;
+        private readonly ISrvEmailsFacade _srvEmailsFacade;
+        private readonly ISrvSolarCoinHelper _srvSolarCoinHelper;
+        private readonly IChronoBankService _chronoBankService;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CashInOutQueueMessage> _subscriber;
@@ -54,12 +63,12 @@ namespace Lykke.Job.TransactionHandler.Queues
             IOffchainRequestService offchainRequestService,
             IClientSettingsRepository clientSettingsRepository,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            ISrvEthereumHelper srvEthereumHelper, 
+            ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
-            IEthClientEventLogs ethClientEventLogs, 
-			IBitcoinTransactionService bitcoinTransactionService, 
+            IEthClientEventLogs ethClientEventLogs,
+            IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
-            AppSettings.EthereumSettings settings)
+            AppSettings.EthereumSettings settings, IClientAccountClient clientAccountClient, ISrvEmailsFacade srvEmailsFacade, ISrvSolarCoinHelper srvSolarCoinHelper, IChronoBankService chronoBankService)
         {
             _rabbitConfig = config;
             _log = log;
@@ -77,6 +86,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             _bitcoinTransactionService = bitcoinTransactionService;
             _assetsServiceWithCache = assetsServiceWithCache;
             _settings = settings;
+            _clientAccountClient = clientAccountClient;
+            _srvEmailsFacade = srvEmailsFacade;
+            _srvSolarCoinHelper = srvSolarCoinHelper;
+            _chronoBankService = chronoBankService;
         }
 
         public void Start()
@@ -283,7 +296,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     TransactionId = msg.Id,
                     Type = isForwardWithdawal ? CashOperationType.ForwardCashOut : CashOperationType.None,
                     BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transaction.BlockchainHash,
-                    State = GetState(transaction, isBtcOffchainClient)
+                    State = isForwardWithdawal ? TransactionStates.SettledOffchain : GetState(transaction, isBtcOffchainClient)
                 });
 
             //Update context data
@@ -303,13 +316,10 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, context);
 
-            if (!isOffchainClient && asset.Blockchain == Blockchain.Bitcoin)
-                await _bitcoinCommandSender.SendCommand(cmd);
-
             if (asset.Blockchain == Blockchain.Ethereum)
             {
                 string errMsg = string.Empty;
-                
+
                 if (asset.Type == AssetType.Erc20Token)
                 {
                     try
@@ -359,6 +369,12 @@ namespace Lykke.Job.TransactionHandler.Queues
                         new { Request = transaction.TransactionId, Error = errMsg }.ToJson());
                 }
             }
+
+            if (asset.Id == LykkeConstants.SolarAssetId)
+                await ProcessSolarCashOut(msg.ClientId, context.Address, amount, transaction.TransactionId);
+
+            if (asset.Id == LykkeConstants.ChronoBankAssetId)
+                await ProcessChronoBankCashOut(context.Address, amount, transaction.TransactionId);
 
             return true;
         }
@@ -434,6 +450,22 @@ namespace Lykke.Job.TransactionHandler.Queues
             var amount = msg.Amount.ParseAnyDouble();
             await _offchainRequestService.CreateOffchainRequestAndNotify(Guid.NewGuid().ToString(), msg.ClientId, msg.AssetId, (decimal)amount, null, OffchainTransferType.CashinFromClient);
             return true;
+        }
+
+        private Task ProcessChronoBankCashOut(string address, double amount, string txId)
+        {
+            return _chronoBankService.SendCashOutRequest(txId, address, amount);
+        }
+
+        private async Task ProcessSolarCashOut(string clientId, string address, double amount, string txId)
+        {
+            var slrAddress = new SolarCoinAddress(address);
+            var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
+
+            var sendEmailTask = _srvEmailsFacade.SendSolarCashOutCompletedEmail(clientAcc.PartnerId, clientAcc.Email, slrAddress.Value, amount);
+            var solarRequestTask = _srvSolarCoinHelper.SendCashOutRequest(txId, slrAddress, amount);
+
+            await Task.WhenAll(sendEmailTask, solarRequestTask);
         }
 
         public void Dispose()
