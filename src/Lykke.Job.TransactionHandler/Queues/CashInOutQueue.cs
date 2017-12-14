@@ -143,6 +143,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             {
                 switch (transaction.CommandType)
                 {
+                    case BitCoinCommands.CashIn:
                     case BitCoinCommands.Issue:
                         return await ProcessIssue(transaction, queueMessage);
                     case BitCoinCommands.CashOut:
@@ -432,6 +433,12 @@ namespace Lykke.Job.TransactionHandler.Queues
             await _bitcoinTransactionsRepository.UpdateAsync(transaction.TransactionId, cmd.ToJson(), null, "");
 
             await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, context);
+
+            var isClientTrusted = await _clientAccountClient.IsTrustedAsync(msg.ClientId);
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(msg.AssetId);
+
+            if (isClientTrusted.Value || asset.IsTrusted)
+                return true;
 
             if (isOffchain)
                 await _offchainRequestService.CreateOffchainRequestAndNotify(transaction.TransactionId, msg.ClientId, msg.AssetId, (decimal)amount, null, OffchainTransferType.CashinToClient);
