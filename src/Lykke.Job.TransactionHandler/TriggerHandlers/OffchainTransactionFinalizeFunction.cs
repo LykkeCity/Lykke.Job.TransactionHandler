@@ -338,15 +338,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             }
             else
             {
-                if (offchainTransfer.AssetId == LykkeConstants.SolarAssetId)
-                {
-                    await PostSolarCashOut(offchainTransfer.ClientId, contextData.Address, amount, transaction.TransactionId);
-                }
-                else if (offchainTransfer.AssetId == LykkeConstants.ChronoBankAssetId)
-                {
-                    await PostChronoBankCashOut(contextData.Address, amount, transaction.TransactionId);
-                }
-                else if (offchainTransfer.AssetId == LykkeConstants.QuantaAssetId)
+                if (offchainTransfer.AssetId == LykkeConstants.QuantaAssetId)
                 {
                     await PostQuantaCashOut(contextData.Address, amount, transaction.TransactionId);
                 }
