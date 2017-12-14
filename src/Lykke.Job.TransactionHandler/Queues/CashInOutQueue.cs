@@ -401,6 +401,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 .GetAsync(msg.ClientId);
             var amount = msg.Amount.ParseAnyDouble();
             var context = await _bitcoinTransactionService.GetTransactionContext<IssueContextData>(transaction.TransactionId);
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(msg.AssetId);
 
             //Register cash operation
             var cashOperationId = await _cashOperationsRepositoryClient
@@ -414,9 +415,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     DateTime = DateTime.UtcNow,
                     AddressTo = walletCredentials.MultiSig,
                     TransactionId = transaction.TransactionId,
-                    State = isOffchain
-                        ? TransactionStates.InProcessOffchain
-                        : TransactionStates.InProcessOnchain
+                    State = asset.IsTrusted ? TransactionStates.SettledOffchain : TransactionStates.InProcessOffchain
                 });
 
             context.CashOperationId = cashOperationId;
@@ -435,7 +434,6 @@ namespace Lykke.Job.TransactionHandler.Queues
             await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, context);
 
             var isClientTrusted = await _clientAccountClient.IsTrustedAsync(msg.ClientId);
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(msg.AssetId);
 
             if (isClientTrusted.Value || asset.IsTrusted)
                 return true;
