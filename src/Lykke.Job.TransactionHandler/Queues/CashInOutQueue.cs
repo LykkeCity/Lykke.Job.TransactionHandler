@@ -372,10 +372,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
 
             if (asset.Id == LykkeConstants.SolarAssetId)
-                await ProcessSolarCashOut(msg.ClientId, context.Address, amount, transaction.TransactionId);
+                await ProcessSolarCashOut(msg.ClientId, context.Address, Math.Abs(amount), transaction.TransactionId);
 
             if (asset.Id == LykkeConstants.ChronoBankAssetId)
-                await ProcessChronoBankCashOut(context.Address, amount, transaction.TransactionId);
+                await ProcessChronoBankCashOut(context.Address, Math.Abs(amount), transaction.TransactionId);
 
             return true;
         }
