@@ -9,6 +9,8 @@ using AzureStorage.Tables;
 using AzureStorage.Tables.Templates.Index;
 using Common;
 using Common.Log;
+using Lykke.Bitcoin.Api.Client;
+using Lykke.Bitcoin.Api.Client.BitcoinApi;
 using Lykke.Job.TransactionHandler.AzureRepositories.Assets;
 using Lykke.Job.TransactionHandler.AzureRepositories.BitCoin;
 using Lykke.Job.TransactionHandler.AzureRepositories.Blockchain;
@@ -41,7 +43,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Services.BitCoin.BitCoinApi;
 using Lykke.Job.TransactionHandler.Core.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
@@ -53,7 +54,6 @@ using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Services.BitCoin.BitCoinApiClient;
 using Lykke.Job.TransactionHandler.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Services.Http;
@@ -169,10 +169,7 @@ namespace Lykke.Job.TransactionHandler.Modules
         private void BindServices(ContainerBuilder builder)
         {
             builder.RegisterType<HttpRequestClient>().SingleInstance();
-            builder.RegisterType<BitcoinApiClient>()
-                .As<IBitcoinApiClient>()
-                .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.BitCoinCore));
+
             builder.RegisterType<OffchainRequestService>().As<IOffchainRequestService>();
             builder.RegisterType<SrvSlackNotifications>()
                 .SingleInstance()
@@ -209,6 +206,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<BitcoinTransactionService>().As<IBitcoinTransactionService>().SingleInstance();
 
             builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
+
+            builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
         }
 
         private void BindRepositories(ContainerBuilder builder)

@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.Bitcoin.Api.Client.BitcoinApi;
 using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
@@ -50,6 +51,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ISrvEmailsFacade _srvEmailsFacade;
         private readonly ISrvSolarCoinHelper _srvSolarCoinHelper;
         private readonly IChronoBankService _chronoBankService;
+        private readonly IBitcoinApiClient _bitcoinApiClient;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CashInOutQueueMessage> _subscriber;
@@ -68,7 +70,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthClientEventLogs ethClientEventLogs,
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
-            AppSettings.EthereumSettings settings, IClientAccountClient clientAccountClient, ISrvEmailsFacade srvEmailsFacade, ISrvSolarCoinHelper srvSolarCoinHelper, IChronoBankService chronoBankService)
+            AppSettings.EthereumSettings settings, IClientAccountClient clientAccountClient, ISrvEmailsFacade srvEmailsFacade, ISrvSolarCoinHelper srvSolarCoinHelper, IChronoBankService chronoBankService, IBitcoinApiClient bitcoinApiClient)
         {
             _rabbitConfig = config;
             _log = log;
@@ -90,6 +92,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _srvEmailsFacade = srvEmailsFacade;
             _srvSolarCoinHelper = srvSolarCoinHelper;
             _chronoBankService = chronoBankService;
+            _bitcoinApiClient = bitcoinApiClient;
         }
 
         public void Start()
@@ -377,6 +380,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             if (asset.Id == LykkeConstants.ChronoBankAssetId)
                 await ProcessChronoBankCashOut(context.Address, Math.Abs(amount), transaction.TransactionId);
 
+            if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal)
+                await ProcessBitcoinCashOut(asset, context.Address, (decimal)Math.Abs(amount), transaction.TransactionId);
+
             return true;
         }
 
@@ -449,11 +455,15 @@ namespace Lykke.Job.TransactionHandler.Queues
         private async Task<bool> ProcessExternalCashin(CashInOutQueueMessage msg)
         {
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(msg.AssetId);
-            if (!await _clientSettingsRepository.IsOffchainClient(msg.ClientId) || asset.Blockchain != Blockchain.Bitcoin || asset.IsTrusted)
+            if (!await _clientSettingsRepository.IsOffchainClient(msg.ClientId) || asset.Blockchain != Blockchain.Bitcoin || asset.IsTrusted && asset.Id != LykkeConstants.BitcoinAssetId)
                 return true;
 
-            var amount = msg.Amount.ParseAnyDouble();
-            await _offchainRequestService.CreateOffchainRequestAndNotify(Guid.NewGuid().ToString(), msg.ClientId, msg.AssetId, (decimal)amount, null, OffchainTransferType.CashinFromClient);
+            if (asset.Id == LykkeConstants.BitcoinAssetId)
+            {
+                var amount = msg.Amount.ParseAnyDouble();
+                await _offchainRequestService.CreateOffchainRequestAndNotify(Guid.NewGuid().ToString(), msg.ClientId, msg.AssetId, (decimal)amount, null, OffchainTransferType.TrustedCashout);
+            }
+
             return true;
         }
 
@@ -471,6 +481,17 @@ namespace Lykke.Job.TransactionHandler.Queues
             var solarRequestTask = _srvSolarCoinHelper.SendCashOutRequest(txId, slrAddress, amount);
 
             await Task.WhenAll(sendEmailTask, solarRequestTask);
+        }
+
+        private Task ProcessBitcoinCashOut(Asset asset, string address, decimal amount, string transactionId)
+        {
+            return _bitcoinApiClient.CashoutAsync(new Bitcoin.Api.Client.BitcoinApi.Models.CashoutModel
+            {
+                Amount = amount,
+                AssetId = asset.Id,
+                DestinationAddress = address,
+                TransactionId = Guid.Parse(transactionId)
+            });
         }
 
         public void Dispose()
