@@ -125,7 +125,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         {
             var transfer = await _offchainTransferRepository.GetTransfer(message.TransferId);
 
-            if (transfer.Type == OffchainTransferType.HubCashout || transfer.Type == OffchainTransferType.CashinFromClient)
+            if (transfer.Type == OffchainTransferType.HubCashout || transfer.Type == OffchainTransferType.CashinFromClient || transfer.Type == OffchainTransferType.TrustedCashout)
                 return;
 
             var transactionId =
