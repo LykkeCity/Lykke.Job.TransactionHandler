@@ -380,7 +380,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             if (asset.Id == LykkeConstants.ChronoBankAssetId)
                 await ProcessChronoBankCashOut(context.Address, Math.Abs(amount), transaction.TransactionId);
 
-            if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal)
+            if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal && !isForwardWithdawal)
                 await ProcessBitcoinCashOut(asset, context.Address, (decimal)Math.Abs(amount), transaction.TransactionId);
 
             return true;
