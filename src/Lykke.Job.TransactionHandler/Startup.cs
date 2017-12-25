@@ -78,7 +78,7 @@ namespace Lykke.Job.TransactionHandler
                 {
                     builder.AddTriggers(pool =>
                     {
-                        pool.AddDefaultConnection(appSettings.CurrentValue.TransactionHandlerJob.Db.BitCoinQueueConnectionString);
+                        pool.AddDefaultConnection(appSettings.ConnectionString(x => x.TransactionHandlerJob.Db.BitCoinQueueConnectionString));
                     });
                 }
 

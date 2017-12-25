@@ -6,7 +6,6 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
@@ -21,6 +20,8 @@ using Lykke.Job.TransactionHandler.Services;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -37,7 +38,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IBitCoinTransactionsRepository _bitcoinTransactionsRepository;
         private readonly IMarketOrdersRepository _marketOrdersRepository;
-        private readonly IClientTradesRepository _clientTradesRepository;
+        private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
         private readonly IOffchainRequestService _offchainRequestService;
         private readonly IOffchainOrdersRepository _offchainOrdersRepository;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
@@ -60,22 +61,24 @@ namespace Lykke.Job.TransactionHandler.Queues
             IWalletCredentialsRepository walletCredentialsRepository,
             IBitCoinTransactionsRepository bitcoinTransactionsRepository,
             IMarketOrdersRepository marketOrdersRepository,
-            IClientTradesRepository clientTradesRepository,
+            ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             IOffchainRequestService offchainRequestService,
             IOffchainOrdersRepository offchainOrdersRepository,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
-            IEthClientEventLogs ethClientEventLogs, IBitcoinTransactionService bitcoinTransactionService,
-            IClientAccountClient clientAccountClient, IAssetsServiceWithCache assetsServiceWithCache,
-            IFeeLogRepository feeLogRepository)
+            IEthClientEventLogs ethClientEventLogs, 
+            IBitcoinTransactionService bitcoinTransactionService, 
+            IClientAccountClient clientAccountClient, 
+            IAssetsServiceWithCache assetsServiceWithCache,
+			IFeeLogRepository feeLogRepository)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
             _bitcoinTransactionsRepository = bitcoinTransactionsRepository;
             _marketOrdersRepository = marketOrdersRepository;
-            _clientTradesRepository = clientTradesRepository;
+            _clientTradesRepositoryClient = clientTradesRepositoryClient;
             _offchainRequestService = offchainRequestService;
             _offchainOrdersRepository = offchainOrdersRepository;
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
@@ -218,14 +221,14 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
             finally
             {
-                await _clientTradesRepository.SaveAsync(clientTrades);
+                await _clientTradesRepositoryClient.SaveAsync(clientTrades);
 
                 foreach (var item in notify)
                     await _offchainRequestService.NotifyUser(item);
             }
         }
 
-        private async Task ProcessEthBuy(AggregatedTransfer operation, Asset asset, IClientTrade[] clientTrades, string orderId)
+        private async Task ProcessEthBuy(AggregatedTransfer operation, Asset asset, ClientTrade[] clientTrades, string orderId)
         {
             string errMsg = string.Empty;
             var transferId = Guid.NewGuid();
@@ -278,7 +281,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
         }
 
-        private async Task<bool> ProcessEthGuaranteeTransfer(IEthereumTransactionRequest ethereumTxRequest, List<AggregatedTransfer> operations, IClientTrade[] clientTrades)
+        private async Task<bool> ProcessEthGuaranteeTransfer(IEthereumTransactionRequest ethereumTxRequest, List<AggregatedTransfer> operations, ClientTrade[] clientTrades)
         {
             var errMsg = string.Empty;
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(ethereumTxRequest.AssetId);
@@ -337,7 +340,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             return true;
         }
 
-        private async Task CreateTransaction(string orderId, List<AggregatedTransfer> operations, IClientTrade[] trades)
+        private async Task CreateTransaction(string orderId, List<AggregatedTransfer> operations, ClientTrade[] trades)
         {
             var contextData = await _bitcoinTransactionService.GetTransactionContext<SwapOffchainContextData>(orderId) ?? new SwapOffchainContextData();
 

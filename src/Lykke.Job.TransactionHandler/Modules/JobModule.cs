@@ -9,6 +9,8 @@ using AzureStorage.Tables;
 using AzureStorage.Tables.Templates.Index;
 using Common;
 using Common.Log;
+using Lykke.Bitcoin.Api.Client;
+using Lykke.Bitcoin.Api.Client.BitcoinApi;
 using Lykke.Job.TransactionHandler.AzureRepositories.Assets;
 using Lykke.Job.TransactionHandler.AzureRepositories.BitCoin;
 using Lykke.Job.TransactionHandler.AzureRepositories.Blockchain;
@@ -41,7 +43,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Services.BitCoin.BitCoinApi;
 using Lykke.Job.TransactionHandler.Core.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
@@ -53,10 +54,8 @@ using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Services.BitCoin.BitCoinApiClient;
 using Lykke.Job.TransactionHandler.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
-using Lykke.EthereumCoreClient;
 using Lykke.Job.TransactionHandler.AzureRepositories.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Services.Http;
@@ -71,13 +70,12 @@ using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Service.Operations.Client;
-using Lykke.Service.Operations.Client.AutorestClient;
-using Lykke.Service.OperationsHistory.HistoryWriter.Abstractions;
-using Lykke.Service.OperationsHistory.HistoryWriter.Implementation;
 using Lykke.Service.PersonalData.Client;
 using Lykke.Service.PersonalData.Contract;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
+using Lykke.Service.EthereumCore.Client;
+using Lykke.Service.OperationsRepository.Client;
 
 namespace Lykke.Job.TransactionHandler.Modules
 {
@@ -173,10 +171,7 @@ namespace Lykke.Job.TransactionHandler.Modules
         private void BindServices(ContainerBuilder builder)
         {
             builder.RegisterType<HttpRequestClient>().SingleInstance();
-            builder.RegisterType<BitcoinApiClient>()
-                .As<IBitcoinApiClient>()
-                .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.BitCoinCore));
+
             builder.RegisterType<OffchainRequestService>().As<IOffchainRequestService>();
             builder.RegisterType<SrvSlackNotifications>()
                 .SingleInstance()
@@ -212,8 +207,9 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterType<BitcoinTransactionService>().As<IBitcoinTransactionService>().SingleInstance();
 
-            var historyWriter = new HistoryWriter(_dbSettingsManager.CurrentValue.HistoryLogsConnString, _log);
-            builder.RegisterInstance(historyWriter).As<IHistoryWriter>();
+            builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
+
+            builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
         }
 
         private void BindRepositories(ContainerBuilder builder)
@@ -238,31 +234,9 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new BcnClientCredentialsRepository(
                     AzureTableStorage<BcnCredentialsRecordEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "BcnClientCredentials", _log)));
 
-            builder.RegisterInstance<ICashOperationsRepository>(
-                new CashOperationsRepository(
-                    AzureTableStorage<CashInOutOperationEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "OperationsCash", _log),
-                    AzureTableStorage<AzureIndex>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "OperationsCash", _log)));
-
-            builder.RegisterInstance<ICashOutAttemptRepository>(
-                new CashOutAttemptRepository(
-                    AzureTableStorage<CashOutAttemptEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BalancesInfoConnString), "CashOutAttempt", _log)));
-
-            builder.RegisterInstance<IClientTradesRepository>(
-                new ClientTradesRepository(
-                    AzureTableStorage<ClientTradeEntity>.Create(_dbSettingsManager.ConnectionString(x => x.HTradesConnString), "Trades", _log)));
-
-            builder.RegisterInstance<ILimitTradeEventsRepository>(
-                new LimitTradeEventsRepository(
-                    AzureTableStorage<LimitTradeEventEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "LimitTradeEvents", _log)));
-
             builder.RegisterInstance<IForwardWithdrawalRepository>(
                 new ForwardWithdrawalRepository(
                     AzureTableStorage<ForwardWithdrawalEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BalancesInfoConnString), "ForwardWithdrawal", _log)));
-
-            builder.RegisterInstance<ITransferEventsRepository>(
-                new TransferEventsRepository(
-                    AzureTableStorage<TransferEventEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "Transfers", _log),
-                    AzureTableStorage<AzureIndex>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "Transfers", _log)));
 
             builder.RegisterInstance<IChronoBankCommandProducer>(
                 new SrvChronoBankCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ChronoBankSrvConnString), "chronobank-out")));
@@ -330,7 +304,7 @@ namespace Lykke.Job.TransactionHandler.Modules
         private void BindRabbitMq(ContainerBuilder builder)
         {
             builder.RegisterInstance(_settings.RabbitMq);
-            builder.RegisterType<CashInOutQueue>().SingleInstance();
+            builder.RegisterType<CashInOutQueue>().SingleInstance().WithParameter(TypedParameter.From(_settings.Ethereum));
             builder.RegisterType<TransferQueue>().SingleInstance().WithParameter(TypedParameter.From(_settings.Ethereum));
             builder.RegisterType<LimitTradeQueue>().SingleInstance().WithParameter(TypedParameter.From(_settings.Ethereum));
             builder.RegisterType<TradeQueue>().SingleInstance().WithParameter(TypedParameter.From(_settings.Ethereum));

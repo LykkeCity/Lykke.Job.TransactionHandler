@@ -4,7 +4,6 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
@@ -19,88 +18,156 @@ using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
+using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
     public class EthereumEventsQueue : IQueueSubscriber
     {
         private const string QueueName = "lykke.transactionhandler.ethereum.events";
+        private const string HotWalletQueueName = "lykke.transactionhandler.ethereum.hotwallet.events";
 
         private readonly ILog _log;
         private readonly IMatchingEngineClient _matchingEngineClient;
-        private readonly ICashOperationsRepository _cashOperationsRepository;
+        private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly ISrvEmailsFacade _srvEmailsFacade;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IPaymentTransactionsRepository _paymentTransactionsRepository;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IClientTradesRepository _clientTradesRepository;
+        private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-        private readonly ITransferEventsRepository _transferEventsRepository;
-
+        private readonly ITransferOperationsRepositoryClient _transferEventsRepositoryClient;
+        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly IAssetsService _assetsService;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
+        private RabbitMqSubscriber<Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent> _subscriberHotWallet;
 
         public EthereumEventsQueue(AppSettings.RabbitMqSettings config, ILog log,
             IMatchingEngineClient matchingEngineClient,
-            ICashOperationsRepository cashOperationsRepository,
+            ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             IClientAccountClient clientAccountClient,
             ISrvEmailsFacade srvEmailsFacade,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             IPaymentTransactionsRepository paymentTransactionsRepository,
             IWalletCredentialsRepository walletCredentialsRepository,
-            IClientTradesRepository clientTradesRepository,
+            ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            ITransferEventsRepository transferEventsRepository, IAssetsServiceWithCache assetsServiceWithCache)
+            ITransferOperationsRepositoryClient transferEventsRepositoryClient, 
+            IAssetsServiceWithCache assetsServiceWithCache,
+            IBitcoinTransactionService bitcoinTransactionService,
+            IAssetsService assetsService)
         {
             _log = log;
             _matchingEngineClient = matchingEngineClient;
-            _cashOperationsRepository = cashOperationsRepository;
+            _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
             _clientAccountClient = clientAccountClient;
             _srvEmailsFacade = srvEmailsFacade;
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
             _paymentTransactionsRepository = paymentTransactionsRepository;
             _walletCredentialsRepository = walletCredentialsRepository;
-            _clientTradesRepository = clientTradesRepository;
+            _clientTradesRepositoryClient = clientTradesRepositoryClient;
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
             _assetsServiceWithCache = assetsServiceWithCache;
             _rabbitConfig = config;
-            _transferEventsRepository = transferEventsRepository;
+            _transferEventsRepositoryClient = transferEventsRepositoryClient;
+            _bitcoinTransactionService = bitcoinTransactionService;
+            _assetsService = assetsService;
         }
 
         public void Start()
         {
-            var settings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _rabbitConfig.ConnectionString,
-                QueueName = QueueName,
-                ExchangeName = _rabbitConfig.ExchangeEthereumCashIn,
-                DeadLetterExchangeName = $"{_rabbitConfig.ExchangeEthereumCashIn}.dlx",
-                RoutingKey = "",
-                IsDurable = true
-            };
+                var settings = new RabbitMqSubscriptionSettings
+                {
+                    ConnectionString = _rabbitConfig.ConnectionString,
+                    QueueName = QueueName,
+                    ExchangeName = _rabbitConfig.ExchangeEthereumCashIn,
+                    DeadLetterExchangeName = $"{_rabbitConfig.ExchangeEthereumCashIn}.dlx",
+                    RoutingKey = "",
+                    IsDurable = true
+                };
 
-            try
-            {
-                _subscriber = new RabbitMqSubscriber<CoinEvent>(settings, new DeadQueueErrorHandlingStrategy(_log, settings))
-                    .SetMessageDeserializer(new JsonMessageDeserializer<CoinEvent>())
-                    .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .Subscribe(ProcessMessage)
-                    .CreateDefaultBinding()
-                    .SetLogger(_log)
-                    .Start();
+                try
+                {
+                    _subscriber = new RabbitMqSubscriber<CoinEvent>(settings, new DeadQueueErrorHandlingStrategy(_log, settings))
+                        .SetMessageDeserializer(new JsonMessageDeserializer<CoinEvent>())
+                        .SetMessageReadStrategy(new MessageReadQueueStrategy())
+                        .Subscribe(ProcessMessage)
+                        .CreateDefaultBinding()
+                        .SetLogger(_log)
+                        .Start();
+                }
+                catch (Exception ex)
+                {
+                    _log.WriteErrorAsync(nameof(EthereumEventsQueue), nameof(Start), null, ex).Wait();
+                    throw;
+                }
             }
-            catch (Exception ex)
+
+            #region HotWallet
+
             {
-                _log.WriteErrorAsync(nameof(EthereumEventsQueue), nameof(Start), null, ex).Wait();
-                throw;
+                string exchangeName = $"{_rabbitConfig.ExchangeEthereumCashIn}.hotwallet";
+                var settings = new RabbitMqSubscriptionSettings
+                {
+                    ConnectionString = _rabbitConfig.ConnectionString,
+                    QueueName = HotWalletQueueName,
+                    ExchangeName = exchangeName,
+                    DeadLetterExchangeName = $"{exchangeName}.dlx",
+                    RoutingKey = "",
+                    IsDurable = true
+                };
+
+                try
+                {
+                    _subscriberHotWallet = new RabbitMqSubscriber<Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent>(settings, 
+                        new DeadQueueErrorHandlingStrategy(_log, settings))
+                        .SetMessageDeserializer(new JsonMessageDeserializer<Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent>())
+                        .SetMessageReadStrategy(new MessageReadQueueStrategy())
+                        .Subscribe(ProcessHotWalletMessage)
+                        .CreateDefaultBinding()
+                        .SetLogger(_log)
+                        .Start();
+                }
+                catch (Exception ex)
+                {
+                    _log.WriteErrorAsync(nameof(EthereumEventsQueue), nameof(Start), null, ex).Wait();
+                    throw;
+                }
             }
+
+            #endregion
+
         }
 
         public void Stop()
         {
             _subscriber?.Stop();
+            _subscriberHotWallet?.Stop();
+        }
+
+        public async Task<bool> ProcessHotWalletMessage(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
+        {
+            switch (queueMessage.EventType)
+            {
+                case EthereumCore.Contracts.Enums.HotWalletEventType.CashinCompleted:
+                    await ProcessHotWalletCashin(queueMessage);
+                    break;
+
+                case EthereumCore.Contracts.Enums.HotWalletEventType.CashoutCompleted:
+                    await ProcessHotWalletCashout(queueMessage);
+                    break;
+
+                default:
+                    break;
+            }
+
+            return true;
         }
 
         public async Task<bool> ProcessMessage(CoinEvent queueMessage)
@@ -117,7 +184,34 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
         }
 
-        private async Task<bool> ProcessOutcomeOperation(CoinEvent queueMessage)
+        private async Task<bool> ProcessHotWalletCashin(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
+        {
+            var bcnCreds = await _bcnClientCredentialsRepository.GetByAssetAddressAsync(queueMessage.FromAddress);
+            string tokenAddress = queueMessage.TokenAddress;
+            var token = await _assetsService.Erc20TokenGetByAddressAsync(tokenAddress);
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(token.AssetId);
+            var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
+
+            await HandleCashInOperation(asset, (double)amount, bcnCreds.ClientId, bcnCreds.Address,
+                queueMessage.TransactionHash);
+
+            return true;
+        }
+
+        private async Task<bool> ProcessHotWalletCashout(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
+        {
+            string transactionId = queueMessage.OperationId;
+            CashOutContextData context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transactionId);
+            string clientId = context.ClientId;
+            string hash = queueMessage.TransactionHash;
+            string cashOperationId = context.CashOperationId;
+
+            await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
+
+            return true;
+        }
+
+            private async Task<bool> ProcessOutcomeOperation(CoinEvent queueMessage)
         {
             var transferTx = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.OperationId));
 
@@ -145,7 +239,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             foreach (var id in txRequest.OperationIds)
             {
-                await _clientTradesRepository.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
+                await _clientTradesRepositoryClient.UpdateBlockchainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
@@ -153,7 +247,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             foreach (var id in txRequest.OperationIds)
             {
-                await _cashOperationsRepository.UpdateBlockchainHashAsync(txRequest.ClientId, id, hash);
+                await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
@@ -161,7 +255,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             foreach (var id in txRequest.OperationIds)
             {
-                await _transferEventsRepository.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
+                await _transferEventsRepositoryClient.UpdateBlockChainHashAsync(txRequest.ClientId, id, hash);
             }
         }
 
@@ -208,7 +302,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             else
             {
                 var walletCreds = await _walletCredentialsRepository.GetAsync(clientId);
-                await _cashOperationsRepository.RegisterAsync(new CashInOutOperation
+                await _cashOperationsRepositoryClient.RegisterAsync(new CashInOutOperation
                 {
                     Id = id,
                     ClientId = clientId,

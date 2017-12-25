@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Newtonsoft.Json;
 using JetBrains.Annotations;
 
@@ -103,21 +103,21 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
     public static class LimitExt
     {
-        public static IClientTrade[] ToDomainOffchain(this LimitQueueItem.LimitOrderWithTrades item, string btcTransactionId, IWalletCredentials walletCredentialsLimitA, IWalletCredentials walletCredentialsLimitB)
+        public static ClientTrade[] ToDomainOffchain(this LimitQueueItem.LimitOrderWithTrades item, string btcTransactionId, IWalletCredentials walletCredentialsLimitA, IWalletCredentials walletCredentialsLimitB)
         {
             var trade = item.Trades[0];
 
             var limitVolume = item.Trades.Sum(x => x.Volume);
             var oppositeLimitVolume = item.Trades.Sum(x => x.OppositeVolume);
 
-            var result = new List<IClientTrade>();
+            var result = new List<ClientTrade>();
 
             result.AddRange(CreateTradeRecordForClientWithVolumes(trade, item.Order, btcTransactionId, walletCredentialsLimitA, walletCredentialsLimitB, limitVolume, oppositeLimitVolume));
 
             return result.ToArray();
         }
 
-        private static IClientTrade[] CreateTradeRecordForClientWithVolumes(LimitQueueItem.LimitTradeInfo trade,
+        private static ClientTrade[] CreateTradeRecordForClientWithVolumes(LimitQueueItem.LimitTradeInfo trade,
             ILimitOrder limitOrder,
             string btcTransactionId, IWalletCredentials walletCredentialsLimitA,
             IWalletCredentials walletCredentialsLimitB, double limitVolume, double oppositeLimitVolume)
@@ -144,7 +144,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             depositAssetRecord.Id = Utils.GenerateRecordId(depositAssetRecord.DateTime);
             withdrawAssetRecord.Id = Utils.GenerateRecordId(withdrawAssetRecord.DateTime);
 
-            return new IClientTrade[] { depositAssetRecord, withdrawAssetRecord };
+            return new ClientTrade[] { depositAssetRecord, withdrawAssetRecord };
         }
 
         private static ClientTrade CreateCommonPartForTradeRecord(LimitQueueItem.LimitTradeInfo trade, ILimitOrder limitOrder,

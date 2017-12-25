@@ -6,7 +6,9 @@ using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Service.Assets.Client.Models;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Newtonsoft.Json;
+using TransactionStates = Lykke.Service.OperationsRepository.AutorestClient.Models.TransactionStates;
 
 namespace Lykke.Job.TransactionHandler.Queues.Models
 {
@@ -110,11 +112,11 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
     public static class Ext
     {
-        public static IClientTrade[] GetTradeRecords(this TradeQueueItem.TradeInfo trade, IMarketOrder marketOrder,
+        public static ClientTrade[] GetTradeRecords(this TradeQueueItem.TradeInfo trade, IMarketOrder marketOrder,
             string btcTransactionId, IWalletCredentials walletCredentialsMarket,
             IWalletCredentials walletCredentialsLimit)
         {
-            var result = new List<IClientTrade>();
+            var result = new List<ClientTrade>();
 
             result.AddRange(CreateTradeRecordsForClient(trade, marketOrder, btcTransactionId, walletCredentialsMarket, walletCredentialsLimit, true));
             result.AddRange(CreateTradeRecordsForClient(trade, marketOrder, btcTransactionId, walletCredentialsMarket, walletCredentialsLimit, false));
@@ -122,14 +124,14 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             return result.ToArray();
         }
 
-        private static IClientTrade[] CreateTradeRecordsForClientWithVolumes(TradeQueueItem.TradeInfo trade, IMarketOrder marketOrder,
+        private static ClientTrade[] CreateTradeRecordsForClientWithVolumes(TradeQueueItem.TradeInfo trade, IMarketOrder marketOrder,
             string btcTransactionId, IWalletCredentials walletCredentialsMarket, IWalletCredentials walletCredentialsLimit,
             bool isMarketClient, double marketVolume, double limitVolume)
         {
             var clientId = isMarketClient ? walletCredentialsMarket?.ClientId : walletCredentialsLimit?.ClientId;
 
             if (!isMarketClient && string.IsNullOrWhiteSpace(clientId))
-                return new IClientTrade[0];
+                return new ClientTrade[0];
 
             clientId = clientId ?? marketOrder.ClientId;
 
@@ -153,10 +155,10 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             marketAssetRecord.Id = Utils.GenerateRecordId(marketAssetRecord.DateTime);
             limitAssetRecord.Id = Utils.GenerateRecordId(limitAssetRecord.DateTime);
 
-            return new IClientTrade[] { marketAssetRecord, limitAssetRecord };
+            return new ClientTrade[] { marketAssetRecord, limitAssetRecord };
         }
 
-        private static IClientTrade[] CreateTradeRecordsForClient(TradeQueueItem.TradeInfo trade, IMarketOrder marketOrder,
+        private static ClientTrade[] CreateTradeRecordsForClient(TradeQueueItem.TradeInfo trade, IMarketOrder marketOrder,
             string btcTransactionId, IWalletCredentials walletCredentialsMarket, IWalletCredentials walletCredentialsLimit,
             bool isMarketClient)
         {
@@ -177,7 +179,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             };
         }
 
-        public static IClientTrade[] ToDomainOffchain(this TradeQueueItem item, IWalletCredentials walletCredentialsMarket, IWalletCredentials walletCredentialsLimit,
+        public static ClientTrade[] ToDomainOffchain(this TradeQueueItem item, IWalletCredentials walletCredentialsMarket, IWalletCredentials walletCredentialsLimit,
             IReadOnlyCollection<Asset> assets)
         {
             var trade = item.Trades[0];
@@ -185,7 +187,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             var marketVolume = item.Trades.Sum(x => x.MarketVolume);
             var limitVolume = item.Trades.Sum(x => x.LimitVolume);
 
-            var result = new List<IClientTrade>();
+            var result = new List<ClientTrade>();
 
             result.AddRange(CreateTradeRecordsForClientWithVolumes(trade, item.Order, item.Order.Id, walletCredentialsMarket, walletCredentialsLimit, true, marketVolume, limitVolume));
 

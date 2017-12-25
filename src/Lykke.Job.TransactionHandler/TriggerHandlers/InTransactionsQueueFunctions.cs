@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Common;
+using Lykke.Bitcoin.Api.Client.BitcoinApi;
+using Lykke.Bitcoin.Api.Client.BitcoinApi.Models;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Services.BitCoin.BitCoinApi;
-using Lykke.Job.TransactionHandler.Core.Services.BitCoin.BitCoinApi.Models;
 using Lykke.JobTriggers.Triggers.Attributes;
 
 namespace Lykke.Job.TransactionHandler.TriggerHandlers
@@ -57,8 +57,8 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         {
             var request = new SwapData
             {
-                Amount1 = cmd.Amount1,
-                Amount2 = cmd.Amount2,
+                Amount1 = (decimal)cmd.Amount1,
+                Amount2 = (decimal)cmd.Amount2,
                 AssetId1 = cmd.Asset1,
                 AssetId2 = cmd.Asset2,
                 Multisig1 = cmd.MultisigCustomer1,
@@ -79,7 +79,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             {
                 Address = cmd.Address,
                 AssetId = cmd.AssetId,
-                Amount = cmd.Amount,
+                Amount = (decimal)cmd.Amount,
                 TransactionId = cmd.TransactionId
             };
 
@@ -115,7 +115,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 TransactionId = cmd.TransactionId,
                 SourceAddress = cmd.SourceAddress,
                 DestinationAddress = cmd.DestinationAddress,
-                Amount = cmd.Amount,
+                Amount = (decimal)cmd.Amount,
                 AssetId = cmd.AssetId
             };
 
@@ -131,7 +131,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             {
                 SourceAddress = cmd.SourceAddress,
                 DestinationAddress = cmd.DestinationAddress,
-                Amount = cmd.Amount,
+                Amount = (decimal)cmd.Amount,
                 AssetId = cmd.AssetId,
                 TransactionId = cmd.TransactionId
             };
@@ -148,7 +148,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             {
                 TransactionId = cmd.TransactionId,
                 Address = cmd.Multisig,
-                Amount = cmd.Amount,
+                Amount = (decimal)cmd.Amount,
                 AssetId = cmd.AssetId
             };
 
@@ -158,7 +158,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             await ProcessBitcoinApiResponse(reqMsg, BitCoinCommands.Issue, response, cmd.Context);
         }
 
-        private async Task<TransactionRepsonse> ProcessBitcoinApiResponse(string request, string commandType, OnchainResponse response, string contextData, Guid? existingTxId = null)
+        private async Task<TransactionResponse> ProcessBitcoinApiResponse(string request, string commandType, OnchainResponse response, string contextData, Guid? existingTxId = null)
         {
             var id = Guid.NewGuid().ToString();
 
@@ -173,7 +173,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             }
 
             await _bitcoinTransactionService.SetStringTransactionContext(id, contextData);
-
+            
             return response.Transaction;
         }
     }

@@ -2,23 +2,29 @@ using System;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
-using Lykke.EthereumCoreClient;
-using Lykke.EthereumCoreClient.Models;
 using Lykke.Service.Assets.Client.Models;
 using Nethereum.Util;
 using ErrorResponse = Lykke.Job.TransactionHandler.Core.Services.Ethereum.ErrorResponse;
+using System.Numerics;
+using Lykke.Service.Assets.Client;
+using System.Collections.Generic;
+using System.Linq;
+using Lykke.Service.EthereumCore.Client.Models;
+using Lykke.Service.EthereumCore.Client;
 
 namespace Lykke.Job.TransactionHandler.Services.Ethereum
 {
     public class SrvEthereumHelper : ISrvEthereumHelper
     {
         private readonly IEthereumApi _ethereumApi;
+        private readonly IAssetsService _assetsService;
         private readonly AddressUtil _addressUtil;
 
-        public SrvEthereumHelper(IEthereumApi ethereumApi)
+        public SrvEthereumHelper(IEthereumApi ethereumApi, Lykke.Service.Assets.Client.IAssetsService assetsService)
         {
             _addressUtil = new AddressUtil();
             _ethereumApi = ethereumApi;
+            _assetsService = assetsService;
         }
 
         public bool IsValidAddress(string address)
@@ -299,6 +305,37 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             }
 
             throw new Exception("Unknown response");
+        }
+
+        public async Task<EthereumResponse<bool>> HotWalletCashoutAsync(string opId, string fromAddress,
+             string toAddress, decimal amount, Asset asset)
+        {
+            var token = await _assetsService.Erc20TokenGetBySpecificationAsync(new Erc20TokenSpecification(new List<string>() { asset.Id }));
+            var tokenAddress = token?.Items?.FirstOrDefault()?.Address;
+
+            if (string.IsNullOrEmpty(tokenAddress))
+            {
+                throw new Exception("Can't perform cashout on empty token");
+            }
+
+            var response = await _ethereumApi.ApiHotWalletPostAsync(new HotWalletCashoutRequest(opId,
+            fromAddress,
+            toAddress,
+            EthServiceHelpers.ConvertToContract(amount, asset.MultiplierPower, asset.Accuracy),
+            tokenAddress));
+
+            if (response != null)
+            {
+                return new EthereumResponse<bool>
+                {
+                    Error = new ErrorResponse { Code = response.Error.Code, Message = response.Error.Message }
+                };
+            }
+
+            return new EthereumResponse<bool>
+            {
+                Result = true
+            };
         }
     }
 }
