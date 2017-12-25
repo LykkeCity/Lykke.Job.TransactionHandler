@@ -56,6 +56,8 @@ using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
+using Lykke.Job.TransactionHandler.AzureRepositories.Fee;
+using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Services.Http;
 using Lykke.Job.TransactionHandler.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Services.Messages.Email;
@@ -293,6 +295,10 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterInstance(new BitcoinTransactionContextBlobStorage(AzureBlobStorage.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString))))
                 .As<IBitcoinTransactionContextBlobStorage>();
+
+            builder.RegisterInstance<IFeeLogRepository>(
+                new FeeLogRepository(AzureTableStorage<FeeLogEntity>.Create(
+                    _dbSettingsManager.ConnectionString(x => x.FeeLogsConnString), "OrdersFeeLog", _log)));
         }
 
         private void BindRabbitMq(ContainerBuilder builder)

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
@@ -98,6 +99,14 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
             [JsonProperty("limitAsset")]
             public string LimitAsset { get; set; }
+
+            [CanBeNull]
+            [JsonProperty("feeInstruction")]
+            public FeeInstruction FeeInstruction { get; set; }
+
+            [CanBeNull]
+            [JsonProperty("feeTransfer")]
+            public FeeTransfer FeeTransfer { get; set; }
         }
     }
 
