@@ -472,15 +472,15 @@ namespace Lykke.Job.TransactionHandler.Queues
                     Volume = operation.Amount
                 }, false);
 
-                var res = await _srvEthereumHelper.SendTransferAsync(transferId, string.Empty, asset,
-                    _settings.HotwalletAddress, toAddress, operation.Amount);
+                //var res = await _srvEthereumHelper.SendTransferAsync(transferId, string.Empty, asset,
+                //    _settings.HotwalletAddress, toAddress, operation.Amount);
 
-                if (res.HasError)
-                {
-                    errMsg = res.Error.ToJson();
+                //if (res.HasError)
+                //{
+                //    errMsg = res.Error.ToJson();
 
-                    await _log.WriteWarningAsync(nameof(TradeQueue), nameof(ProcessEthGuaranteeTransfer), errMsg, string.Empty);
-                }
+                //    await _log.WriteWarningAsync(nameof(TradeQueue), nameof(ProcessEthGuaranteeTransfer), errMsg, string.Empty);
+                //}
             }
             catch (Exception e)
             {
@@ -509,28 +509,27 @@ namespace Lykke.Job.TransactionHandler.Queues
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(ethereumTxRequest.AssetId);
             try
             {
-                var fromAddress = await _bcnClientCredentialsRepository.GetAsync(ethereumTxRequest.ClientId, asset.Id);
+                //var fromAddress = await _bcnClientCredentialsRepository.GetAsync(ethereumTxRequest.ClientId, asset.Id);
 
-                EthereumResponse<OperationResponse> res;
-                var minAmountForAsset = (decimal)Math.Pow(10, -asset.Accuracy);
-                if (change > 0 && Math.Abs(change) >= minAmountForAsset)
-                {
-                    res = await _srvEthereumHelper.SendTransferWithChangeAsync(change,
-                        ethereumTxRequest.SignedTransfer.Sign, ethereumTxRequest.SignedTransfer.Id,
-                        asset, fromAddress.Address, _settings.HotwalletAddress, ethereumTxRequest.Volume);
-                }
-                else
-                {
-                    res = await _srvEthereumHelper.SendTransferAsync(ethereumTxRequest.SignedTransfer.Id, ethereumTxRequest.SignedTransfer.Sign,
-                        asset, fromAddress.Address, _settings.HotwalletAddress, ethereumTxRequest.Volume);
-                }
+                //EthereumResponse<OperationResponse> res;
+                //var minAmountForAsset = (decimal)Math.Pow(10, -asset.Accuracy);
+                //if (change > 0 && Math.Abs(change) >= minAmountForAsset)
+                //{
+                //    res = await _srvEthereumHelper.SendTransferWithChangeAsync(change,
+                //        ethereumTxRequest.SignedTransfer.Sign, ethereumTxRequest.SignedTransfer.Id,
+                //        asset, fromAddress.Address, _settings.HotwalletAddress, ethereumTxRequest.Volume);
+                //}
+                //else
+                //{
+                //    res = await _srvEthereumHelper.SendTransferAsync(ethereumTxRequest.SignedTransfer.Id, ethereumTxRequest.SignedTransfer.Sign,
+                //        asset, fromAddress.Address, _settings.HotwalletAddress, ethereumTxRequest.Volume);
+                //}
 
-                if (res.HasError)
-                {
-                    errMsg = res.Error.ToJson();
-                    await _log.WriteWarningAsync(nameof(TradeQueue), nameof(ProcessEthGuaranteeTransfer), errMsg, string.Empty);
-                }
-
+                //if (res.HasError)
+                //{
+                //    errMsg = res.Error.ToJson();
+                //    await _log.WriteWarningAsync(nameof(TradeQueue), nameof(ProcessEthGuaranteeTransfer), errMsg, string.Empty);
+                //}
 
                 var trades = await _clientTradesRepositoryClient.GetByOrderAsync(orderId);
                 ethereumTxRequest.OperationIds =

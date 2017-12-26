@@ -346,17 +346,18 @@ namespace Lykke.Job.TransactionHandler.Queues
                 {
                     try
                     {
-                        var address = await _bcnClientCredentialsRepository.GetClientAddress(msg.ClientId);
-                        var txRequest =
-                            await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transaction.TransactionId));
+                        var txId = Guid.Parse(transaction.TransactionId);
+                        var address = _settings.HotwalletAddress;
+                        //var txRequest =
+                        //    await _ethereumTransactionRequestRepository.GetAsync();
 
-                        txRequest.OperationIds = new[] { cashOperationId };
-                        await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
+                        //txRequest.OperationIds = new[] { cashOperationId };
+                        //await _ethereumTransactionRequestRepository.UpdateAsync();
 
-                        var response = await _srvEthereumHelper.SendCashOutAsync(txRequest.Id,
-                            txRequest.SignedTransfer.Sign,
-                            asset, address, txRequest.AddressTo,
-                            txRequest.Volume);
+                        var response = await _srvEthereumHelper.SendCashOutAsync(txId,
+                            null,
+                            asset, address, context.Address,
+                            (decimal)Math.Abs(amount));
 
                         if (response.HasError)
                             errMsg = response.Error.ToJson();
