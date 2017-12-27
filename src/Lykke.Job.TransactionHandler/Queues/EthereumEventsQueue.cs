@@ -281,15 +281,13 @@ namespace Lykke.Job.TransactionHandler.Queues
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(bcnCreds.AssetId);
             var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
 
-            await _ethererumPendingActionsRepository.CreateAsync(bcnCreds.ClientId, Guid.NewGuid().ToString());
-
             await HandleCashInOperation(asset, (double)amount, bcnCreds.ClientId, bcnCreds.Address,
-                queueMessage.TransactionHash);
+                queueMessage.TransactionHash, createPendingActions: true);
 
             return true;
         }
 
-        public async Task HandleCashInOperation(Asset asset, double amount, string clientId, string clientAddress, string hash)
+        public async Task HandleCashInOperation(Asset asset, double amount, string clientId, string clientAddress, string hash, bool createPendingActions = false)
         {
             var id = Guid.NewGuid().ToString("N");
 
@@ -303,6 +301,11 @@ namespace Lykke.Job.TransactionHandler.Queues
                         "Transaction already handled");
                 //return if was handled previously
                 return;
+            }
+
+            if (createPendingActions)
+            {
+                await _ethererumPendingActionsRepository.CreateAsync(clientId, Guid.NewGuid().ToString());
             }
 
             var result = await _matchingEngineClient.CashInOutAsync(id, clientId, asset.Id, amount);
