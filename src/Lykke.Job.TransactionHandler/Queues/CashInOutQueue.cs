@@ -348,11 +348,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                     {
                         var txId = Guid.Parse(transaction.TransactionId);
                         var address = _settings.HotwalletAddress;
-                        //var txRequest =
-                        //    await _ethereumTransactionRequestRepository.GetAsync();
-
-                        //txRequest.OperationIds = new[] { cashOperationId };
-                        //await _ethereumTransactionRequestRepository.UpdateAsync();
 
                         var response = await _srvEthereumHelper.SendCashOutAsync(txId,
                             null,
