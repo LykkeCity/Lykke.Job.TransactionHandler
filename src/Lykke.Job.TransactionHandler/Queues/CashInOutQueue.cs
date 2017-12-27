@@ -350,7 +350,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                         var address = _settings.HotwalletAddress;
 
                         var response = await _srvEthereumHelper.SendCashOutAsync(txId,
-                            null,
+                            "",
                             asset, address, context.Address,
                             (decimal)Math.Abs(amount));
 
