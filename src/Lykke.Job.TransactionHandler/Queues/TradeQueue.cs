@@ -288,6 +288,31 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             try
             {
+                var fromAddress = await _bcnClientCredentialsRepository.GetClientAddress(ethereumTxRequest.ClientId);
+                var clientEthSellOperation =
+                    operations.First(x => x.Amount < 0 && x.ClientId == ethereumTxRequest.ClientId);
+                var change = ethereumTxRequest.Volume - Math.Abs(clientEthSellOperation.Amount);
+
+                EthereumResponse<OperationResponse> res;
+                var minAmountForAsset = (decimal)Math.Pow(10, -asset.Accuracy);
+                if (change > 0 && Math.Abs(change) >= minAmountForAsset)
+                {
+                    res = await _srvEthereumHelper.SendTransferWithChangeAsync(change,
+                        ethereumTxRequest.SignedTransfer.Sign, ethereumTxRequest.SignedTransfer.Id,
+                        asset, fromAddress, _settings.HotwalletAddress, ethereumTxRequest.Volume);
+                }
+                else
+                {
+                    res = await _srvEthereumHelper.SendTransferAsync(ethereumTxRequest.SignedTransfer.Id, ethereumTxRequest.SignedTransfer.Sign,
+                        asset, fromAddress, _settings.HotwalletAddress, ethereumTxRequest.Volume);
+                }
+
+                if (res.HasError)
+                {
+                    errMsg = res.Error.ToJson();
+                    await _log.WriteWarningAsync(nameof(TradeQueue), nameof(ProcessEthGuaranteeTransfer), errMsg, string.Empty);
+                }
+
                 ethereumTxRequest.OperationIds =
                     clientTrades.Where(x => x.ClientId == ethereumTxRequest.ClientId && x.Amount < 0)
                         .Select(x => x.Id)
