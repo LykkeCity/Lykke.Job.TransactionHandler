@@ -70,7 +70,12 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthClientEventLogs ethClientEventLogs,
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
-            AppSettings.EthereumSettings settings, IClientAccountClient clientAccountClient, ISrvEmailsFacade srvEmailsFacade, ISrvSolarCoinHelper srvSolarCoinHelper, IChronoBankService chronoBankService, IBitcoinApiClient bitcoinApiClient)
+            AppSettings.EthereumSettings settings,
+            IClientAccountClient clientAccountClient, 
+            ISrvEmailsFacade srvEmailsFacade,
+            ISrvSolarCoinHelper srvSolarCoinHelper, 
+            IChronoBankService chronoBankService, 
+            IBitcoinApiClient bitcoinApiClient)
         {
             _rabbitConfig = config;
             _log = log;
