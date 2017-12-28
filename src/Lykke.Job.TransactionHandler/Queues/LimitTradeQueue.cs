@@ -76,17 +76,17 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
             IEthClientEventLogs ethClientEventLogs,
-            ILimitOrdersRepository limitOrdersRepository, 
+            ILimitOrdersRepository limitOrdersRepository,
             ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient,
             IClientSettingsRepository clientSettingsRepository,
-            IAppNotifications appNotifications, 
+            IAppNotifications appNotifications,
             IClientAccountClient clientAccountClient,
-            IOffchainOrdersRepository offchainOrdersRepository, 
+            IOffchainOrdersRepository offchainOrdersRepository,
             IClientCacheRepository clientCacheRepository,
-            IBitcoinTransactionService bitcoinTransactionService, 
+            IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
-			IFeeLogRepository feeLogRepository)
+            IFeeLogRepository feeLogRepository)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -453,6 +453,11 @@ namespace Lykke.Job.TransactionHandler.Queues
             string errMsg = string.Empty;
             var transferId = Guid.NewGuid();
 
+            if (asset.IsTrusted)
+            {
+                return;
+            }
+
             try
             {
                 var toAddress = await _bcnClientCredentialsRepository.GetClientAddress(operation.ClientId);
@@ -471,6 +476,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     OrderId = orderId,
                     Volume = operation.Amount
                 }, false);
+
             }
             catch (Exception e)
             {
@@ -497,8 +503,36 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var errMsg = string.Empty;
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(ethereumTxRequest.AssetId);
+
+            if (asset.IsTrusted)
+            {
+                return true;
+            }
+
             try
             {
+                var fromAddress = await _bcnClientCredentialsRepository.GetAsync(ethereumTxRequest.ClientId, asset.Id);
+
+                EthereumResponse<OperationResponse> res;
+                var minAmountForAsset = (decimal)Math.Pow(10, -asset.Accuracy);
+                if (change > 0 && Math.Abs(change) >= minAmountForAsset)
+                {
+                    res = await _srvEthereumHelper.SendTransferWithChangeAsync(change,
+                        ethereumTxRequest.SignedTransfer.Sign, ethereumTxRequest.SignedTransfer.Id,
+                        asset, fromAddress.Address, _settings.HotwalletAddress, ethereumTxRequest.Volume);
+                }
+                else
+                {
+                    res = await _srvEthereumHelper.SendTransferAsync(ethereumTxRequest.SignedTransfer.Id, ethereumTxRequest.SignedTransfer.Sign,
+                        asset, fromAddress.Address, _settings.HotwalletAddress, ethereumTxRequest.Volume);
+                }
+
+                if (res.HasError)
+                {
+                    errMsg = res.Error.ToJson();
+                    await _log.WriteWarningAsync(nameof(TradeQueue), nameof(ProcessEthGuaranteeTransfer), errMsg, string.Empty);
+                }
+
                 var trades = await _clientTradesRepositoryClient.GetByOrderAsync(orderId);
                 ethereumTxRequest.OperationIds =
                     trades.Where(x => x.ClientId == ethereumTxRequest.ClientId && x.Amount < 0 && x.AssetId == asset.Id)

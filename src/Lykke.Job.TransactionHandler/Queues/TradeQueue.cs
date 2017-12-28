@@ -68,11 +68,11 @@ namespace Lykke.Job.TransactionHandler.Queues
             ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             AppSettings.EthereumSettings settings,
-            IEthClientEventLogs ethClientEventLogs, 
-            IBitcoinTransactionService bitcoinTransactionService, 
-            IClientAccountClient clientAccountClient, 
+            IEthClientEventLogs ethClientEventLogs,
+            IBitcoinTransactionService bitcoinTransactionService,
+            IClientAccountClient clientAccountClient,
             IAssetsServiceWithCache assetsServiceWithCache,
-			IFeeLogRepository feeLogRepository)
+            IFeeLogRepository feeLogRepository)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -151,7 +151,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             var walletCredsLimit = await _walletCredentialsRepository.GetAsync(queueMessage.Trades[0].LimitClientId);
 
             var clientTrades = queueMessage.ToDomainOffchain(walletCredsMarket, walletCredsLimit, await _assetsServiceWithCache.GetAllAssetsAsync());
-            
+
             var notify = new HashSet<string>();
             try
             {
@@ -233,6 +233,11 @@ namespace Lykke.Job.TransactionHandler.Queues
             string errMsg = string.Empty;
             var transferId = Guid.NewGuid();
 
+            if (asset.IsTrusted)
+            {
+                return;
+            }
+
             try
             {
                 var toAddress = await _bcnClientCredentialsRepository.GetClientAddress(operation.ClientId);
@@ -275,6 +280,12 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             var errMsg = string.Empty;
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(ethereumTxRequest.AssetId);
+
+            if (asset.IsTrusted)
+            {
+                return true;
+            }
+
             try
             {
                 ethereumTxRequest.OperationIds =
