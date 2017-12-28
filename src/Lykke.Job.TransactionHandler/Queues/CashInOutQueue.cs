@@ -70,7 +70,12 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthClientEventLogs ethClientEventLogs,
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
-            AppSettings.EthereumSettings settings, IClientAccountClient clientAccountClient, ISrvEmailsFacade srvEmailsFacade, ISrvSolarCoinHelper srvSolarCoinHelper, IChronoBankService chronoBankService, IBitcoinApiClient bitcoinApiClient)
+            AppSettings.EthereumSettings settings,
+            IClientAccountClient clientAccountClient, 
+            ISrvEmailsFacade srvEmailsFacade,
+            ISrvSolarCoinHelper srvSolarCoinHelper, 
+            IChronoBankService chronoBankService, 
+            IBitcoinApiClient bitcoinApiClient)
         {
             _rabbitConfig = config;
             _log = log;
@@ -346,16 +351,37 @@ namespace Lykke.Job.TransactionHandler.Queues
                 {
                     try
                     {
-                        var txId = Guid.Parse(transaction.TransactionId);
-                        var address = _settings.HotwalletAddress;
+                        if (!asset.IsTrusted)
+                        {
 
-                        var response = await _srvEthereumHelper.SendCashOutAsync(txId,
-                            "",
-                            asset, address, context.Address,
-                            (decimal)Math.Abs(amount));
+                            var address = await _bcnClientCredentialsRepository.GetClientAddress(msg.ClientId);
+                            var txRequest =
+                                await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transaction.TransactionId));
 
-                        if (response.HasError)
-                            errMsg = response.Error.ToJson();
+                            txRequest.OperationIds = new[] { cashOperationId };
+                            await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
+
+                            var response = await _srvEthereumHelper.SendCashOutAsync(txRequest.Id,
+                                txRequest.SignedTransfer.Sign,
+                                asset, address, txRequest.AddressTo,
+                                txRequest.Volume);
+
+                            if (response.HasError)
+                                errMsg = response.Error.ToJson();
+                        }
+                        else
+                        {
+                            var txId = Guid.Parse(transaction.TransactionId);
+                            var address = _settings.HotwalletAddress;
+
+                            var response = await _srvEthereumHelper.SendCashOutAsync(txId,
+                                "",
+                                asset, address, context.Address,
+                                (decimal)Math.Abs(amount));
+
+                            if (response.HasError)
+                                errMsg = response.Error.ToJson();
+                        }
                     }
                     catch (Exception e)
                     {

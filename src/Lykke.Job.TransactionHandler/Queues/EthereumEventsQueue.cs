@@ -233,6 +233,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                         await SetTransferHashes(transferTx, queueMessage.TransactionHash);
                         break;
                 }
+
+                return true;
             }
 
             if (context != null)
