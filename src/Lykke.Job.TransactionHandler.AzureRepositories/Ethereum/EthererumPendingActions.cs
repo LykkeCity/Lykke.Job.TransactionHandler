@@ -33,21 +33,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum
             };
         }
 
-        public static EthererumPendingActionEntity CreateUserAgreement(string clientId)
-        {
-            return new EthererumPendingActionEntity
-            {
-                PartitionKey = UserAgreementKey(clientId),
-                RowKey = UserAgreementKey(clientId),
-                Timestamp = DateTimeOffset.UtcNow,
-            };
-        }
-
-        public static string UserAgreementKey(string clientId)
-        {
-            return $"AgreedToTrust_{clientId}";
-        }
-
         public string ClientId => PartitionKey;
         public string OperationId => RowKey;
     }
@@ -66,21 +51,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum
             var entities = await _tableStorage.GetDataAsync(clientId);
 
             return entities?.Select(x => x.OperationId);
-        }
-
-        public async Task<bool> GetUserAgreementAsync(string clientId)
-        {
-            var key = EthererumPendingActionEntity.UserAgreementKey(clientId);
-            var agreement = await _tableStorage.GetDataAsync(key, key);
-
-            return agreement != null;
-        }
-
-        public async Task SetUserAgreementAsync(string clientId)
-        {
-            var entity = EthererumPendingActionEntity.CreateUserAgreement(clientId);
-
-            await _tableStorage.InsertAsync(entity);
         }
 
         public async Task CreateAsync(string clientId, string operationId)

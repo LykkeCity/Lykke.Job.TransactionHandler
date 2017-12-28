@@ -9,10 +9,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
     {
         Task<IEnumerable<string>> GetPendingAsync(string clientId);
 
-        Task<bool> GetUserAgreementAsync(string clientId);
-
-        Task SetUserAgreementAsync(string clientId);
-
         Task CreateAsync(string clientId, string operationId);
 
         Task CompleteAsync(string clientId, string operationId);
