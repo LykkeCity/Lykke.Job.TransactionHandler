@@ -477,6 +477,16 @@ namespace Lykke.Job.TransactionHandler.Queues
                     Volume = operation.Amount
                 }, false);
 
+                var res = await _srvEthereumHelper.SendTransferAsync(transferId, string.Empty, asset,
+                    _settings.HotwalletAddress, toAddress, operation.Amount);
+
+                if (res.HasError)
+                {
+                    errMsg = res.Error.ToJson();
+
+                    await _log.WriteWarningAsync(nameof(TradeQueue), nameof(ProcessEthGuaranteeTransfer), errMsg, string.Empty);
+                }
+
             }
             catch (Exception e)
             {
