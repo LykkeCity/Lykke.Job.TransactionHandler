@@ -142,7 +142,10 @@ namespace Lykke.Job.TransactionHandler.Queues
         public async Task<bool> ProcessMessage(CashInOutQueueMessage queueMessage)
         {
             if (!_deduplicator.EnsureNotDuplicate(queueMessage))
+            {
+                await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
                 return false;
+            }
 
             var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
             if (transaction == null)

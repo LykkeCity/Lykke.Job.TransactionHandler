@@ -152,7 +152,10 @@ namespace Lykke.Job.TransactionHandler.Queues
         public async Task ProcessMessage(LimitQueueItem tradeItem)
         {
             if (!_deduplicator.EnsureNotDuplicate(tradeItem))
+            {
+                await _log.WriteWarningAsync(nameof(LimitTradeQueue), nameof(ProcessMessage), tradeItem.ToJson(), "Duplicated message");
                 return;
+            }
 
             var trusted = new Dictionary<string, bool>();
             foreach (var limitOrderWithTrades in tradeItem.Orders)

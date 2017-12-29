@@ -163,7 +163,10 @@ namespace Lykke.Job.TransactionHandler.Queues
         public async Task<bool> ProcessHotWalletMessage(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
         {
             if (!_deduplicator.EnsureNotDuplicate(queueMessage))
+            {
+                await _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(ProcessHotWalletMessage), queueMessage.ToJson(), "Duplicated message");
                 return false;
+            }
 
             switch (queueMessage.EventType)
             {
@@ -185,7 +188,10 @@ namespace Lykke.Job.TransactionHandler.Queues
         public async Task<bool> ProcessMessage(CoinEvent queueMessage)
         {
             if (!_deduplicator.EnsureNotDuplicate(queueMessage))
+            {
+                await _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
                 return false;
+            }
 
             switch (queueMessage.CoinEventType)
             {

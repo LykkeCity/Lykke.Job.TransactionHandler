@@ -115,7 +115,10 @@ namespace Lykke.Job.TransactionHandler.Queues
         public async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
             if (!_deduplicator.EnsureNotDuplicate(queueMessage))
+            {
+                await _log.WriteWarningAsync(nameof(TransferQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
                 return;
+            }
 
             var logTask = _transferLogRepository.CreateAsync(queueMessage.Id, queueMessage.Date, queueMessage.FromClientId, queueMessage.ToClientid, queueMessage.AssetId, queueMessage.Amount, queueMessage.FeeSettings?.ToJson(), queueMessage.FeeData?.ToJson());
 
