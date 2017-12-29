@@ -76,6 +76,8 @@ using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
 using Lykke.Service.EthereumCore.Client;
 using Lykke.Service.OperationsRepository.Client;
+using Lykke.Job.TransactionHandler.Core.Domain.Logs;
+using Lykke.Job.TransactionHandler.AzureRepositories.Logs;
 
 namespace Lykke.Job.TransactionHandler.Modules
 {
@@ -304,6 +306,10 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance<IFeeLogRepository>(
                 new FeeLogRepository(AzureTableStorage<FeeLogEntity>.Create(
                     _dbSettingsManager.ConnectionString(x => x.FeeLogsConnString), "OrdersFeeLog", _log)));
+
+            builder.RegisterInstance<ITransferLogRepository>(
+                new TransferLogRepository(
+                    AzureTableStorage<TransferLogEntity>.Create(_dbSettingsManager.ConnectionString(x => x.LogsConnString), "TransfersFeeLog", _log)));
         }
 
         private void BindRabbitMq(ContainerBuilder builder)

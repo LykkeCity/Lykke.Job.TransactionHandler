@@ -19,6 +19,7 @@ using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.Operations.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
+using Lykke.Job.TransactionHandler.Core.Domain.Logs;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -39,7 +40,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IOperationsClient _operationsClient;
         private readonly AppSettings.EthereumSettings _settings;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-
+        private readonly ITransferLogRepository _transferLogRepository;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
 
@@ -52,7 +53,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings, 
-            IOperationsClient operationsClient, IAssetsServiceWithCache assetsServiceWithCache)
+            IOperationsClient operationsClient, IAssetsServiceWithCache assetsServiceWithCache,
+            ITransferLogRepository transferLogRepository
+            )
         {
             _rabbitConfig = config;
             _log = log;
@@ -68,6 +71,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _settings = settings;
             _operationsClient = operationsClient;
             _assetsServiceWithCache = assetsServiceWithCache;
+            _transferLogRepository = transferLogRepository;
         }
 
         public void Start()
@@ -106,7 +110,9 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
-            var amount = queueMessage.Amount.ParseAnyDouble();
+            var logTask = _transferLogRepository.CreateAsync(queueMessage.Id, queueMessage.Date, queueMessage.FromClientId, queueMessage.ToClientid, queueMessage.AssetId, queueMessage.Amount, queueMessage.FeeSettings?.ToJson(), queueMessage.FeeData?.ToJson());
+
+            var amount = queueMessage.Amount.ParseAnyDouble() - (queueMessage.FeeData?.Amount.ParseAnyDouble() ?? 0.0);
             //Get eth request if it is ETH transfer
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
 
@@ -160,6 +166,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                             IsSettled = false,
                             State = transferState
                         });
+
+            await logTask;
 
             //Craete or Update transfer context
             var transaction = await _bitCoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
