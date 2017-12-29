@@ -31,7 +31,7 @@
     <PackageReference Include="Lykke.Service.ExchangeOperations.Contracts" Version="1.0.6" />
     <PackageReference Include="Lykke.Service.Operations.Client" Version="1.0.7" />
     <PackageReference Include="Lykke.Service.PersonalData" Version="1.0.29" />
-    <PackageReference Include="Lykke.SettingsReader" Version="1.0.43" />
+    <PackageReference Include="Lykke.SettingsReader" Version="1.0.45" />
     <PackageReference Include="Lykke.SlackNotification.AzureQueue" Version="1.0.6" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics" Version="2.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.0.0" />
