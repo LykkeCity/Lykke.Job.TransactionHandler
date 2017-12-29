@@ -225,6 +225,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             {
                 switch (transferTx.OperationType)
                 {
+                    case OperationType.CashOut:
+                        await SetCashoutHashes(transferTx, queueMessage.TransactionHash);
+                        break;
                     case OperationType.Trade:
                         await SetTradeHashes(transferTx, queueMessage.TransactionHash);
                         break;
