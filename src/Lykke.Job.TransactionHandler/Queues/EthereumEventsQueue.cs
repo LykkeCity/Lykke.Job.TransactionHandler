@@ -310,7 +310,10 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             if (createPendingActions)
             {
-                await _ethererumPendingActionsRepository.CreateAsync(clientId, Guid.NewGuid().ToString());
+                if (asset.IsTrusted)
+                {
+                    await _ethererumPendingActionsRepository.CreateAsync(clientId, Guid.NewGuid().ToString());
+                }
             }
 
             var result = await _matchingEngineClient.CashInOutAsync(id, clientId, asset.Id, amount);
