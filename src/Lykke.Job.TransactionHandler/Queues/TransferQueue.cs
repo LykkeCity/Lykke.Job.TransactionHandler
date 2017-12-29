@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
@@ -20,6 +21,7 @@ using Lykke.Service.Operations.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Logs;
+using Lykke.Job.TransactionHandler.Core.Services;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -41,6 +43,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly AppSettings.EthereumSettings _settings;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly ITransferLogRepository _transferLogRepository;
+        private readonly IDeduplicator _deduplicator;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
 
@@ -54,8 +57,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings, 
             IOperationsClient operationsClient, IAssetsServiceWithCache assetsServiceWithCache,
-            ITransferLogRepository transferLogRepository
-            )
+            ITransferLogRepository transferLogRepository,
+            [NotNull] IDeduplicator deduplicator)
         {
             _rabbitConfig = config;
             _log = log;
@@ -72,6 +75,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _operationsClient = operationsClient;
             _assetsServiceWithCache = assetsServiceWithCache;
             _transferLogRepository = transferLogRepository;
+            _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
         }
 
         public void Start()
@@ -110,6 +114,9 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
+            if (!_deduplicator.EnsureNotDuplicate(queueMessage))
+                return;
+
             var logTask = _transferLogRepository.CreateAsync(queueMessage.Id, queueMessage.Date, queueMessage.FromClientId, queueMessage.ToClientid, queueMessage.AssetId, queueMessage.Amount, queueMessage.FeeSettings?.ToJson(), queueMessage.FeeData?.ToJson());
 
             var amount = queueMessage.Amount.ParseAnyDouble() - (queueMessage.FeeData?.Amount.ParseAnyDouble() ?? 0.0);

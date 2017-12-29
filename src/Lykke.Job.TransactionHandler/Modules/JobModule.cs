@@ -212,6 +212,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
 
             builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
+
+            builder.RegisterType<InMemoryDeduplicator>().As<IDeduplicator>().SingleInstance();
         }
 
         private void BindRepositories(ContainerBuilder builder)

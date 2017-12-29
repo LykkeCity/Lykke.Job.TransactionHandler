@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
@@ -12,6 +13,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
+using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
@@ -62,6 +64,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IFeeLogRepository _feeLogRepository;
+        private readonly IDeduplicator _deduplicator;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<LimitQueueItem> _subscriber;
@@ -86,7 +89,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IClientCacheRepository clientCacheRepository,
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
-            IFeeLogRepository feeLogRepository)
+            IFeeLogRepository feeLogRepository,
+            [NotNull] IDeduplicator deduplicator)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -108,6 +112,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _bitcoinTransactionService = bitcoinTransactionService;
             _assetsServiceWithCache = assetsServiceWithCache;
             _feeLogRepository = feeLogRepository;
+            _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
         }
 
         public void Start()
@@ -146,6 +151,9 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task ProcessMessage(LimitQueueItem tradeItem)
         {
+            if (!_deduplicator.EnsureNotDuplicate(tradeItem))
+                return;
+
             var trusted = new Dictionary<string, bool>();
             foreach (var limitOrderWithTrades in tradeItem.Orders)
             {
