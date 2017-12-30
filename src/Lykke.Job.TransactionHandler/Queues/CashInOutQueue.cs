@@ -55,6 +55,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IChronoBankService _chronoBankService;
         private readonly IBitcoinApiClient _bitcoinApiClient;
         private readonly IDeduplicator _deduplicator;
+        private readonly IBitcoinCashinRepository _bitcoinCashinTypeRepository;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CashInOutQueueMessage> _subscriber;
@@ -79,7 +80,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             ISrvSolarCoinHelper srvSolarCoinHelper,
             IChronoBankService chronoBankService,
             IBitcoinApiClient bitcoinApiClient,
-            [NotNull] IDeduplicator deduplicator)
+            [NotNull] IDeduplicator deduplicator, IBitcoinCashinRepository bitcoinCashinTypeRepository)
         {
             _rabbitConfig = config;
             _log = log;
@@ -102,6 +103,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _srvSolarCoinHelper = srvSolarCoinHelper;
             _chronoBankService = chronoBankService;
             _bitcoinApiClient = bitcoinApiClient;
+            _bitcoinCashinTypeRepository = bitcoinCashinTypeRepository;
             _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
         }
 
@@ -494,7 +496,14 @@ namespace Lykke.Job.TransactionHandler.Queues
             if (asset.Id == LykkeConstants.BitcoinAssetId)
             {
                 var amount = msg.Amount.ParseAnyDouble();
-                await _offchainRequestService.CreateOffchainRequestAndNotify(Guid.NewGuid().ToString(), msg.ClientId, msg.AssetId, (decimal)amount, null, OffchainTransferType.TrustedCashout);
+
+                var cashinType = await _bitcoinCashinTypeRepository.GetAsync(msg.Id);
+
+                if (cashinType == null || !cashinType.IsSegwit)
+                    await _offchainRequestService.CreateOffchainRequestAndNotify(msg.Id, msg.ClientId, msg.AssetId,
+                        (decimal) amount, null, OffchainTransferType.TrustedCashout);
+                else
+                    await _bitcoinApiClient.SegwitTransfer(Guid.Parse(msg.Id), cashinType.Address);
             }
 
             return true;

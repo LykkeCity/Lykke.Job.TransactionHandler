@@ -263,6 +263,11 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new EthereumTransactionRequestRepository(
                     AzureTableStorage<EthereumTransactionReqEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "EthereumTxRequest", _log)));
 
+            builder.RegisterInstance<IBitcoinCashinRepository>(
+                new BitcoinCashinRepository(
+                    AzureTableStorage<BitcoinCashinEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "BitcoinCashin", _log)));
+
             builder.RegisterInstance<IMarketOrdersRepository>(
                 new MarketOrdersRepository(AzureTableStorage<MarketOrderEntity>.Create(_dbSettingsManager.ConnectionString(x => x.HMarketOrdersConnString), "MarketOrders", _log)));
 
