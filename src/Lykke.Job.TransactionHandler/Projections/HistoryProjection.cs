@@ -1,4 +1,4 @@
-﻿namespace Lykke.Job.TransactionHandler.Queues.Messaging
+﻿namespace Lykke.Job.TransactionHandler.Projections
 {
     public class HistoryProjection
     {

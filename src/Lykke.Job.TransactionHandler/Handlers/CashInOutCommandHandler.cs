@@ -2,7 +2,6 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using JetBrains.Annotations;
 using Lykke.Bitcoin.Api.Client.BitcoinApi;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core;
@@ -12,7 +11,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
-using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
@@ -26,8 +24,9 @@ using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
+using Lykke.Job.TransactionHandler.Commands;
 
-namespace Lykke.Job.TransactionHandler.Queues.Messaging
+namespace Lykke.Job.TransactionHandler.Handlers
 {
     public class CashInOutCommandHandler
     {
@@ -174,7 +173,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Messaging
             }
             catch (Exception e)
             {
-                await _log.WriteErrorAsync(nameof(CashInOutQueue), nameof(ProcessManualOperation), null, e);
+                await _log.WriteErrorAsync(nameof(CashInOutCommandHandler), nameof(ProcessManualOperation), null, e);
                 return false;
             }
 

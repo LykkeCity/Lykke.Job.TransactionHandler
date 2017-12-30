@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Autofac;
 using Common.Log;
 using Inceptum.Cqrs.Configuration;
 using Inceptum.Messaging;
 using Inceptum.Messaging.RabbitMq;
 using Lykke.Cqrs;
-using Lykke.Job.TransactionHandler.Queues.Messaging;
+using Lykke.Job.TransactionHandler.Projections;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Messaging;
 using Lykke.SettingsReader;
