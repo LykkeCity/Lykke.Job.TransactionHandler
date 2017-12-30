@@ -151,7 +151,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task ProcessMessage(LimitQueueItem tradeItem)
         {
-            if (!_deduplicator.EnsureNotDuplicate(tradeItem))
+            if (!await _deduplicator.EnsureNotDuplicateAsync(tradeItem))
             {
                 await _log.WriteWarningAsync(nameof(LimitTradeQueue), nameof(ProcessMessage), tradeItem.ToJson(), "Duplicated message");
                 return;

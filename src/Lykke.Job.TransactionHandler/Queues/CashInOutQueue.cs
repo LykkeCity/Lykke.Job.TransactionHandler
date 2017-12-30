@@ -74,10 +74,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
             AppSettings.EthereumSettings settings,
-            IClientAccountClient clientAccountClient, 
+            IClientAccountClient clientAccountClient,
             ISrvEmailsFacade srvEmailsFacade,
-            ISrvSolarCoinHelper srvSolarCoinHelper, 
-            IChronoBankService chronoBankService, 
+            ISrvSolarCoinHelper srvSolarCoinHelper,
+            IChronoBankService chronoBankService,
             IBitcoinApiClient bitcoinApiClient,
             [NotNull] IDeduplicator deduplicator)
         {
@@ -141,7 +141,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(CashInOutQueueMessage queueMessage)
         {
-            if (!_deduplicator.EnsureNotDuplicate(queueMessage))
+            if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
             {
                 await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
                 return false;

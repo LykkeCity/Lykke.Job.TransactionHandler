@@ -1,7 +1,9 @@
-﻿namespace Lykke.Job.TransactionHandler.Core.Services
+﻿using System.Threading.Tasks;
+
+namespace Lykke.Job.TransactionHandler.Core.Services
 {
     public interface IDeduplicator
     {
-        bool EnsureNotDuplicate(object key);
+        Task<bool> EnsureNotDuplicateAsync(object key);
     }
 }

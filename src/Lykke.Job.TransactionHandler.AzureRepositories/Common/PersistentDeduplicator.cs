@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.Common;
 using Lykke.Job.TransactionHandler.Core.Services;
@@ -15,11 +16,11 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Common
             _blobRepository = blobRepository ?? throw new ArgumentNullException(nameof(blobRepository));
         }
 
-        public bool EnsureNotDuplicate(object value)
+        public async Task<bool> EnsureNotDuplicateAsync(object value)
         {
             try
             {
-                var key = _blobRepository.Insert(value).Result;
+                var key = await _blobRepository.Insert(value);
                 return true;
             }
             catch (Microsoft.WindowsAzure.Storage.StorageException exception)

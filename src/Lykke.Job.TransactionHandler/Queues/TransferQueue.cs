@@ -55,7 +55,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ISrvEthereumHelper srvEthereumHelper,
-            IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings, 
+            IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings,
             IOperationsClient operationsClient, IAssetsServiceWithCache assetsServiceWithCache,
             ITransferLogRepository transferLogRepository,
             [NotNull] IDeduplicator deduplicator)
@@ -114,7 +114,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
-            if (!_deduplicator.EnsureNotDuplicate(queueMessage))
+            if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
             {
                 await _log.WriteWarningAsync(nameof(TransferQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
                 return;
@@ -220,7 +220,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
 
-            if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value 
+            if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value
                         && asset.Blockchain == Blockchain.Bitcoin
                         && !asset.IsTrusted)
             {
@@ -259,7 +259,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             else
             {
                 await _operationsClient.Complete(new Guid(transaction.TransactionId));
-            }            
+            }
         }
 
         private async Task ProcessEthTransferTrustedWallet(IEthereumTransactionRequest txRequest, TransferType transferType)
@@ -304,13 +304,13 @@ namespace Lykke.Job.TransactionHandler.Queues
                     await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), ethResponse.Error.ToJson(), null);
                     return;
                 }
-                
-                await _operationsClient.Complete(transferId);                
+
+                await _operationsClient.Complete(transferId);
             }
             catch (Exception e)
             {
-                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), e.Message, e);                
-            }            
+                await _log.WriteErrorAsync(nameof(TransferQueue), nameof(ProcessEthTransferTrustedWallet), e.Message, e);
+            }
         }
 
         public void Dispose()
