@@ -69,6 +69,7 @@ namespace Lykke.Job.TransactionHandler
                 Log = CreateLogWithSlack(services, appSettings);
 
                 builder.RegisterModule(new JobModule(appSettings.CurrentValue, appSettings.Nested(x => x.TransactionHandlerJob.Db), Log));
+                builder.RegisterModule(new CqrsModule(appSettings, Log));
 
                 if (string.IsNullOrWhiteSpace(appSettings.CurrentValue.TransactionHandlerJob.Db.BitCoinQueueConnectionString))
                 {

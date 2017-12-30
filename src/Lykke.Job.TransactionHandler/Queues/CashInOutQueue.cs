@@ -153,7 +153,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
             {
                 await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
-                return false;
+                return;
             }
 
             var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
@@ -212,6 +212,11 @@ namespace Lykke.Job.TransactionHandler.Queues
                             await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), $"Unknown command type (value = [{transaction.CommandType}])");   
                             break;                            
                     }
+                }
+                catch (Exception ex)
+                {
+                    await _log.WriteErrorAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), ex);
+                    return;
                 }
             }            
         }        
