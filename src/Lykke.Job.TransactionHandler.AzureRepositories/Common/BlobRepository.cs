@@ -34,7 +34,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Common
         private static BlobEntity CreateEntity(object value)
         {
             var content = NetJSON.NetJSON.Serialize(value);
-            var key = HashAlgorithm.ComputeHash(content.ToUtf8Bytes()).ToBase64();
+            var key = HashAlgorithm.ComputeHash(content.ToUtf8Bytes()).ToHexString();
             return new BlobEntity
             {
                 PartitionKey = value.GetType().Name,
