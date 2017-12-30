@@ -141,8 +141,8 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             withdrawAssetRecord.Amount = -1 * limitVolume;
             withdrawAssetRecord.AssetId = trade.Asset;
 
-            depositAssetRecord.Id = Utils.GenerateRecordId(depositAssetRecord.DateTime);
-            withdrawAssetRecord.Id = Utils.GenerateRecordId(withdrawAssetRecord.DateTime);
+            depositAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(depositAssetRecord.DateTime);
+            withdrawAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(withdrawAssetRecord.DateTime);
 
             return new ClientTrade[] { depositAssetRecord, withdrawAssetRecord };
         }

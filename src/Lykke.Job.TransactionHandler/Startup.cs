@@ -7,6 +7,7 @@ using AzureStorage.Tables;
 using Common.Log;
 using Lykke.Common.ApiLibrary.Middleware;
 using Lykke.Common.ApiLibrary.Swagger;
+using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Models;
 using Lykke.Job.TransactionHandler.Modules;
 using Lykke.Job.TransactionHandler.Queues;
@@ -128,6 +129,8 @@ namespace Lykke.Job.TransactionHandler
             try
             {
                 // NOTE: Job not yet recieve and process IsAlive requests here
+
+                var cqrs = ApplicationContainer.Resolve<ICqrsEngine>(); // bootstrap
 
                 StartSubscribers();
 

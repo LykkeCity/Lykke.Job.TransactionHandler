@@ -17,14 +17,12 @@ using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
-using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
-using Lykke.Job.TransactionHandler.Commands;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -95,16 +93,17 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _chronoBankService = chronoBankService;
             _bitcoinApiClient = bitcoinApiClient;
         }
-        public async Task Handle(ExternalCashInCommand command, IEventPublisher eventPublisher)
-        {
 
-        }
-
-        private async Task<bool> ProcessDestroy(IBitcoinTransaction transaction, CashInOutQueueMessage msg)
+        public async Task<CommandHandlingResult> Handle(Commands.DestroyCommand command, IEventPublisher eventPublisher)
         {
+            await _log.WriteInfoAsync(nameof(CashInOutCommandHandler), nameof(Commands.DestroyCommand), command.ToJson(), "");
+
+            var transactionId = command.TransactionId;
+            var msg = command.Message;
+
             var amount = msg.Amount.ParseAnyDouble();
             //Get uncolor context data
-            var context = await _bitcoinTransactionService.GetTransactionContext<UncolorContextData>(transaction.TransactionId);
+            var context = await _bitcoinTransactionService.GetTransactionContext<UncolorContextData>(transactionId);
 
             //Register cash operation
             var cashOperationId = await _cashOperationsRepositoryClient
@@ -133,21 +132,28 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 TransactionId = Guid.Parse(msg.Id)
             };
 
-            await _bitcoinTransactionsRepository.UpdateAsync(transaction.TransactionId, cmd.ToJson(), null, "");
+            await _bitcoinTransactionsRepository.UpdateAsync(transactionId, cmd.ToJson(), null, "");
 
-            await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, context);
+            await _bitcoinTransactionService.SetTransactionContext(transactionId, context);
 
             //Send to bitcoin
             await _bitcoinCommandSender.SendCommand(cmd);
 
-            return true;
+            return CommandHandlingResult.Ok();
         }
 
-        private async Task<bool> ProcessManualOperation(IBitcoinTransaction transaction, CashInOutQueueMessage msg)
+
+        public async Task<CommandHandlingResult> Handle(Commands.ManualUpdateCommand command, IEventPublisher eventPublisher)
         {
+            await _log.WriteInfoAsync(nameof(CashInOutCommandHandler), nameof(Commands.ManualUpdateCommand), command.ToJson(), "");
+
+            var addressTo = command.AddressTo;
+            var transactionBlockchainHash = command.BlockchainHash;
+            var msg = command.Message;
+
+
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(msg.AssetId);
             var walletCredentials = await _walletCredentialsRepository.GetAsync(msg.ClientId);
-            var context = transaction.GetContextData<CashOutContextData>();
             var isOffchainClient = await _clientSettingsRepository.IsOffchainClient(msg.ClientId);
             var isBtcOffchainClient = isOffchainClient && asset.Blockchain == Blockchain.Bitcoin;
 
@@ -160,11 +166,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 Amount = msg.Amount.ParseAnyDouble(),
                 DateTime = DateTime.UtcNow,
                 AddressFrom = walletCredentials.MultiSig,
-                AddressTo = context.Address,
+                AddressTo = addressTo,
                 TransactionId = msg.Id,
                 Type = CashOperationType.None,
-                BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transaction.BlockchainHash,
-                State = GetState(transaction, isBtcOffchainClient)
+                BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transactionBlockchainHash,
+                State = GetTransactionState(transactionBlockchainHash, isBtcOffchainClient)
             };
 
             try
@@ -173,20 +179,26 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                await _log.WriteErrorAsync(nameof(CashInOutCommandHandler), nameof(ProcessManualOperation), null, e);
-                return false;
+                await _log.WriteErrorAsync(nameof(CashInOutCommandHandler), nameof(Commands.ManualUpdateCommand), command.ToJson(), e);
             }
 
-            return true;
+
+            return CommandHandlingResult.Ok();
         }
 
-        private async Task<bool> ProcessCashOut(IBitcoinTransaction transaction, CashInOutQueueMessage msg)
+        public async Task<CommandHandlingResult> Handle(Commands.CashoutCommand command, IEventPublisher eventPublisher)
         {
+            await _log.WriteInfoAsync(nameof(CashInOutCommandHandler), nameof(Commands.CashoutCommand), command.ToJson(), "");
+
+            var transactionId = command.TransactionId;
+            var transactionBlockchainHash = command.BlockchainHash;
+            var msg = command.Message;
+
             //Get client wallet
             var walletCredentials = await _walletCredentialsRepository
                 .GetAsync(msg.ClientId);
             var amount = msg.Amount.ParseAnyDouble();
-            var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transaction.TransactionId);
+            var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transactionId);
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(msg.AssetId);
 
@@ -232,8 +244,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     AddressTo = context.Address,
                     TransactionId = msg.Id,
                     Type = isForwardWithdawal ? CashOperationType.ForwardCashOut : CashOperationType.None,
-                    BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transaction.BlockchainHash,
-                    State = isForwardWithdawal ? TransactionStates.SettledOffchain : GetState(transaction, isBtcOffchainClient)
+                    BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transactionBlockchainHash,
+                    State = isForwardWithdawal ? TransactionStates.SettledOffchain : GetTransactionState(transactionBlockchainHash, isBtcOffchainClient)
                 });
 
             //Update context data
@@ -246,12 +258,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 Context = contextJson,
                 SourceAddress = walletCredentials.MultiSig,
                 DestinationAddress = context.Address,
-                TransactionId = Guid.Parse(transaction.TransactionId)
+                TransactionId = Guid.Parse(transactionId)
             };
 
-            await _bitcoinTransactionsRepository.UpdateAsync(transaction.TransactionId, cmd.ToJson(), null, "");
+            await _bitcoinTransactionsRepository.UpdateAsync(transactionId, cmd.ToJson(), null, "");
 
-            await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, context);
+            await _bitcoinTransactionService.SetTransactionContext(transactionId, context);
 
             if (asset.Blockchain == Blockchain.Ethereum)
             {
@@ -261,7 +273,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 {
                     try
                     {
-                        var response = await _srvEthereumHelper.HotWalletCashoutAsync(transaction.TransactionId,
+                        var response = await _srvEthereumHelper.HotWalletCashoutAsync(transactionId,
                             _settings.HotwalletAddress,
                             context.Address,
                             (decimal)Math.Abs(amount),
@@ -281,7 +293,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     {
                         var address = await _bcnClientCredentialsRepository.GetClientAddress(msg.ClientId);
                         var txRequest =
-                            await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transaction.TransactionId));
+                            await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transactionId));
 
                         txRequest.OperationIds = new[] { cashOperationId };
                         await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
@@ -303,43 +315,54 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 if (!string.IsNullOrEmpty(errMsg))
                 {
                     await _ethClientEventLogs.WriteEvent(msg.ClientId, Event.Error,
-                        new { Request = transaction.TransactionId, Error = errMsg }.ToJson());
+                        new { Request = transactionId, Error = errMsg }.ToJson());
                 }
             }
 
             if (asset.Id == LykkeConstants.SolarAssetId)
-                await ProcessSolarCashOut(msg.ClientId, context.Address, Math.Abs(amount), transaction.TransactionId);
+            {
+                await ProcessSolarCashOut(msg.ClientId, context.Address, Math.Abs(amount), transactionId);
+            }
+            else if (asset.Id == LykkeConstants.ChronoBankAssetId)
+            {
+                await ProcessChronoBankCashOut(context.Address, Math.Abs(amount), transactionId);
+            }
+            else if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal &&
+                     !isForwardWithdawal)
+            {
+                await ProcessBitcoinCashOut(asset, context.Address, (decimal)Math.Abs(amount), transactionId);
+            }
 
-            if (asset.Id == LykkeConstants.ChronoBankAssetId)
-                await ProcessChronoBankCashOut(context.Address, Math.Abs(amount), transaction.TransactionId);
-
-            if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal && !isForwardWithdawal)
-                await ProcessBitcoinCashOut(asset, context.Address, (decimal)Math.Abs(amount), transaction.TransactionId);
-
-            return true;
+            return CommandHandlingResult.Ok();
         }
 
-        private static TransactionStates GetState(
-            IBitcoinTransaction transaction, bool isBtcOffchainClient)
+        private static TransactionStates GetTransactionState(
+            string blockchainHash, bool isBtcOffchainClient)
         {
             return isBtcOffchainClient
-                ? (string.IsNullOrWhiteSpace(transaction.BlockchainHash)
+                ? (string.IsNullOrWhiteSpace(blockchainHash)
                     ? TransactionStates.SettledOffchain
                     : TransactionStates.SettledOnchain)
-                : (string.IsNullOrWhiteSpace(transaction.BlockchainHash)
+                : (string.IsNullOrWhiteSpace(blockchainHash)
                     ? TransactionStates.InProcessOnchain
                     : TransactionStates.SettledOnchain);
         }
 
-        private async Task<bool> ProcessIssue(IBitcoinTransaction transaction, CashInOutQueueMessage msg)
+        public async Task<CommandHandlingResult> Handle(Commands.IssueCommand command, IEventPublisher eventPublisher)
         {
+            await _log.WriteInfoAsync(nameof(CashInOutCommandHandler), nameof(Commands.IssueCommand), command.ToJson(), "");
+
+            var transactionId = command.TransactionId;
+            var msg = command.Message;
+
+
             var isOffchain = await _clientSettingsRepository.IsOffchainClient(msg.ClientId);
 
             //Get client wallet
             var walletCredentials = await _walletCredentialsRepository
                 .GetAsync(msg.ClientId);
             var amount = msg.Amount.ParseAnyDouble();
-            var context = await _bitcoinTransactionService.GetTransactionContext<IssueContextData>(transaction.TransactionId);
+            var context = await _bitcoinTransactionService.GetTransactionContext<IssueContextData>(transactionId);
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(msg.AssetId);
 
             //Register cash operation
@@ -353,7 +376,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     Amount = Math.Abs(amount),
                     DateTime = DateTime.UtcNow,
                     AddressTo = walletCredentials.MultiSig,
-                    TransactionId = transaction.TransactionId,
+                    TransactionId = transactionId,
                     State = asset.IsTrusted ? TransactionStates.SettledOffchain : TransactionStates.InProcessOffchain
                 });
 
@@ -365,21 +388,23 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 AssetId = msg.AssetId,
                 Multisig = walletCredentials.MultiSig,
                 Context = contextJson,
-                TransactionId = Guid.Parse(transaction.TransactionId)
+                TransactionId = Guid.Parse(transactionId)
             };
 
-            await _bitcoinTransactionsRepository.UpdateAsync(transaction.TransactionId, cmd.ToJson(), null, "");
+            await _bitcoinTransactionsRepository.UpdateAsync(transactionId, cmd.ToJson(), null, "");
 
-            await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, context);
+            await _bitcoinTransactionService.SetTransactionContext(transactionId, context);
 
             var isClientTrusted = await _clientAccountClient.IsTrustedAsync(msg.ClientId);
 
             if (isClientTrusted.Value || asset.IsTrusted)
-                return true;
+                return CommandHandlingResult.Ok();
 
-            await _offchainRequestService.CreateOffchainRequestAndNotify(transaction.TransactionId, msg.ClientId, msg.AssetId, (decimal)amount, null, OffchainTransferType.CashinToClient);
+            // todo: use CreateOffchainCashoutRequestCommand + refactor type
+            await _offchainRequestService.CreateOffchainRequestAndNotify(transactionId, msg.ClientId, msg.AssetId, (decimal)amount, null, OffchainTransferType.CashinToClient);
 
-            return true;
+
+            return CommandHandlingResult.Ok();
         }
 
         private Task ProcessChronoBankCashOut(string address, double amount, string txId)

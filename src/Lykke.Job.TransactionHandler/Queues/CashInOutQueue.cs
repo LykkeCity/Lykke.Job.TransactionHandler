@@ -16,8 +16,6 @@ using Lykke.Job.TransactionHandler.Services;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
-using DestroyCommand = Lykke.Job.TransactionHandler.Core.Domain.BitCoin.DestroyCommand;
-using IssueCommand = Lykke.Job.TransactionHandler.Core.Domain.BitCoin.IssueCommand;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -38,24 +36,24 @@ namespace Lykke.Job.TransactionHandler.Queues
         private RabbitMqSubscriber<CashInOutQueueMessage> _subscriber;
 
         public CashInOutQueue(
-            AppSettings.RabbitMqSettings config, 
-            ILog log,
-            ICashOperationsRepositoryClient cashOperationsRepositoryClient,
-            IBitCoinTransactionsRepository bitcoinTransactionsRepository,
-            IClientSettingsRepository clientSettingsRepository,
-            IAssetsServiceWithCache assetsServiceWithCache,
+            [NotNull] ILog log,
+            [NotNull] AppSettings.RabbitMqSettings config,
+            [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
+            [NotNull] IBitCoinTransactionsRepository bitcoinTransactionsRepository,
+            [NotNull] IClientSettingsRepository clientSettingsRepository,
+            [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IDeduplicator deduplicator, IBitcoinCashinRepository bitcoinCashinTypeRepository,
-            ICqrsEngine cqrsEngine)
+            [NotNull] ICqrsEngine cqrsEngine)
         {
-            _rabbitConfig = config;
-            _log = log;
-            _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
-            _bitcoinTransactionsRepository = bitcoinTransactionsRepository;
-            _clientSettingsRepository = clientSettingsRepository;
-            _assetsServiceWithCache = assetsServiceWithCache;
+            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _rabbitConfig = config ?? throw new ArgumentNullException(nameof(config));
+            _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
+            _bitcoinTransactionsRepository = bitcoinTransactionsRepository ?? throw new ArgumentNullException(nameof(bitcoinTransactionsRepository));
+            _clientSettingsRepository = clientSettingsRepository ?? throw new ArgumentNullException(nameof(clientSettingsRepository));
+            _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
             _bitcoinCashinTypeRepository = bitcoinCashinTypeRepository;
-            _cqrsEngine = cqrsEngine;
+            _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
         }
 
         public void Start()
@@ -112,17 +110,17 @@ namespace Lykke.Job.TransactionHandler.Queues
                         return;
 
                     if (asset.Id == LykkeConstants.BitcoinAssetId)
-                    {                        
+                    {
                         var createOffchainRequestCommand = new CreateOffchainCashoutRequestCommand
                         {
                             Id = Guid.NewGuid().ToString(),
                             ClientId = queueMessage.ClientId,
                             AssetId = queueMessage.AssetId,
-                            Amount = queueMessage.Amount.ParseAnyDouble()
+                            Amount = (decimal)queueMessage.Amount.ParseAnyDouble()
                         };
 
-                        _cqrsEngine.SendCommand(createOffchainRequestCommand, "tx-handler", "bitcoin");                        
-                    }                    
+                        _cqrsEngine.SendCommand(createOffchainRequestCommand, "tx-handler", "bitcoin");
+                    }
                 }
                 else
                 {
@@ -131,38 +129,32 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
             else
             {
-                try
+                switch (transaction.CommandType)
                 {
-                    switch (transaction.CommandType)
-                    {
-                        case BitCoinCommands.CashIn:
-                        case BitCoinCommands.Issue:
-                            var issueCommand = new IssueCommand();
-                            _cqrsEngine.SendCommand(issueCommand, "tx-handler", "tx-handler");
-                            break;                            
-                        case BitCoinCommands.CashOut:
-                            var cashoutCommand = new CashoutCommand();
-                            _cqrsEngine.SendCommand(cashoutCommand, "tx-handler", "tx-handler");
-                            break;                                                        
-                        case BitCoinCommands.Destroy:
-                            var destroyCommand = new DestroyCommand();
-                            _cqrsEngine.SendCommand(destroyCommand, "tx-handler", "tx-handler");
-                            break;
-                        case BitCoinCommands.ManualUpdate:
-                            var manualUpdateCommand = new ManualUpdateCommand();
-                            _cqrsEngine.SendCommand(manualUpdateCommand, "tx-handler", "tx-handler");
-                            break;                            
-                        default:
-                            await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), $"Unknown command type (value = [{transaction.CommandType}])");   
-                            break;                            
-                    }
+                    case BitCoinCommands.CashIn:
+                    case BitCoinCommands.Issue:
+                        var issueCommand = new Commands.IssueCommand { TransactionId = transaction.TransactionId, Message = queueMessage };
+                        _cqrsEngine.SendCommand(issueCommand, "tx-handler", "tx-handler");
+                        break;
+                    case BitCoinCommands.CashOut:
+                        var cashoutCommand = new Commands.CashoutCommand { TransactionId = transaction.TransactionId, BlockchainHash = transaction.BlockchainHash, Message = queueMessage };
+                        _cqrsEngine.SendCommand(cashoutCommand, "tx-handler", "tx-handler");
+                        break;
+                    case BitCoinCommands.Destroy:
+                        var destroyCommand = new Commands.DestroyCommand { TransactionId = transaction.TransactionId, Message = queueMessage };
+                        _cqrsEngine.SendCommand(destroyCommand, "tx-handler", "tx-handler");
+                        break;
+                    case BitCoinCommands.ManualUpdate:
+                        var context = transaction.GetContextData<CashOutContextData>();
+                        var manualUpdateCommand = new Commands.ManualUpdateCommand { AddressTo = context.Address, BlockchainHash = transaction.BlockchainHash, Message = queueMessage };
+                        _cqrsEngine.SendCommand(manualUpdateCommand, "tx-handler", "tx-handler");
+                        break;
+                    default:
+                        await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), $"Unknown command type (value = [{transaction.CommandType}])");
+                        break;
                 }
-                catch (Exception ex)
-                {
-                    await _log.WriteErrorAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), ex);
-                }
-            }            
-        }        
+            }
+        }
 
         public void Dispose()
         {

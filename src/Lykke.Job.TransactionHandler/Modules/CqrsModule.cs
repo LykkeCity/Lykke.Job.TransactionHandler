@@ -5,8 +5,12 @@ using Inceptum.Cqrs.Configuration;
 using Inceptum.Messaging;
 using Inceptum.Messaging.RabbitMq;
 using Lykke.Cqrs;
+using Lykke.Job.TransactionHandler.Commands;
+using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Projections;
+using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.Job.TransactionHandler.Services;
+using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Messaging;
 using Lykke.SettingsReader;
 
@@ -25,15 +29,29 @@ namespace Lykke.Job.TransactionHandler.Modules
 
         protected override void Load(ContainerBuilder builder)
         {
-            var messagingEngine = new MessagingEngine(_log,
-                new TransportResolver(new Dictionary<string, TransportInfo>
-                {
-                    {"RabbitMq", new TransportInfo($"amqp://{_settings.RabbitMq.ExternalHost}:{_settings.RabbitMq.Port}", _settings.RabbitMq.Username, _settings.RabbitMq.Password, "None", "RabbitMq")}
-                }),
-                new RabbitMqTransportFactory());
+            if (_settings.TransactionHandlerJob.ChaosKitty != null)
+            {
+                ChaosKitty.StateOfChaos = _settings.TransactionHandlerJob.ChaosKitty.StateOfChaos;
+            }
 
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
+            var rabbitMqSettings = _settings.RabbitMq;
+            var messagingEngine = new MessagingEngine(_log,
+                new TransportResolver(new Dictionary<string, TransportInfo>
+                {
+                    {"RabbitMq", new TransportInfo($"amqp://{rabbitMqSettings.ExternalHost}:{rabbitMqSettings.Port}", rabbitMqSettings.Username, rabbitMqSettings.Password, "None", "RabbitMq")}
+                }),
+                new RabbitMqTransportFactory());
+
+            builder.RegisterType<CashInOutSaga>();
+
+            builder.RegisterType<CashInOutCommandHandler>()
+                .WithParameter(TypedParameter.From(_settings.Ethereum));
+            builder.RegisterType<OffchainCommandHandler>();
+            builder.RegisterType<HistoryProjection>();
+
+            var defaultRetryDelay = _settings.TransactionHandlerJob.RetryDelayInMilliseconds;
             builder.Register(ctx =>
             {
                 var txProjection = ctx.Resolve<HistoryProjection>();
@@ -43,16 +61,16 @@ namespace Lykke.Job.TransactionHandler.Modules
                     messagingEngine,
                     new DefaultEndpointProvider(),
                     true,
-                    Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "protobuf", environment: _settings.TransactionHandlerJob.Environment))
-                        );
+                    Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "protobuf", environment: _settings.TransactionHandlerJob.Environment)),
 
-                //Register.BoundedContext("tx-handler")
-                //    .FailedCommandRetryDelay((long)TimeSpan.FromSeconds(5).TotalMilliseconds)
-                //    .ListeningCommands(typeof(CreateTradeCommand), typeof(CreateTransactionCommand))
-                //        .On("tx-handler-commands")
-                //    .PublishingEvents(typeof(TradeCreatedEvent), typeof(TransactionCreatedEvent))
-                //        .With("tx-handler-events")
-                //    .WithCommandsHandler<TradeCommandHandler>(),
+                Register.BoundedContext("tx-handler")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand), typeof(IssueCommand), typeof(CashoutCommand), typeof(DestroyCommand), typeof(ManualUpdateCommand))
+                        .On("tx-handler-commands")
+                    //.PublishingEvents(typeof(TradeCreatedEvent), typeof(TransactionCreatedEvent))
+                    //    .With("tx-handler-events")
+                    //.WithCommandsHandler<CashInOutCommandHandler>(),
+                    .WithCommandsHandlers(typeof(OffchainCommandHandler), typeof(CashInOutCommandHandler)),
 
                 //Register.BoundedContext("transfers")
                 //    .FailedCommandRetryDelay((long)TimeSpan.FromSeconds(5).TotalMilliseconds)
@@ -86,7 +104,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 //        .On("notifications-commands")
                 //    .WithCommandsHandler<NotificationsCommandHandler>(),
 
-                //Register.Saga<CashInOutSaga>("cash-in-out-saga")
+                Register.Saga<CashInOutSaga>("cash-in-out-saga"),
                 //    .ListeningEvents(typeof(TradeCreatedEvent), typeof(TransactionCreatedEvent))
                 //        .From("tx-handler").On("tx-handler-events")
                 //    .ListeningEvents(typeof(EthTransactionRequestCreatedEvent))
@@ -102,18 +120,12 @@ namespace Lykke.Job.TransactionHandler.Modules
                 //    .PublishingCommands(typeof(OffchainNotifyCommand))
                 //        .To("notifications").With("notifications-commands"),
 
-                //Register.DefaultRouting
-                //    .PublishingCommands(typeof(CreateTradeCommand), typeof(CreateTransactionCommand))
-                //        .To("tx-handler").With("tx-handler-commands")
-                //    .PublishingCommands(typeof(CreateTransferCommand))
-                //        .To("transfers").With("transfers-commands")
-                //    .PublishingCommands(typeof(EthCreateTransactionRequestCommand), typeof(EthGuaranteeTransferCommand), typeof(EthBuyCommand))
-                //        .To("ethereum").With("ethereum-commands")
-                //    .PublishingCommands(typeof(TransferFromHubCommand), typeof(ReturnCommand))
-                //        .To("bitcoin").With("bitcoin-commands")
-                //    .PublishingCommands(typeof(OffchainNotifyCommand))
-                //        .To("notifications").With("notifications-commands"));
-            }).As<ICqrsEngine>().SingleInstance();
+                Register.DefaultRouting
+                    .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand), typeof(IssueCommand), typeof(CashoutCommand), typeof(DestroyCommand), typeof(ManualUpdateCommand))
+                        .To("tx-handler").With("tx-handler-commands")
+                );
+            })
+            .As<ICqrsEngine>().SingleInstance();
         }
     }
 }
