@@ -28,7 +28,7 @@ namespace Lykke.Job.TransactionHandler.Modules
             var messagingEngine = new MessagingEngine(_log,
                 new TransportResolver(new Dictionary<string, TransportInfo>
                 {
-                    {"RabbitMq", new TransportInfo($"amqp://{_settings.RabbitMq.ExternalHost}", _settings.RabbitMq.Username, _settings.RabbitMq.Password, "None", "RabbitMq")}
+                    {"RabbitMq", new TransportInfo($"amqp://{_settings.RabbitMq.ExternalHost}:{_settings.RabbitMq.Port}", _settings.RabbitMq.Username, _settings.RabbitMq.Password, "None", "RabbitMq")}
                 }),
                 new RabbitMqTransportFactory());
 
@@ -43,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     messagingEngine,
                     new DefaultEndpointProvider(),
                     true,
-                    Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "protobuf", environment: "dev"))
+                    Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "protobuf", environment: _settings.TransactionHandlerJob.Environment))
                         );
 
                 //Register.BoundedContext("tx-handler")
