@@ -17,6 +17,7 @@ using Lykke.Job.TransactionHandler.AzureRepositories.Blockchain;
 using Lykke.Job.TransactionHandler.AzureRepositories.CashOperations;
 using Lykke.Job.TransactionHandler.AzureRepositories.ChronoBank;
 using Lykke.Job.TransactionHandler.AzureRepositories.Clients;
+using Lykke.Job.TransactionHandler.AzureRepositories.Common;
 using Lykke.Job.TransactionHandler.AzureRepositories.Ethereum;
 using Lykke.Job.TransactionHandler.AzureRepositories.Exchange;
 using Lykke.Job.TransactionHandler.AzureRepositories.MarginTrading;
@@ -78,6 +79,7 @@ using Lykke.Service.EthereumCore.Client;
 using Lykke.Service.OperationsRepository.Client;
 using Lykke.Job.TransactionHandler.Core.Domain.Logs;
 using Lykke.Job.TransactionHandler.AzureRepositories.Logs;
+using Lykke.Job.TransactionHandler.Core.Domain.Common;
 
 namespace Lykke.Job.TransactionHandler.Modules
 {
@@ -213,7 +215,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
 
-            builder.RegisterType<InMemoryDeduplicator>().As<IDeduplicator>().SingleInstance();
+            builder.RegisterType<PersistentDeduplicator>().As<IDeduplicator>().SingleInstance();
         }
 
         private void BindRepositories(ContainerBuilder builder)
@@ -312,6 +314,10 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance<ITransferLogRepository>(
                 new TransferLogRepository(
                     AzureTableStorage<TransferLogEntity>.Create(_dbSettingsManager.ConnectionString(x => x.LogsConnString), "TransfersFeeLog", _log)));
+
+            builder.RegisterInstance<IBlobRepository>(
+                new BlobRepository(
+                    AzureTableStorage<BlobEntity>.Create(_dbSettingsManager.ConnectionString(x => x.IncomingMessagesConnString), "IncomingMessages", _log)));
         }
 
         private void BindRabbitMq(ContainerBuilder builder)

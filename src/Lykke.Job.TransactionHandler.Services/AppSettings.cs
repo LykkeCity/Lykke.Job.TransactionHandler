@@ -45,6 +45,7 @@ namespace Lykke.Job.TransactionHandler.Services
             public string QuantaSrvConnString { get; set; }
             public string SolarCoinConnString { get; set; }
             public string FeeLogsConnString { get; set; }
+            public string IncomingMessagesConnString { get; set; }
         }
 
         public class AssetsCacheSettings
