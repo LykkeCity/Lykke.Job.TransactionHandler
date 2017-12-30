@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Bitcoin.Api.Client.BitcoinApi;
 using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
@@ -10,6 +11,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
+using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
@@ -52,6 +54,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ISrvSolarCoinHelper _srvSolarCoinHelper;
         private readonly IChronoBankService _chronoBankService;
         private readonly IBitcoinApiClient _bitcoinApiClient;
+        private readonly IDeduplicator _deduplicator;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CashInOutQueueMessage> _subscriber;
@@ -71,11 +74,12 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
             AppSettings.EthereumSettings settings,
-            IClientAccountClient clientAccountClient, 
+            IClientAccountClient clientAccountClient,
             ISrvEmailsFacade srvEmailsFacade,
-            ISrvSolarCoinHelper srvSolarCoinHelper, 
-            IChronoBankService chronoBankService, 
-            IBitcoinApiClient bitcoinApiClient)
+            ISrvSolarCoinHelper srvSolarCoinHelper,
+            IChronoBankService chronoBankService,
+            IBitcoinApiClient bitcoinApiClient,
+            [NotNull] IDeduplicator deduplicator)
         {
             _rabbitConfig = config;
             _log = log;
@@ -98,6 +102,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _srvSolarCoinHelper = srvSolarCoinHelper;
             _chronoBankService = chronoBankService;
             _bitcoinApiClient = bitcoinApiClient;
+            _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
         }
 
         public void Start()
@@ -136,6 +141,12 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(CashInOutQueueMessage queueMessage)
         {
+            if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
+            {
+                await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
+                return false;
+            }
+
             var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
             if (transaction == null)
             {

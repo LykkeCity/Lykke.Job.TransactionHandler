@@ -2,10 +2,12 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
+using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
@@ -45,6 +47,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IAssetsService _assetsService;
         private readonly IEthererumPendingActionsRepository _ethererumPendingActionsRepository;
+        private readonly IDeduplicator _deduplicator;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
         private RabbitMqSubscriber<Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent> _subscriberHotWallet;
@@ -63,7 +66,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IAssetsServiceWithCache assetsServiceWithCache,
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsService assetsService,
-            IEthererumPendingActionsRepository ethererumPendingActionsRepository)
+            IEthererumPendingActionsRepository ethererumPendingActionsRepository,
+            [NotNull] IDeduplicator deduplicator)
         {
             _log = log;
             _matchingEngineClient = matchingEngineClient;
@@ -81,6 +85,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _bitcoinTransactionService = bitcoinTransactionService;
             _assetsService = assetsService;
             _ethererumPendingActionsRepository = ethererumPendingActionsRepository;
+            _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
         }
 
         public void Start()
@@ -157,6 +162,12 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessHotWalletMessage(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
         {
+            if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
+            {
+                await _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(ProcessHotWalletMessage), queueMessage.ToJson(), "Duplicated message");
+                return false;
+            }
+
             switch (queueMessage.EventType)
             {
                 case EthereumCore.Contracts.Enums.HotWalletEventType.CashinCompleted:
@@ -176,6 +187,12 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> ProcessMessage(CoinEvent queueMessage)
         {
+            if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
+            {
+                await _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
+                return false;
+            }
+
             switch (queueMessage.CoinEventType)
             {
                 case CoinEventType.CashinCompleted:

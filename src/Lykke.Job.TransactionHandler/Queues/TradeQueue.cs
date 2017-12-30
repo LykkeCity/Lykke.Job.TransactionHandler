@@ -4,12 +4,14 @@ using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
+using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
@@ -51,6 +53,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly IFeeLogRepository _feeLogRepository;
+        private readonly IDeduplicator _deduplicator;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TradeQueueItem> _subscriber;
@@ -72,7 +75,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBitcoinTransactionService bitcoinTransactionService,
             IClientAccountClient clientAccountClient,
             IAssetsServiceWithCache assetsServiceWithCache,
-            IFeeLogRepository feeLogRepository)
+            IFeeLogRepository feeLogRepository, 
+            [NotNull] IDeduplicator deduplicator)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -91,6 +95,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _assetsServiceWithCache = assetsServiceWithCache;
             _log = log;
             _feeLogRepository = feeLogRepository;
+            _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
         }
 
         public void Start()
@@ -129,6 +134,12 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task ProcessMessage(TradeQueueItem queueMessage)
         {
+            if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
+            {
+                await _log.WriteWarningAsync(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.ToJson(), "Duplicated message");
+                return;
+            }
+
             await _marketOrdersRepository.CreateAsync(queueMessage.Order);
 
             var feeLogTasks = queueMessage.Trades.Select(ti => _feeLogRepository.CreateAsync(new OrderFeeLog

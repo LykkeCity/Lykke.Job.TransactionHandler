@@ -1,17 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <Version>1.0.1</Version>
   </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="AutoMapper" Version="6.1.1" />
+    <PackageReference Include="AutoMapper" Version="6.2.2" />
+    <PackageReference Include="Konscious.Security.Cryptography.Blake2" Version="1.0.5" />
     <PackageReference Include="Lykke.AzureStorage" Version="3.1.0" />
+    <PackageReference Include="NetJSON" Version="1.2.2" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Lykke.Job.TransactionHandler.Core\Lykke.Job.TransactionHandler.Core.csproj" />
   </ItemGroup>
-
 </Project>
