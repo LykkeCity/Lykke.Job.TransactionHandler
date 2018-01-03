@@ -36,15 +36,15 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
-            var rabbitMqSettings = _settings.RabbitMq;
+            var rabbitMqSettings = new RabbitMQ.Client.ConnectionFactory { Uri = _settings.RabbitMq.ConnectionString };
             var messagingEngine = new MessagingEngine(_log,
                 new TransportResolver(new Dictionary<string, TransportInfo>
                 {
-                    {"RabbitMq", new TransportInfo($"amqp://{rabbitMqSettings.ExternalHost}:{rabbitMqSettings.Port}", rabbitMqSettings.Username, rabbitMqSettings.Password, "None", "RabbitMq")}
+                    {"RabbitMq", new TransportInfo(rabbitMqSettings.Endpoint.ToString(), rabbitMqSettings.UserName, rabbitMqSettings.Password, "None", "RabbitMq")}
                 }),
                 new RabbitMqTransportFactory());
 
-            builder.RegisterType<CashInOutSaga>();
+            builder.RegisterType<CashoutSaga>();
 
             builder.RegisterType<CashInOutCommandHandler>()
                 .WithParameter(TypedParameter.From(_settings.Ethereum));
@@ -104,7 +104,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 //        .On("notifications-commands")
                 //    .WithCommandsHandler<NotificationsCommandHandler>(),
 
-                Register.Saga<CashInOutSaga>("cash-in-out-saga"),
+                Register.Saga<CashoutSaga>("cash-in-out-saga"),
                 //    .ListeningEvents(typeof(TradeCreatedEvent), typeof(TransactionCreatedEvent))
                 //        .From("tx-handler").On("tx-handler-events")
                 //    .ListeningEvents(typeof(EthTransactionRequestCreatedEvent))
