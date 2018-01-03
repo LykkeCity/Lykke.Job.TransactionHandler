@@ -7,6 +7,7 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
+using Lykke.Job.TransactionHandler.Utils;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -23,8 +24,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _offchainRequestService = offchainRequestService ?? throw new ArgumentNullException(nameof(offchainRequestService));
         }
 
-        public async Task<CommandHandlingResult> Handle(CreateOffchainCashoutRequestCommand command, IEventPublisher eventPublisher)
+        public async Task<CommandHandlingResult> Handle(CreateOffchainCashoutRequestCommand command)
         {
+            ChaosKitty.Meow();
+
             await _log.WriteInfoAsync(nameof(OffchainCommandHandler), nameof(CreateOffchainCashoutRequestCommand), command.ToJson(), "");
 
             await _offchainRequestService.CreateOffchainRequestAndNotify(command.Id, command.ClientId, command.AssetId, command.Amount, null, OffchainTransferType.TrustedCashout);

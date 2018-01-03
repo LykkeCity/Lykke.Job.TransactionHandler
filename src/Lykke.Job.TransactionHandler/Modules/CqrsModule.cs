@@ -6,8 +6,8 @@ using Inceptum.Messaging;
 using Inceptum.Messaging.RabbitMq;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
+using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Handlers;
-using Lykke.Job.TransactionHandler.Projections;
 using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Utils;
@@ -37,25 +37,39 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
             var rabbitMqSettings = new RabbitMQ.Client.ConnectionFactory { Uri = _settings.RabbitMq.ConnectionString };
+#if DEBUG
+            var virtualHost = "/debug";
+            var messagingEngine = new MessagingEngine(_log,
+                new TransportResolver(new Dictionary<string, TransportInfo>
+                {
+                    {"RabbitMq", new TransportInfo(rabbitMqSettings.Endpoint + virtualHost, rabbitMqSettings.UserName, rabbitMqSettings.Password, "None", "RabbitMq")}
+                }),
+                new RabbitMqTransportFactory());
+#else
             var messagingEngine = new MessagingEngine(_log,
                 new TransportResolver(new Dictionary<string, TransportInfo>
                 {
                     {"RabbitMq", new TransportInfo(rabbitMqSettings.Endpoint.ToString(), rabbitMqSettings.UserName, rabbitMqSettings.Password, "None", "RabbitMq")}
                 }),
                 new RabbitMqTransportFactory());
+#endif
 
-            builder.RegisterType<CashoutSaga>();
+            builder.RegisterType<CashInOutMessageProcessor>();
+            builder.RegisterType<CashInOutSaga>();
 
-            builder.RegisterType<CashInOutCommandHandler>()
+            builder.RegisterType<CashInCommandHandler>();
+            builder.RegisterType<BitcoinCommandHandler>();
+            builder.RegisterType<ChronoBankCommandHandler>();
+            builder.RegisterType<EthereumCommandHandler>()
                 .WithParameter(TypedParameter.From(_settings.Ethereum));
+            builder.RegisterType<SolarCoinCommandHandler>();
             builder.RegisterType<OffchainCommandHandler>();
-            builder.RegisterType<HistoryProjection>();
+            builder.RegisterType<OperationsCommandHandler>();
+            builder.RegisterType<TransactionsCommandHandler>();
 
             var defaultRetryDelay = _settings.TransactionHandlerJob.RetryDelayInMilliseconds;
             builder.Register(ctx =>
             {
-                var txProjection = ctx.Resolve<HistoryProjection>();
-
                 return new CqrsEngine(_log,
                     ctx.Resolve<IDependencyResolver>(),
                     messagingEngine,
@@ -63,66 +77,85 @@ namespace Lykke.Job.TransactionHandler.Modules
                     true,
                     Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "protobuf", environment: _settings.TransactionHandlerJob.Environment)),
 
-                Register.BoundedContext("tx-handler")
+                Register.BoundedContext("cashin")
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand), typeof(IssueCommand), typeof(CashoutCommand), typeof(DestroyCommand), typeof(ManualUpdateCommand))
-                        .On("tx-handler-commands")
-                    //.PublishingEvents(typeof(TradeCreatedEvent), typeof(TransactionCreatedEvent))
-                    //    .With("tx-handler-events")
-                    //.WithCommandsHandler<CashInOutCommandHandler>(),
-                    .WithCommandsHandlers(typeof(OffchainCommandHandler), typeof(CashInOutCommandHandler)),
+                    .ListeningCommands(typeof(SetLinkedCashInOperationCommand))
+                        .On("cashin-commands")
+                    .WithCommandsHandler<CashInCommandHandler>(),
 
-                //Register.BoundedContext("transfers")
-                //    .FailedCommandRetryDelay((long)TimeSpan.FromSeconds(5).TotalMilliseconds)
-                //    .ListeningCommands(typeof(CreateTransferCommand))
-                //        .On("transfers-commands")
-                //    .PublishingEvents(typeof(TransferCreatedEvent))
-                //        .With("transfers-events")
-                //    .WithCommandsHandler<TransferCommandHandler>(),
+                Register.BoundedContext("bitcoin")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
+                        .On("bitcoin-commands")
+                    .WithCommandsHandler<BitcoinCommandHandler>(),
 
-                //Register.BoundedContext("history")
-                //    .ListeningEvents(typeof(TradeCreatedEvent))
-                //        .From("tx-handler").On("tx-handler-events")
-                //    .WithProjection(txProjection, "tx-handler"),
+                Register.BoundedContext("chronobank")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(ChronoBankCashOutCommand))
+                        .On("chronobank-commands")
+                    .WithCommandsHandler<ChronoBankCommandHandler>(),
 
-                //Register.BoundedContext("ethereum")
-                //    .ListeningCommands(typeof(EthCreateTransactionRequestCommand), typeof(EthGuaranteeTransferCommand), typeof(EthBuyCommand))
-                //        .On("ethereum-commands")
-                //    .PublishingEvents(typeof(EthTransactionRequestCreatedEvent), typeof(EthGuaranteeTransferCompletedEvent), typeof(EthTransferCompletedEvent))
-                //        .With("ethereum-events")
-                //    .WithCommandsHandler<EthereumCommandHandler>(),
+                Register.BoundedContext("ethereum")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(ProcessEthereumCashoutCommand))
+                        .On("ethereum-commands")
+                    .WithCommandsHandler<EthereumCommandHandler>(),
 
-                //Register.BoundedContext("bitcoin")
-                //    .ListeningCommands(typeof(TransferFromHubCommand), typeof(ReturnCommand))
-                //        .On("bitcoin-commands")
-                //    .PublishingEvents(typeof(OffchainRequestCreatedEvent))
-                //        .With("bitcoin-events")
-                //    .WithCommandsHandler<BitcoinCommandHandler>(),
+                Register.BoundedContext("offchain")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand))
+                        .On("offchain-commands")
+                    .WithCommandsHandler<OffchainCommandHandler>(),
 
-                //Register.BoundedContext("notifications")
-                //    .ListeningCommands(typeof(OffchainNotifyCommand))
-                //        .On("notifications-commands")
-                //    .WithCommandsHandler<NotificationsCommandHandler>(),
+                Register.BoundedContext("solarcoin")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(SendSolarCashOutCompletedEmailCommand), typeof(SolarCashOutCommand))
+                        .On("solarcoin-commands")
+                    .WithCommandsHandler<SolarCoinCommandHandler>(),
 
-                Register.Saga<CashoutSaga>("cash-in-out-saga"),
-                //    .ListeningEvents(typeof(TradeCreatedEvent), typeof(TransactionCreatedEvent))
-                //        .From("tx-handler").On("tx-handler-events")
-                //    .ListeningEvents(typeof(EthTransactionRequestCreatedEvent))
-                //        .From("ethereum").On("ethereum-events")
-                //    .ListeningEvents(typeof(OffchainRequestCreatedEvent))
-                //        .From("bitcoin").On("bitcoin-events")
-                //    .PublishingCommands(typeof(CreateTransactionCommand))
-                //        .To("tx-handler").With("tx-handler-commands")
-                //    .PublishingCommands(typeof(EthGuaranteeTransferCommand), typeof(EthBuyCommand), typeof(EthCreateTransactionRequestCommand))
-                //        .To("ethereum").With("ethereum-commands")
-                //    .PublishingCommands(typeof(ReturnCommand), typeof(TransferFromHubCommand))
-                //        .To("bitcoin").With("bitcoin-commands")
-                //    .PublishingCommands(typeof(OffchainNotifyCommand))
-                //        .To("notifications").With("notifications-commands"),
+                Register.BoundedContext("operations")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(RegisterCashInOutOperationCommand))
+                        .On("operations-commands")
+                    .WithCommandsHandler<OperationsCommandHandler>(),
+
+                Register.BoundedContext("transactions")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(SaveCashoutTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveIssueTransactionStateCommand))
+                        .On("transactions-commands")
+                    .PublishingEvents(typeof(CashoutTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent))
+                        .With("transactions-events")
+                    .WithCommandsHandler<TransactionsCommandHandler>(),
+
+                Register.Saga<CashInOutSaga>("cash-out-saga")
+                    .ListeningEvents(typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
+                        .From("transactions").On("transactions-events")
+                    .PublishingCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
+                        .To("bitcoin").With("bitcoin-commands")
+                    .PublishingCommands(typeof(ChronoBankCashOutCommand))
+                        .To("chronobank").With("chronobank-commands")
+                    .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
+                        .To("ethereum").With("ethereum-commands")
+                    .PublishingCommands(typeof(SendSolarCashOutCompletedEmailCommand), typeof(SolarCashOutCommand))
+                        .To("solarcoin").With("solarcoin-commands"),
 
                 Register.DefaultRouting
-                    .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand), typeof(IssueCommand), typeof(CashoutCommand), typeof(DestroyCommand), typeof(ManualUpdateCommand))
-                        .To("tx-handler").With("tx-handler-commands")
+                    .PublishingCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
+                        .To("bitcoin").With("bitcoin-commands")
+                    .PublishingCommands(typeof(ChronoBankCashOutCommand))
+                        .To("chronobank").With("chronobank-commands")
+                    .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
+                        .To("ethereum").With("ethereum-commands")
+                    .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
+                        .To("offchain").With("offchain-commands")
+                    .PublishingCommands(typeof(RegisterCashInOutOperationCommand))
+                        .To("operations").With("operations-commands")
+                    .PublishingCommands(typeof(SaveIssueTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveCashoutTransactionStateCommand))
+                        .To("transactions").With("transactions-commands")
+                    .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
+                        .To("cashin").With("cashin-commands")
+                    .PublishingCommands(typeof(SendSolarCashOutCompletedEmailCommand), typeof(SolarCashOutCommand))
+                        .To("solarcoin").With("solarcoin-commands")
                 );
             })
             .As<ICqrsEngine>().SingleInstance();

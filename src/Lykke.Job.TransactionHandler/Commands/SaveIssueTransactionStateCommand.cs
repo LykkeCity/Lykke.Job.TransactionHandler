@@ -1,17 +1,18 @@
-﻿using Lykke.Job.TransactionHandler.Queues.Models;
+﻿using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using ProtoBuf;
 
 namespace Lykke.Job.TransactionHandler.Commands
 {
     [ProtoContract]
-    public class CashoutCommand
+    public class SaveIssueTransactionStateCommand
     {
         [ProtoMember(1)]
         public string TransactionId { get; set; }
+
         [ProtoMember(2)]
-        public string BlockchainHash { get; set; }
+        public string RequestData { get; set; }
 
         [ProtoMember(3)]
-        public CashInOutQueueMessage Message { get; set; }
+        public IssueContextData Context { get; set; }
     }
 }

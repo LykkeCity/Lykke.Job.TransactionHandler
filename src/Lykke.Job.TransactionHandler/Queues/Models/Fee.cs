@@ -1,6 +1,5 @@
 ﻿using JetBrains.Annotations;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using System;
 using Newtonsoft.Json.Converters;
 
