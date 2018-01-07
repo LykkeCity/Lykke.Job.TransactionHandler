@@ -1,4 +1,5 @@
 ﻿using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
+using Lykke.Job.TransactionHandler.Queues.Models;
 using ProtoBuf;
 
 namespace Lykke.Job.TransactionHandler.Commands
@@ -7,7 +8,7 @@ namespace Lykke.Job.TransactionHandler.Commands
     public class SaveDestroyTransactionStateCommand
     {
         [ProtoMember(1)]
-        public string TransactionId { get; set; }
+        public CashInOutQueueMessage Message { get; set; }
 
         [ProtoMember(2)]
         public DestroyCommand Command { get; set; }

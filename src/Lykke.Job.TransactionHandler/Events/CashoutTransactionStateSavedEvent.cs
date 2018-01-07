@@ -7,5 +7,8 @@ namespace Lykke.Job.TransactionHandler.Events
     {
         [ProtoMember(1)]
         public Queues.Models.CashInOutQueueMessage Message { get; set; }
+
+        [ProtoMember(2)]
+        public Core.Domain.BitCoin.CashOutCommand Command { get; set; }
     }
 }

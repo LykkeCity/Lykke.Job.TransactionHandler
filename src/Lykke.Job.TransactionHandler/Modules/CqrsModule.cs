@@ -8,6 +8,7 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Handlers;
+using Lykke.Job.TransactionHandler.Projections;
 using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Utils;
@@ -58,8 +59,9 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterType<CashInOutMessageProcessor>();
             builder.RegisterType<CashInOutSaga>();
+            builder.RegisterType<ForwardWithdawalSaga>();
 
-            builder.RegisterType<CashInCommandHandler>();
+            builder.RegisterType<ForwardWithdrawalCommandHandler>();
             builder.RegisterType<BitcoinCommandHandler>();
             builder.RegisterType<ChronoBankCommandHandler>();
             builder.RegisterType<EthereumCommandHandler>()
@@ -69,9 +71,15 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<OperationsCommandHandler>();
             builder.RegisterType<TransactionsCommandHandler>();
 
+            builder.RegisterType<OperationHistoryProjection>();
+            builder.RegisterType<NotificationsProjection>();
+
             var defaultRetryDelay = _settings.TransactionHandlerJob.RetryDelayInMilliseconds;
             builder.Register(ctx =>
             {
+                var historyProjection = ctx.Resolve<OperationHistoryProjection>();
+                var notificationsProjection = ctx.Resolve<NotificationsProjection>();
+
                 return new CqrsEngine(_log,
                     ctx.Resolve<IDependencyResolver>(),
                     messagingEngine,
@@ -81,11 +89,13 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.BoundedContext("tx-handler"),
 
-                Register.BoundedContext("cashin")
+                Register.BoundedContext("forward-withdrawal")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(SetLinkedCashInOperationCommand))
-                        .On("cashin-commands")
-                    .WithCommandsHandler<CashInCommandHandler>(),
+                        .On("forward-withdrawal-commands")
+                    .PublishingEvents(typeof(ForwardWithdawalLinkedEvent))
+                        .With("forward-withdrawal-events")
+                    .WithCommandsHandler<ForwardWithdrawalCommandHandler>(),
 
                 Register.BoundedContext("bitcoin")
                     .FailedCommandRetryDelay(defaultRetryDelay)
@@ -113,8 +123,10 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.BoundedContext("solarcoin")
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(SendSolarCashOutCompletedEmailCommand), typeof(SolarCashOutCommand))
+                    .ListeningCommands(typeof(SolarCashOutCommand))
                         .On("solarcoin-commands")
+                    .PublishingEvents(typeof(SolarCashOutCompletedEvent))
+                        .With("solarcoin-events")
                     .WithCommandsHandler<SolarCoinCommandHandler>(),
 
                 Register.BoundedContext("operations")
@@ -127,9 +139,23 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(SaveCashoutTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveIssueTransactionStateCommand))
                         .On("transactions-commands")
-                    .PublishingEvents(typeof(CashoutTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent))
+                    .PublishingEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
                         .With("transactions-events")
                     .WithCommandsHandler<TransactionsCommandHandler>(),
+
+                Register.BoundedContext("history")
+                    .ListeningEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent),
+                            typeof(CashoutTransactionStateSavedEvent))
+                        .From("transactions").On("transactions-events")
+                    .WithProjection(historyProjection, "transactions")
+                    .ListeningEvents(typeof(ForwardWithdawalLinkedEvent))
+                        .From("forward-withdrawal").On("forward-withdrawal-events")
+                    .WithProjection(historyProjection, "forward-withdrawal"),
+
+                Register.BoundedContext("notifications")
+                    .ListeningEvents(typeof(SolarCashOutCompletedEvent))
+                        .From("solarcoin").On("solarcoin-events")
+                    .WithProjection(notificationsProjection, "solarcoin"),
 
                 Register.Saga<CashInOutSaga>("cash-out-saga")
                     .ListeningEvents(typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
@@ -140,8 +166,14 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .To("chronobank").With("chronobank-commands")
                     .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
                         .To("ethereum").With("ethereum-commands")
-                    .PublishingCommands(typeof(SendSolarCashOutCompletedEmailCommand), typeof(SolarCashOutCommand))
+                    .PublishingCommands(typeof(SolarCashOutCommand))
                         .To("solarcoin").With("solarcoin-commands"),
+
+                    Register.Saga<ForwardWithdawalSaga>("forward-withdrawal-saga")
+                        .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
+                            .From("transactions").On("transactions-events")
+                        .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
+                            .To("forward-withdrawal").With("forward-withdrawal-commands"),
 
                 Register.DefaultRouting
                     .PublishingCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
@@ -157,8 +189,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingCommands(typeof(SaveIssueTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveCashoutTransactionStateCommand))
                         .To("transactions").With("transactions-commands")
                     .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
-                        .To("cashin").With("cashin-commands")
-                    .PublishingCommands(typeof(SendSolarCashOutCompletedEmailCommand), typeof(SolarCashOutCommand))
+                        .To("forward-withdrawal").With("forward-withdrawal-commands")
+                    .PublishingCommands(typeof(SolarCashOutCommand))
                         .To("solarcoin").With("solarcoin-commands")
                 );
             })
@@ -168,11 +200,11 @@ namespace Lykke.Job.TransactionHandler.Modules
         private void InitSerializer()
         {
             SerializerBuilder.Build<Service.Assets.Client.Models.Asset>();
-            SerializerBuilder.Build<Service.OperationsRepository.AutorestClient.Models.CashInOutOperation>();
             SerializerBuilder.Build<Core.Domain.BitCoin.CashOutCommand>();
             SerializerBuilder.Build<Core.Domain.BitCoin.CashOutContextData>();
             SerializerBuilder.Build<Core.Domain.BitCoin.DestroyCommand>();
             SerializerBuilder.Build<Core.Domain.BitCoin.UncolorContextData>();
+            SerializerBuilder.Build<Core.Domain.BitCoin.IssueCommand>();
             SerializerBuilder.Build<Core.Domain.BitCoin.IssueContextData>();
         }
     }

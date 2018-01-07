@@ -1,4 +1,4 @@
-﻿using Lykke.Service.OperationsRepository.AutorestClient.Models;
+﻿using Lykke.Job.TransactionHandler.Queues.Models;
 using ProtoBuf;
 
 namespace Lykke.Job.TransactionHandler.Commands
@@ -7,6 +7,6 @@ namespace Lykke.Job.TransactionHandler.Commands
     public class RegisterCashInOutOperationCommand
     {
         [ProtoMember(1)]
-        public CashInOutOperation Operation { get; set; }
+        public CashInOutQueueMessage Message { get; set; }
     }
 }

@@ -33,9 +33,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             ChaosKitty.Meow();
 
-            await SaveState(command.TransactionId, command.Command.ToJson(), command.Context);
+            await SaveState(command.Command, command.Context);
 
-            eventPublisher.PublishEvent(new CashoutTransactionStateSavedEvent { Message = command.Message });
+            eventPublisher.PublishEvent(new CashoutTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
 
             return CommandHandlingResult.Ok();
         }
@@ -44,25 +44,30 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(TransactionsCommandHandler), nameof(Commands.SaveDestroyTransactionStateCommand), command.ToJson(), "");
 
-            await SaveState(command.TransactionId, command.Command.ToJson(), command.Context);
+            await SaveState(command.Command, command.Context);
 
-            eventPublisher.PublishEvent(new DestroyTransactionStateSavedEvent { Command = command.Command });
+            eventPublisher.PublishEvent(new DestroyTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
 
             return CommandHandlingResult.Ok();
         }
 
-        public async Task<CommandHandlingResult> Handle(Commands.SaveIssueTransactionStateCommand command)
+        public async Task<CommandHandlingResult> Handle(Commands.SaveIssueTransactionStateCommand command, IEventPublisher eventPublisher)
         {
             await _log.WriteInfoAsync(nameof(TransactionsCommandHandler), nameof(Commands.SaveIssueTransactionStateCommand), command.ToJson(), "");
 
-            await SaveState(command.TransactionId, command.RequestData, command.Context);
+            await SaveState(command.Command, command.Context);
+
+            eventPublisher.PublishEvent(new IssueTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
 
             return CommandHandlingResult.Ok();
         }
 
-        private async Task SaveState(string transactionId, string requestData, BaseContextData context)
+        private async Task SaveState(BaseCommand command, BaseContextData context)
         {
             ChaosKitty.Meow();
+
+            var transactionId = command.TransactionId.ToString();
+            var requestData = command.ToJson();
 
             await _bitcoinTransactionsRepository.UpdateAsync(transactionId, requestData, null, "");
             await _bitcoinTransactionService.SetTransactionContext(transactionId, context);

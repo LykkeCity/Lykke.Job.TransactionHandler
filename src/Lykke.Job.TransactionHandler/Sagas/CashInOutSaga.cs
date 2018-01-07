@@ -28,10 +28,10 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
         }
-
+        
         private async Task Handle(DestroyTransactionStateSavedEvent evt, ICommandSender sender)
         {
-            await _log.WriteInfoAsync(nameof(CashInOutSaga), nameof(DestroyTransactionStateSavedEvent), evt.ToJson());
+            await _log.WriteInfoAsync(nameof(CashInOutSaga), nameof(DestroyTransactionStateSavedEvent), evt.ToJson(), "");
 
             ChaosKitty.Meow();
 
@@ -43,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
         private async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
         {
-            await _log.WriteInfoAsync(nameof(CashInOutSaga), nameof(CashoutTransactionStateSavedEvent), evt.ToJson());
+            await _log.WriteInfoAsync(nameof(CashInOutSaga), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
 
             ChaosKitty.Meow();
 
@@ -64,22 +64,15 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Amount = Math.Abs(amount),
                     Address = context.Address,
                     ClientId = clientId,
-                    Asset = asset,
+                    AssetId = asset.Id,
                     CashOperationId = cashOperationId
                 }, "ethereum");
             }
             else if (asset.Id == LykkeConstants.SolarAssetId)
             {
-                sender.SendCommand(new Commands.SendSolarCashOutCompletedEmailCommand
-                {
-                    TransactionId = transactionId,
-                    ClientId = clientId,
-                    Address = context.Address,
-                    Amount = Math.Abs(amount)
-                }, "solarcoin");
-
                 sender.SendCommand(new Commands.SolarCashOutCommand
                 {
+                    ClientId = clientId,
                     TransactionId = transactionId,
                     Address = context.Address,
                     Amount = Math.Abs(amount)

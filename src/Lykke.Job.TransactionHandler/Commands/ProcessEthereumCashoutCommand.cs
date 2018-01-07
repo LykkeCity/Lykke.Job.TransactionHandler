@@ -9,7 +9,7 @@ namespace Lykke.Job.TransactionHandler.Commands
         public string ClientId { get; set; }
 
         [ProtoMember(5)]
-        public Service.Assets.Client.Models.Asset Asset { get; set; }
+        public string AssetId { get; set; }
 
         [ProtoMember(6)]
         public string CashOperationId { get; set; }

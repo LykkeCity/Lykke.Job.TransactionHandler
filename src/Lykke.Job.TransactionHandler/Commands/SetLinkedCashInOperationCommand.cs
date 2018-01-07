@@ -6,8 +6,8 @@ namespace Lykke.Job.TransactionHandler.Commands
     public class SetLinkedCashInOperationCommand
     {
         [ProtoMember(1)]
-        public string ClientId { get; set; }
-
+        public Queues.Models.CashInOutQueueMessage Message { get; set; }
+        
         [ProtoMember(2)]
         public string Id { get; set; }
 

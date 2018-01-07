@@ -3,12 +3,12 @@
 namespace Lykke.Job.TransactionHandler.Events
 {
     [ProtoContract]
-    public class DestroyTransactionStateSavedEvent
+    public class IssueTransactionStateSavedEvent
     {
         [ProtoMember(1)]
         public Queues.Models.CashInOutQueueMessage Message { get; set; }
 
         [ProtoMember(2)]
-        public Core.Domain.BitCoin.DestroyCommand Command { get; set; }
+        public Core.Domain.BitCoin.IssueCommand Command { get; set; }
     }
 }

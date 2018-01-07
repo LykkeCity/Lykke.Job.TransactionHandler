@@ -5,16 +5,17 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
+using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Utils;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
-    public class CashInCommandHandler
+    public class ForwardWithdrawalCommandHandler
     {
         private readonly ILog _log;
         private readonly IForwardWithdrawalRepository _forwardWithdrawalRepository;
 
-        public CashInCommandHandler(
+        public ForwardWithdrawalCommandHandler(
             [NotNull] ILog log,
             [NotNull] IForwardWithdrawalRepository forwardWithdrawalRepository)
         {
@@ -22,13 +23,15 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _forwardWithdrawalRepository = forwardWithdrawalRepository ?? throw new ArgumentNullException(nameof(forwardWithdrawalRepository));
         }
 
-        public async Task<CommandHandlingResult> Handle(Commands.SetLinkedCashInOperationCommand command)
+        public async Task<CommandHandlingResult> Handle(Commands.SetLinkedCashInOperationCommand command, IEventPublisher eventPublisher)
         {
-            await _log.WriteInfoAsync(nameof(SolarCoinCommandHandler), nameof(Commands.SetLinkedCashInOperationCommand), command.ToJson(), "");
+            await _log.WriteInfoAsync(nameof(ForwardWithdrawalCommandHandler), nameof(Commands.SetLinkedCashInOperationCommand), command.ToJson(), "");
 
             ChaosKitty.Meow();
 
-            await _forwardWithdrawalRepository.SetLinkedCashInOperationId(command.ClientId, command.Id, command.CashInId);
+            await _forwardWithdrawalRepository.SetLinkedCashInOperationId(command.Message.ClientId, command.Id, command.CashInId);
+
+            eventPublisher.PublishEvent(new ForwardWithdawalLinkedEvent { Message = command.Message, CashInId = command.CashInId });
 
             return CommandHandlingResult.Ok();
         }

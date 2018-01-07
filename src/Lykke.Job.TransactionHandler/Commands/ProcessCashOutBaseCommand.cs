@@ -6,7 +6,6 @@ namespace Lykke.Job.TransactionHandler.Commands
     [ProtoInclude(101, typeof(BitcoinCashOutCommand))]
     [ProtoInclude(102, typeof(ChronoBankCashOutCommand))]
     [ProtoInclude(103, typeof(ProcessEthereumCashoutCommand))]
-    [ProtoInclude(104, typeof(SendSolarCashOutCompletedEmailCommand))]
     [ProtoInclude(105, typeof(SolarCashOutCommand))]
     public abstract class ProcessCashOutBaseCommand
     {
