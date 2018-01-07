@@ -34,6 +34,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                 ChaosKitty.StateOfChaos = _settings.TransactionHandlerJob.ChaosKitty.StateOfChaos;
             }
 
+            InitSerializer();
+
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
             var rabbitMqSettings = new RabbitMQ.Client.ConnectionFactory { Uri = _settings.RabbitMq.ConnectionString };
@@ -76,6 +78,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                     new DefaultEndpointProvider(),
                     true,
                     Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "protobuf", environment: _settings.TransactionHandlerJob.Environment)),
+
+                Register.BoundedContext("tx-handler"),
 
                 Register.BoundedContext("cashin")
                     .FailedCommandRetryDelay(defaultRetryDelay)
@@ -159,6 +163,17 @@ namespace Lykke.Job.TransactionHandler.Modules
                 );
             })
             .As<ICqrsEngine>().SingleInstance();
+        }
+
+        private void InitSerializer()
+        {
+            SerializerBuilder.Build<Service.Assets.Client.Models.Asset>();
+            SerializerBuilder.Build<Service.OperationsRepository.AutorestClient.Models.CashInOutOperation>();
+            SerializerBuilder.Build<Core.Domain.BitCoin.CashOutCommand>();
+            SerializerBuilder.Build<Core.Domain.BitCoin.CashOutContextData>();
+            SerializerBuilder.Build<Core.Domain.BitCoin.DestroyCommand>();
+            SerializerBuilder.Build<Core.Domain.BitCoin.UncolorContextData>();
+            SerializerBuilder.Build<Core.Domain.BitCoin.IssueContextData>();
         }
     }
 }

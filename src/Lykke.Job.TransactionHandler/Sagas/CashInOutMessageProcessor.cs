@@ -111,7 +111,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     ClientId = message.ClientId,
                     AssetId = message.AssetId,
                     Amount = (decimal)message.Amount.ParseAnyDouble()
-                }, string.Empty, "offchain");
+                }, "tx-handler", "offchain");
             }
         }
 
@@ -144,7 +144,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _cqrsEngine.SendCommand(new RegisterCashInOutOperationCommand
             {
                 Operation = operation
-            }, string.Empty, "operations");
+            }, "tx-handler", "operations");
 
 
             context.CashOperationId = operation.Id;
@@ -160,7 +160,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Multisig = operation.AddressTo
                 }.ToJson(),
                 Context = context
-            }, string.Empty, "transactions");
+            }, "tx-handler", "transactions");
         }
 
         private async Task ProcessDestroy(IBitcoinTransaction transaction, CashInOutQueueMessage message)
@@ -183,7 +183,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     AddressTo = context.AddressTo,
                     TransactionId = transaction.TransactionId
                 }
-            }, string.Empty, "operations");
+            }, "tx-handler", "operations");
 
             context.CashOperationId = operationId;
             _cqrsEngine.SendCommand(new SaveDestroyTransactionStateCommand
@@ -198,7 +198,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Address = context.AddressFrom
                 },
                 Context = context
-            }, string.Empty, "transactions");
+            }, "tx-handler", "transactions");
         }
 
         private async Task ProcessManualUpdate(IBitcoinTransaction transaction, CashInOutQueueMessage message)
@@ -226,7 +226,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transaction.BlockchainHash,
                     State = GetTransactionState(transaction.BlockchainHash, isBtcOffchainClient)
                 }
-            }, string.Empty, "operations");
+            }, "tx-handler", "operations");
         }
 
         private async Task ProcessCashOut(IBitcoinTransaction transaction, CashInOutQueueMessage message)
@@ -263,14 +263,14 @@ namespace Lykke.Job.TransactionHandler.Sagas
                             ? TransactionStates.InProcessOffchain
                             : TransactionStates.InProcessOnchain
                     }
-                }, string.Empty, "operations");
+                }, "tx-handler", "operations");
 
                 _cqrsEngine.SendCommand(new SetLinkedCashInOperationCommand
                 {
                     ClientId = message.ClientId,
                     Id = context.AddData.ForwardWithdrawal.Id,
                     CashInId = forwardCashInId
-                }, string.Empty, "cashin");
+                }, "tx-handler", "cashin");
             }
 
             //Register cash operation
@@ -292,7 +292,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transaction.BlockchainHash,
                     State = isForwardWithdawal ? TransactionStates.SettledOffchain : GetTransactionState(transaction.BlockchainHash, isBtcOffchainClient)
                 }
-            }, string.Empty, "operations");
+            }, "tx-handler", "operations");
 
             //Update context data
             context.CashOperationId = cashOperationId;
@@ -310,7 +310,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 },
                 Context = context,
                 Message = message
-            }, string.Empty, "transactions");
+            }, "tx-handler", "transactions");
         }
 
         private static TransactionStates GetTransactionState(string blockchainHash, bool isBtcOffchainClient)

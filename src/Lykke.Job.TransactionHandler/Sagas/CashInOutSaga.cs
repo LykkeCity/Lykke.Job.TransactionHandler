@@ -92,7 +92,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     TransactionId = transactionId,
                     Amount = Math.Abs(amount),
                     Address = context.Address
-                }, "solarcoin");
+                }, "chronobank");
             }
             else if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal && !isForwardWithdawal)
             {
@@ -102,7 +102,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Amount = Math.Abs(amount),
                     Address = context.Address,
                     AssetId = asset.Id
-                }, "solarcoin");
+                }, "bitcoin");
             }
         }
     }
