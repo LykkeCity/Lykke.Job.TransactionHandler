@@ -60,23 +60,41 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             else
             {
-                // todo: if (!asset.IsTrusted) ?
-                var address = await _bcnClientCredentialsRepository.GetClientAddress(command.ClientId);
-                var txRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(command.TransactionId));
+                var transactionId = Guid.Parse(command.TransactionId);
+                if (!command.Asset.IsTrusted)
+                {
+                    var address = await _bcnClientCredentialsRepository.GetClientAddress(command.ClientId);
+                    var txRequest = await _ethereumTransactionRequestRepository.GetAsync(transactionId);
 
-                txRequest.OperationIds = new[] { command.CashOperationId };
-                await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
+                    txRequest.OperationIds = new[] { command.CashOperationId };
+                    await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
 
-                var response = await _srvEthereumHelper.SendCashOutAsync(
-                    txRequest.Id,
-                    txRequest.SignedTransfer.Sign,
-                    command.Asset,
-                    address,
-                    txRequest.AddressTo,
-                    txRequest.Volume);
+                    var response = await _srvEthereumHelper.SendCashOutAsync(
+                        txRequest.Id,
+                        txRequest.SignedTransfer.Sign,
+                        command.Asset,
+                        address,
+                        txRequest.AddressTo,
+                        txRequest.Volume);
 
-                if (response.HasError)
-                    errorMessage = response.Error.ToJson();
+                    if (response.HasError)
+                        errorMessage = response.Error.ToJson();
+                }
+                else
+                {
+                    var address = _settings.HotwalletAddress;
+
+                    var response = await _srvEthereumHelper.SendCashOutAsync(
+                        transactionId,
+                        string.Empty,
+                        command.Asset,
+                        address,
+                        command.Address,
+                        (decimal)Math.Abs(command.Amount));
+
+                    if (response.HasError)
+                        errorMessage = response.Error.ToJson();
+                }
             }
 
             if (errorMessage != null)
