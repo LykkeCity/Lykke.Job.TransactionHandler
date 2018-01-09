@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Threading.Tasks;
+using AzureStorage.Queue;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Bitcoin.Api.Client.BitcoinApi;
 using Lykke.Cqrs;
-using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Utils;
 
 namespace Lykke.Job.TransactionHandler.Handlers
@@ -13,20 +13,20 @@ namespace Lykke.Job.TransactionHandler.Handlers
     public class BitcoinCommandHandler
     {
         private readonly ILog _log;
-        private readonly IBitcoinCommandSender _bitcoinCommandSender;
         private readonly IBitcoinApiClient _bitcoinApiClient;
         private readonly TimeSpan _retryTimeout;
+        private readonly IQueueExt _queueExt;
 
         public BitcoinCommandHandler(
             [NotNull] ILog log,
-            [NotNull] IBitcoinCommandSender bitcoinCommandSender,
             [NotNull] IBitcoinApiClient bitcoinApiClient,
-            TimeSpan retryTimeout)
+            TimeSpan retryTimeout,
+            [NotNull] IQueueExt queueExt)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            _bitcoinCommandSender = bitcoinCommandSender ?? throw new ArgumentNullException(nameof(bitcoinCommandSender));
             _bitcoinApiClient = bitcoinApiClient ?? throw new ArgumentNullException(nameof(bitcoinApiClient));
             _retryTimeout = retryTimeout;
+            _queueExt = queueExt ?? throw new ArgumentNullException(nameof(queueExt));
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SendBitcoinCommand command)
@@ -35,7 +35,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             ChaosKitty.Meow();
 
-            await _bitcoinCommandSender.SendCommand(command.Command);
+            await _queueExt.PutRawMessageAsync(command.Command.ToJson());
 
             return CommandHandlingResult.Ok();
         }

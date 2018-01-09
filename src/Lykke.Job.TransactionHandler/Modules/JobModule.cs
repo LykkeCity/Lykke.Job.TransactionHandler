@@ -223,10 +223,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new AssetSettingRepository(
                     AzureTableStorage<AssetSettingEntity>.Create(_dbSettingsManager.ConnectionString(x => x.DictsConnString), "AssetSettings", _log)));
 
-            builder.RegisterInstance<IBitcoinCommandSender>(
-                new BitcoinCommandSender(
-                    AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "intransactions")));
-
             builder.RegisterInstance<IBitCoinTransactionsRepository>(
                 new BitCoinTransactionsRepository(
                     AzureTableStorage<BitCoinTransactionEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "BitCoinTransactions", _log)));

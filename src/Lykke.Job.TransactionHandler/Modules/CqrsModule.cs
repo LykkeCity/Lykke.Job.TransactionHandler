@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Autofac;
+using AzureStorage.Queue;
 using Common.Log;
 using Inceptum.Cqrs.Configuration;
 using Inceptum.Messaging;
@@ -22,9 +23,11 @@ namespace Lykke.Job.TransactionHandler.Modules
     {
         private readonly AppSettings _settings;
         private readonly ILog _log;
+        private readonly IReloadingManager<AppSettings.DbSettings> _dbSettingsManager;
 
         public CqrsModule(IReloadingManager<AppSettings> settingsManager, ILog log)
         {
+            _dbSettingsManager = settingsManager.Nested(x => x.TransactionHandlerJob.Db);
             _settings = settingsManager.CurrentValue;
             _log = log;
         }
@@ -66,7 +69,8 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterType<ForwardWithdrawalCommandHandler>();
             builder.RegisterType<BitcoinCommandHandler>()
-                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(defaultRetryDelay)));
+                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(defaultRetryDelay)))
+                .WithParameter(TypedParameter.From(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "intransactions")));
             builder.RegisterType<ChronoBankCommandHandler>();
             builder.RegisterType<EthereumCommandHandler>()
                 .WithParameter(TypedParameter.From(_settings.Ethereum))

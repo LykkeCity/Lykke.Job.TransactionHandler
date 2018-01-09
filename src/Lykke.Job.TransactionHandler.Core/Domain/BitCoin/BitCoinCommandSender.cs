@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
 {
-    public interface IBitcoinCommandSender
-    {
-        Task SendCommand(BaseCommand command);
-    }
-
     #region Commands
 
     public enum CommandType
