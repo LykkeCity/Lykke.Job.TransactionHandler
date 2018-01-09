@@ -336,6 +336,11 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, context);
 
+            if (isForwardWithdawal)
+            {
+                return true;
+            }
+
             if (asset.Blockchain == Blockchain.Ethereum)
             {
                 string errMsg = string.Empty;
@@ -413,7 +418,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             if (asset.Id == LykkeConstants.ChronoBankAssetId)
                 await ProcessChronoBankCashOut(context.Address, Math.Abs(amount), transaction.TransactionId);
 
-            if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal && !isForwardWithdawal)
+            if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal)
                 await ProcessBitcoinCashOut(asset, context.Address, (decimal)Math.Abs(amount), transaction.TransactionId);
 
             return true;
