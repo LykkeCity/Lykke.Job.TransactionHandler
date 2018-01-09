@@ -75,16 +75,16 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 switch (transaction.CommandType)
                 {
                     case BitCoinCommands.CashIn:
-                    case BitCoinCommands.Issue: // Roman?
+                    case BitCoinCommands.Issue:
                         await ProcessIssue(transaction, message);
                         break;
-                    case BitCoinCommands.CashOut: // withdraw (trusted -> external / trading -> private)
+                    case BitCoinCommands.CashOut:
                         await ProcessCashOut(transaction, message);
                         break;
                     case BitCoinCommands.Destroy:
                         await ProcessDestroy(transaction, message);
                         break;
-                    case BitCoinCommands.ManualUpdate: // BO "+"
+                    case BitCoinCommands.ManualUpdate:
                         await ProcessManualUpdate(transaction, message);
                         break;
                     default:
