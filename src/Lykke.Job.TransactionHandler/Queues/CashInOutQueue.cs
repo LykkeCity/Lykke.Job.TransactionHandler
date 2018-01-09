@@ -49,7 +49,12 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             try
             {
-                _subscriber = new RabbitMqSubscriber<CashInOutQueueMessage>(settings, new DeadQueueErrorHandlingStrategy(_log, settings))
+                _subscriber = new RabbitMqSubscriber<CashInOutQueueMessage>(
+                        settings,
+                        new ResilientErrorHandlingStrategy(_log, settings,
+                            retryTimeout: TimeSpan.FromSeconds(20),
+                            retryNum: 3,
+                            next: new DeadQueueErrorHandlingStrategy(_log, settings)))
                     .SetMessageDeserializer(new JsonMessageDeserializer<CashInOutQueueMessage>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
                     .Subscribe(ProcessMessage)
