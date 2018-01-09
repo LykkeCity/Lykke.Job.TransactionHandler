@@ -15,15 +15,18 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly ILog _log;
         private readonly IBitcoinCommandSender _bitcoinCommandSender;
         private readonly IBitcoinApiClient _bitcoinApiClient;
+        private readonly TimeSpan _retryTimeout;
 
         public BitcoinCommandHandler(
             [NotNull] ILog log,
             [NotNull] IBitcoinCommandSender bitcoinCommandSender,
-            [NotNull] IBitcoinApiClient bitcoinApiClient)
+            [NotNull] IBitcoinApiClient bitcoinApiClient,
+            TimeSpan retryTimeout)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _bitcoinCommandSender = bitcoinCommandSender ?? throw new ArgumentNullException(nameof(bitcoinCommandSender));
             _bitcoinApiClient = bitcoinApiClient ?? throw new ArgumentNullException(nameof(bitcoinApiClient));
+            _retryTimeout = retryTimeout;
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SendBitcoinCommand command)
@@ -52,7 +55,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
             });
             if (response.HasError)
             {
-                await _log.WriteWarningAsync(nameof(BitcoinCommandHandler), nameof(Commands.BitcoinCashOutCommand), command.ToJson(), response.ToJson());
+                await _log.WriteErrorAsync(nameof(BitcoinCommandHandler), nameof(Commands.BitcoinCashOutCommand), command.ToJson(), new Exception(response.ToJson()));
+                return CommandHandlingResult.Fail(_retryTimeout);
             }
 
             return CommandHandlingResult.Ok();

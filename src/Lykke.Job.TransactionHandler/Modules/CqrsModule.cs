@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Autofac;
 using Common.Log;
 using Inceptum.Cqrs.Configuration;
@@ -57,15 +58,19 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new RabbitMqTransportFactory());
 #endif
 
+            var defaultRetryDelay = _settings.TransactionHandlerJob.RetryDelayInMilliseconds;
+
             builder.RegisterType<CashInOutMessageProcessor>();
             builder.RegisterType<CashInOutSaga>();
             builder.RegisterType<ForwardWithdawalSaga>();
 
             builder.RegisterType<ForwardWithdrawalCommandHandler>();
-            builder.RegisterType<BitcoinCommandHandler>();
+            builder.RegisterType<BitcoinCommandHandler>()
+                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(defaultRetryDelay)));
             builder.RegisterType<ChronoBankCommandHandler>();
             builder.RegisterType<EthereumCommandHandler>()
-                .WithParameter(TypedParameter.From(_settings.Ethereum));
+                .WithParameter(TypedParameter.From(_settings.Ethereum))
+                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(defaultRetryDelay)));
             builder.RegisterType<SolarCoinCommandHandler>();
             builder.RegisterType<OffchainCommandHandler>();
             builder.RegisterType<OperationsCommandHandler>();
@@ -74,7 +79,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<OperationHistoryProjection>();
             builder.RegisterType<NotificationsProjection>();
 
-            var defaultRetryDelay = _settings.TransactionHandlerJob.RetryDelayInMilliseconds;
             builder.Register(ctx =>
             {
                 var historyProjection = ctx.Resolve<OperationHistoryProjection>();

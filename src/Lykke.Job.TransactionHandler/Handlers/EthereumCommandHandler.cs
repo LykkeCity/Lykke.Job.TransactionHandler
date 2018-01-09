@@ -23,6 +23,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly IEthClientEventLogs _ethClientEventLogs;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly AppSettings.EthereumSettings _settings;
+        private readonly TimeSpan _retryTimeout;
 
         public EthereumCommandHandler(
             [NotNull] ILog log,
@@ -31,7 +32,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
             [NotNull] IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             [NotNull] IEthClientEventLogs ethClientEventLogs,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
-            [NotNull] AppSettings.EthereumSettings settings)
+            [NotNull] AppSettings.EthereumSettings settings,
+            TimeSpan retryTimeout)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
@@ -40,6 +42,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _ethClientEventLogs = ethClientEventLogs ?? throw new ArgumentNullException(nameof(ethClientEventLogs));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _retryTimeout = retryTimeout;
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.ProcessEthereumCashoutCommand command)
@@ -106,6 +109,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 await _ethClientEventLogs.WriteEvent(command.ClientId, Event.Error, new { Request = command.TransactionId, Error = errorMessage }.ToJson());
                 await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(Commands.ProcessEthereumCashoutCommand), command.ToJson(), new Exception(errorMessage));
+                return CommandHandlingResult.Fail(_retryTimeout);
             }
 
             return CommandHandlingResult.Ok();
