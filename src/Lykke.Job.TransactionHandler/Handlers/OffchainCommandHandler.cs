@@ -26,9 +26,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(CreateOffchainCashoutRequestCommand command)
         {
-            ChaosKitty.Meow();
-
             await _log.WriteInfoAsync(nameof(OffchainCommandHandler), nameof(CreateOffchainCashoutRequestCommand), command.ToJson(), "");
+
+            ChaosKitty.Meow();
 
             await _offchainRequestService.CreateOffchainRequestAndNotify(command.Id, command.ClientId, command.AssetId, command.Amount, null, OffchainTransferType.TrustedCashout);
 
