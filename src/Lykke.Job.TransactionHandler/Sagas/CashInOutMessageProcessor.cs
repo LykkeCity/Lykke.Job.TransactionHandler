@@ -60,7 +60,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             ChaosKitty.Meow();
 
             var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(message.Id);
-            if (transaction == null) // swift?
+            if (transaction == null)
             {
                 if (_cashOperationsRepositoryClient.GetAsync(message.ClientId, message.Id) == null)
                 {

@@ -56,6 +56,11 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var isForwardWithdawal = context.AddData?.ForwardWithdrawal != null;
             var cashOperationId = context.CashOperationId;
 
+            if (isForwardWithdawal)
+            {
+                return;
+            }
+
             if (asset.Blockchain == Blockchain.Ethereum)
             {
                 sender.SendCommand(new Commands.ProcessEthereumCashoutCommand
@@ -87,7 +92,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Address = context.Address
                 }, "chronobank");
             }
-            else if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal && !isForwardWithdawal)
+            else if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal)
             {
                 sender.SendCommand(new Commands.BitcoinCashOutCommand
                 {
