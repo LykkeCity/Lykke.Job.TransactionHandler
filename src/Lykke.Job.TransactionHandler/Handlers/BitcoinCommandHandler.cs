@@ -5,6 +5,7 @@ using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Bitcoin.Api.Client.BitcoinApi;
+using Lykke.Bitcoin.Api.Client.BitcoinApi.Models;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Utils;
 
@@ -46,14 +47,14 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             ChaosKitty.Meow();
 
-            var response = await _bitcoinApiClient.CashoutAsync(new Bitcoin.Api.Client.BitcoinApi.Models.CashoutModel
+            var response = await _bitcoinApiClient.CashoutAsync(new CashoutModel
             {
                 Amount = (decimal)command.Amount,
                 AssetId = command.AssetId,
                 DestinationAddress = command.Address,
                 TransactionId = Guid.Parse(command.TransactionId)
             });
-            if (response.HasError)
+            if (response.HasError && response.Error.ErrorCode != ErrorCode.DuplicateTransactionId)
             {
                 await _log.WriteErrorAsync(nameof(BitcoinCommandHandler), nameof(Commands.BitcoinCashOutCommand), command.ToJson(), new Exception(response.ToJson()));
                 return CommandHandlingResult.Fail(_retryTimeout);
