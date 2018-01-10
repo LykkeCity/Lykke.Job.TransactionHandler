@@ -85,9 +85,10 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.Register(ctx =>
             {
+                var defaultPipeline = "commands";
+                var defaultRoute = "self";
                 var historyProjection = ctx.Resolve<OperationHistoryProjection>();
                 var notificationsProjection = ctx.Resolve<NotificationsProjection>();
-
                 return new CqrsEngine(_log,
                     ctx.Resolve<IDependencyResolver>(),
                     messagingEngine,
@@ -100,106 +101,96 @@ namespace Lykke.Job.TransactionHandler.Modules
                 Register.BoundedContext("forward-withdrawal")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(SetLinkedCashInOperationCommand))
-                        .On("forward-withdrawal-commands")
+                        .On(defaultRoute)
                     .PublishingEvents(typeof(ForwardWithdawalLinkedEvent))
-                        .With("forward-withdrawal-events")
+                        .With(defaultPipeline)
                     .WithCommandsHandler<ForwardWithdrawalCommandHandler>(),
 
                 Register.BoundedContext("bitcoin")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
-                        .On("bitcoin-commands")
+                        .On(defaultRoute)
                     .WithCommandsHandler<BitcoinCommandHandler>(),
 
                 Register.BoundedContext("chronobank")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(ChronoBankCashOutCommand))
-                        .On("chronobank-commands")
+                        .On(defaultRoute)
                     .WithCommandsHandler<ChronoBankCommandHandler>(),
 
                 Register.BoundedContext("ethereum")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(ProcessEthereumCashoutCommand))
-                        .On("ethereum-commands")
+                        .On(defaultRoute)
                     .WithCommandsHandler<EthereumCommandHandler>(),
 
                 Register.BoundedContext("offchain")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand))
-                        .On("offchain-commands")
+                        .On(defaultRoute)
                     .WithCommandsHandler<OffchainCommandHandler>(),
 
                 Register.BoundedContext("solarcoin")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(SolarCashOutCommand))
-                        .On("solarcoin-commands")
+                        .On(defaultRoute)
                     .PublishingEvents(typeof(SolarCashOutCompletedEvent))
-                        .With("solarcoin-events")
+                        .With(defaultPipeline)
                     .WithCommandsHandler<SolarCoinCommandHandler>(),
 
                 Register.BoundedContext("operations")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(RegisterCashInOutOperationCommand))
-                        .On("operations-commands")
+                        .On(defaultRoute)
                     .WithCommandsHandler<OperationsCommandHandler>(),
 
                 Register.BoundedContext("transactions")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(SaveCashoutTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveIssueTransactionStateCommand))
-                        .On("transactions-commands")
+                        .On(defaultRoute)
                     .PublishingEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
-                        .With("transactions-events")
+                        .With(defaultPipeline)
                     .WithCommandsHandler<TransactionsCommandHandler>(),
 
                 Register.BoundedContext("history")
                     .ListeningEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent),
                             typeof(CashoutTransactionStateSavedEvent))
-                        .From("transactions").On("transactions-events")
+                        .From("transactions").On(defaultRoute)
                     .WithProjection(historyProjection, "transactions")
                     .ListeningEvents(typeof(ForwardWithdawalLinkedEvent))
-                        .From("forward-withdrawal").On("forward-withdrawal-events")
+                        .From("forward-withdrawal").On(defaultRoute)
                     .WithProjection(historyProjection, "forward-withdrawal"),
 
                 Register.BoundedContext("notifications")
                     .ListeningEvents(typeof(SolarCashOutCompletedEvent))
-                        .From("solarcoin").On("solarcoin-events")
+                        .From("solarcoin").On(defaultRoute)
                     .WithProjection(notificationsProjection, "solarcoin"),
 
                 Register.Saga<CashInOutSaga>("cash-out-saga")
                     .ListeningEvents(typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
-                        .From("transactions").On("transactions-events")
+                        .From("transactions").On(defaultRoute)
                     .PublishingCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
-                        .To("bitcoin").With("bitcoin-commands")
+                        .To("bitcoin").With(defaultPipeline)
                     .PublishingCommands(typeof(ChronoBankCashOutCommand))
-                        .To("chronobank").With("chronobank-commands")
+                        .To("chronobank").With(defaultPipeline)
                     .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
-                        .To("ethereum").With("ethereum-commands")
+                        .To("ethereum").With(defaultPipeline)
                     .PublishingCommands(typeof(SolarCashOutCommand))
-                        .To("solarcoin").With("solarcoin-commands"),
+                        .To("solarcoin").With(defaultPipeline),
 
-                    Register.Saga<ForwardWithdawalSaga>("forward-withdrawal-saga")
-                        .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
-                            .From("transactions").On("transactions-events")
-                        .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
-                            .To("forward-withdrawal").With("forward-withdrawal-commands"),
+                Register.Saga<ForwardWithdawalSaga>("forward-withdrawal-saga")
+                    .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
+                        .From("transactions").On(defaultRoute)
+                    .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
+                        .To("forward-withdrawal").With(defaultPipeline),
 
                 Register.DefaultRouting
-                    .PublishingCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
-                        .To("bitcoin").With("bitcoin-commands")
-                    .PublishingCommands(typeof(ChronoBankCashOutCommand))
-                        .To("chronobank").With("chronobank-commands")
-                    .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
-                        .To("ethereum").With("ethereum-commands")
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
-                        .To("offchain").With("offchain-commands")
+                        .To("offchain").With(defaultPipeline)
                     .PublishingCommands(typeof(RegisterCashInOutOperationCommand))
-                        .To("operations").With("operations-commands")
+                        .To("operations").With(defaultPipeline)
                     .PublishingCommands(typeof(SaveIssueTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveCashoutTransactionStateCommand))
-                        .To("transactions").With("transactions-commands")
-                    .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
-                        .To("forward-withdrawal").With("forward-withdrawal-commands")
-                    .PublishingCommands(typeof(SolarCashOutCommand))
-                        .To("solarcoin").With("solarcoin-commands")
+                        .To("transactions").With(defaultPipeline)
                 );
             })
             .As<ICqrsEngine>().SingleInstance();
