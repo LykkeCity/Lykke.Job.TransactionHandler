@@ -112,8 +112,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
 
-            var isOffchainClient = await _clientSettingsRepository.IsOffchainClient(message.ClientId);
-            var isBtcOffchainClient = isOffchainClient && asset.Blockchain == Blockchain.Bitcoin;
+            var isBtcOffchainClient = asset.Blockchain == Blockchain.Bitcoin;
 
             var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(message.Id);
             var operation = new CashInOutOperation
