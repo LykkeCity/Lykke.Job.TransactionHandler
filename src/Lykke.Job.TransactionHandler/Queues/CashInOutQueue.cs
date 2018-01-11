@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
 using JetBrains.Annotations;
-using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.RabbitMqBroker;
@@ -17,7 +15,6 @@ namespace Lykke.Job.TransactionHandler.Queues
         private const string QueueName = "transactions.cashinout";
 
         private readonly ILog _log;
-        private readonly IDeduplicator _deduplicator;
         private readonly CashInOutMessageProcessor _messageProcessor;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
@@ -26,13 +23,11 @@ namespace Lykke.Job.TransactionHandler.Queues
         public CashInOutQueue(
             [NotNull] ILog log,
             [NotNull] AppSettings.RabbitMqSettings config,
-            [NotNull] IDeduplicator deduplicator,
             [NotNull] CashInOutMessageProcessor messageProcessor)
         {
             _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _rabbitConfig = config ?? throw new ArgumentNullException(nameof(config));
-            _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
         }
 
         public void Start()
@@ -76,12 +71,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task ProcessMessage(CashInOutQueueMessage message)
         {
-            if (!await _deduplicator.EnsureNotDuplicateAsync(message))
-            {
-                await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(ProcessMessage), message.ToJson(), "Duplicated message");
-                return;
-            }
-
             await _messageProcessor.ProcessMessage(message);
         }
 
