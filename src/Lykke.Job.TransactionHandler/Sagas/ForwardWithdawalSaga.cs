@@ -23,7 +23,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
         }
-        
+
         private async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
         {
             await _log.WriteInfoAsync(nameof(ForwardWithdawalSaga), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
@@ -41,10 +41,10 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 {
                     Message = message,
                     Id = context.AddData.ForwardWithdrawal.Id,
-                    CashInId = Guid.NewGuid().ToString()
-                },  "forward-withdrawal");
+                    CashInId = context.CashOperationId
+                }, "forward-withdrawal");
             }
         }
-        
+
     }
 }

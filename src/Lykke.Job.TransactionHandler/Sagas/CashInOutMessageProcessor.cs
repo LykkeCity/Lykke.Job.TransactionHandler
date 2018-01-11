@@ -106,7 +106,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             {
                 _cqrsEngine.SendCommand(new CreateOffchainCashoutRequestCommand
                 {
-                    Id = Guid.NewGuid().ToString(),
+                    Id = message.Id,
                     ClientId = message.ClientId,
                     AssetId = message.AssetId,
                     Amount = (decimal)message.Amount.ParseAnyDouble()
@@ -128,7 +128,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
             var amount = message.Amount.ParseAnyDouble();
             var context = await _bitcoinTransactionService.GetTransactionContext<IssueContextData>(transaction.TransactionId);
-            context.CashOperationId = Guid.NewGuid().ToString();
+            context.CashOperationId = transaction.TransactionId;
             _cqrsEngine.SendCommand(new SaveIssueTransactionStateCommand
             {
                 Command = new IssueCommand
@@ -148,7 +148,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         {
             var amount = message.Amount.ParseAnyDouble();
             var context = await _bitcoinTransactionService.GetTransactionContext<UncolorContextData>(transaction.TransactionId);
-            context.CashOperationId = Guid.NewGuid().ToString();
+            context.CashOperationId = transaction.TransactionId;
             _cqrsEngine.SendCommand(new SaveDestroyTransactionStateCommand
             {
                 Command = new DestroyCommand
@@ -177,8 +177,8 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
             var amount = message.Amount.ParseAnyDouble();
             var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transaction.TransactionId);
-            
-            context.CashOperationId = Guid.NewGuid().ToString();
+
+            context.CashOperationId = transaction.TransactionId;
             _cqrsEngine.SendCommand(new SaveCashoutTransactionStateCommand
             {
                 Command = new CashOutCommand

@@ -55,7 +55,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var context = transaction.GetContextData<CashOutContextData>();
             var operation = new CashInOutOperation
             {
-                Id = Guid.NewGuid().ToString(),
+                Id = transaction.TransactionId,
                 ClientId = message.ClientId,
                 Multisig = walletCredentials.MultiSig,
                 AssetId = message.AssetId,
