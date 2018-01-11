@@ -108,7 +108,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.BoundedContext("bitcoin")
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
+                    .ListeningCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand), typeof(SegwitTransferCommand))
                         .On(defaultRoute)
                     .WithCommandsHandler<BitcoinCommandHandler>(),
 
@@ -187,6 +187,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                 Register.DefaultRouting
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
                         .To("offchain").With(defaultPipeline)
+                    .PublishingCommands(typeof(SegwitTransferCommand))
+                        .To("bitcoin").With(defaultPipeline)
                     .PublishingCommands(typeof(RegisterCashInOutOperationCommand))
                         .To("operations").With(defaultPipeline)
                     .PublishingCommands(typeof(SaveIssueTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveCashoutTransactionStateCommand))

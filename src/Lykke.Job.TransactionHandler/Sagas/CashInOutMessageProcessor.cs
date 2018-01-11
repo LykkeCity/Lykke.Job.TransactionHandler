@@ -30,6 +30,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private readonly IClientAccountClient _clientAccountClient;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly ICqrsEngine _cqrsEngine;
+        private readonly IBitcoinCashinRepository _bitcoinCashinTypeRepository;
 
         public CashInOutMessageProcessor(
             [NotNull] ILog log,
@@ -40,7 +41,8 @@ namespace Lykke.Job.TransactionHandler.Sagas
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
             [NotNull] IClientAccountClient clientAccountClient,
             [NotNull] IBitcoinTransactionService bitcoinTransactionService,
-            [NotNull] ICqrsEngine cqrsEngine)
+            [NotNull] ICqrsEngine cqrsEngine,
+            [NotNull] IBitcoinCashinRepository bitcoinCashinRepository)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
@@ -51,6 +53,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _clientAccountClient = clientAccountClient ?? throw new ArgumentNullException(nameof(clientAccountClient));
             _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
             _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
+            _bitcoinCashinTypeRepository = bitcoinCashinRepository ?? throw new ArgumentNullException(nameof(bitcoinCashinRepository));
         }
 
         public async Task ProcessMessage(CashInOutQueueMessage message)
@@ -104,13 +107,25 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
             if (asset.Id == LykkeConstants.BitcoinAssetId)
             {
-                _cqrsEngine.SendCommand(new CreateOffchainCashoutRequestCommand
+                var cashinType = await _bitcoinCashinTypeRepository.GetAsync(message.Id);
+                if (cashinType == null || !cashinType.IsSegwit)
                 {
-                    Id = message.Id,
-                    ClientId = message.ClientId,
-                    AssetId = message.AssetId,
-                    Amount = (decimal)message.Amount.ParseAnyDouble()
-                }, "tx-handler", "offchain");
+                    _cqrsEngine.SendCommand(new CreateOffchainCashoutRequestCommand
+                    {
+                        Id = message.Id,
+                        ClientId = message.ClientId,
+                        AssetId = message.AssetId,
+                        Amount = (decimal)message.Amount.ParseAnyDouble()
+                    }, "tx-handler", "offchain");
+                }
+                else
+                {
+                    _cqrsEngine.SendCommand(new SegwitTransferCommand
+                    {
+                        Id = message.Id,
+                        Address = cashinType.Address
+                    }, "tx-handler", "bitcoin");
+                }
             }
         }
 

@@ -62,5 +62,21 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             return CommandHandlingResult.Ok();
         }
+
+        public async Task<CommandHandlingResult> Handle(Commands.SegwitTransferCommand command)
+        {
+            await _log.WriteInfoAsync(nameof(BitcoinCommandHandler), nameof(Commands.SegwitTransferCommand), command.ToJson(), "");
+
+            ChaosKitty.Meow();
+
+            var response = await _bitcoinApiClient.SegwitTransfer(Guid.Parse(command.Id), command.Address);
+            if (response.HasError && response.Error.ErrorCode != ErrorCode.DuplicateTransactionId)
+            {
+                await _log.WriteErrorAsync(nameof(BitcoinCommandHandler), nameof(Commands.SegwitTransferCommand), command.ToJson(), new Exception(response.ToJson()));
+                return CommandHandlingResult.Fail(_retryTimeout);
+            }
+
+            return CommandHandlingResult.Ok();
+        }
     }
 }
