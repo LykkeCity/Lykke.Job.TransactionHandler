@@ -10,7 +10,6 @@ using AzureStorage.Tables.Templates.Index;
 using Common;
 using Common.Log;
 using Lykke.Bitcoin.Api.Client;
-using Lykke.Bitcoin.Api.Client.BitcoinApi;
 using Lykke.Job.TransactionHandler.AzureRepositories.Assets;
 using Lykke.Job.TransactionHandler.AzureRepositories.BitCoin;
 using Lykke.Job.TransactionHandler.AzureRepositories.Blockchain;
@@ -120,7 +119,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             // NOTE: You can implement your own poison queue notifier. See https://github.com/LykkeCity/JobTriggers/blob/master/readme.md
             // builder.Register<PoisionQueueNotifierImplementation>().As<IPoisionQueueNotifier>();
-            
+
             _services.RegisterAssetsClient(AssetServiceSettings.Create(new Uri(_settings.Assets.ServiceUrl), _jobSettings.AssetsCache.ExpirationPeriod));
 
             Mapper.Initialize(cfg =>
@@ -130,8 +129,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                 cfg.CreateMap<IEthereumTransactionRequest, EthereumTransactionReqEntity>().IgnoreTableEntityFields()
                     .ForMember(x => x.SignedTransferVal, config => config.Ignore())
                     .ForMember(x => x.OperationIdsVal, config => config.Ignore());
-            });            
-            
+            });
+
             Mapper.Configuration.AssertConfigurationIsValid();
 
             BindRabbitMq(builder);
@@ -223,10 +222,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance<IAssetSettingRepository>(
                 new AssetSettingRepository(
                     AzureTableStorage<AssetSettingEntity>.Create(_dbSettingsManager.ConnectionString(x => x.DictsConnString), "AssetSettings", _log)));
-
-            builder.RegisterInstance<IBitcoinCommandSender>(
-                new BitcoinCommandSender(
-                    AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "intransactions")));
 
             builder.RegisterInstance<IBitCoinTransactionsRepository>(
                 new BitCoinTransactionsRepository(

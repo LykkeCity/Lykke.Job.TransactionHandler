@@ -7,6 +7,7 @@ using AzureStorage.Tables;
 using Common.Log;
 using Lykke.Common.ApiLibrary.Middleware;
 using Lykke.Common.ApiLibrary.Swagger;
+using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Models;
 using Lykke.Job.TransactionHandler.Modules;
 using Lykke.Job.TransactionHandler.Queues;
@@ -69,6 +70,7 @@ namespace Lykke.Job.TransactionHandler
                 Log = CreateLogWithSlack(services, appSettings);
 
                 builder.RegisterModule(new JobModule(appSettings.CurrentValue, appSettings.Nested(x => x.TransactionHandlerJob.Db), Log));
+                builder.RegisterModule(new CqrsModule(appSettings, Log));
 
                 if (string.IsNullOrWhiteSpace(appSettings.CurrentValue.TransactionHandlerJob.Db.BitCoinQueueConnectionString))
                 {
@@ -108,7 +110,11 @@ namespace Lykke.Job.TransactionHandler
 
                 app.UseMvc();
                 app.UseSwagger();
-                app.UseSwaggerUi();
+                app.UseSwaggerUI(x =>
+                {
+                    x.RoutePrefix = "swagger/ui";
+                    x.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+                });
                 app.UseStaticFiles();
 
                 appLifetime.ApplicationStarted.Register(() => StartApplication().Wait());
@@ -126,7 +132,9 @@ namespace Lykke.Job.TransactionHandler
         {
             try
             {
-                // NOTE: Job not yet recieve and process IsAlive requests here
+                // NOTE: Job not yet receive and process IsAlive requests here
+
+                var cqrs = ApplicationContainer.Resolve<ICqrsEngine>(); // bootstrap
 
                 StartSubscribers();
 
@@ -146,7 +154,7 @@ namespace Lykke.Job.TransactionHandler
         {
             try
             {
-                // NOTE: Job still can recieve and process IsAlive requests here, so take care about it if you add logic here.
+                // NOTE: Job still can receive and process IsAlive requests here, so take care about it if you add logic here.
 
                 StopSubscribers();
 
@@ -167,7 +175,7 @@ namespace Lykke.Job.TransactionHandler
         {
             try
             {
-                // NOTE: Job can't recieve and process IsAlive requests here, so you can destroy all resources
+                // NOTE: Job can't receive and process IsAlive requests here, so you can destroy all resources
 
                 if (Log != null)
                 {
@@ -204,7 +212,7 @@ namespace Lykke.Job.TransactionHandler
             var dbLogConnectionStringManager = settings.Nested(x => x.TransactionHandlerJob.Db.LogsConnString);
             var dbLogConnectionString = dbLogConnectionStringManager.CurrentValue;
 
-            // Creating azure storage logger, which logs own messages to concole log
+            // Creating azure storage logger, which logs own messages to console log
             if (!string.IsNullOrEmpty(dbLogConnectionString) && !(dbLogConnectionString.StartsWith("${") && dbLogConnectionString.EndsWith("}")))
             {
                 var persistenceManager = new LykkeLogToAzureStoragePersistenceManager(

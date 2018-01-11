@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
@@ -152,8 +151,8 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             limitAssetRecord.Amount = limitVolume * (isMarketClient ? 1 : -1);
             limitAssetRecord.AssetId = trade.LimitAsset;
 
-            marketAssetRecord.Id = Utils.GenerateRecordId(marketAssetRecord.DateTime);
-            limitAssetRecord.Id = Utils.GenerateRecordId(limitAssetRecord.DateTime);
+            marketAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(marketAssetRecord.DateTime);
+            limitAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(limitAssetRecord.DateTime);
 
             return new ClientTrade[] { marketAssetRecord, limitAssetRecord };
         }

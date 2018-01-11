@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using Lykke.Service.OperationsRepository.Client;
 using Lykke.Service.PersonalData.Settings;
+using Lykke.SettingsReader.Attributes;
 
 namespace Lykke.Job.TransactionHandler.Services
 {
@@ -28,6 +29,15 @@ namespace Lykke.Job.TransactionHandler.Services
             public AssetsCacheSettings AssetsCache { get; set; }
             public string ExchangeOperationsServiceUrl { get; set; }
             public ServiceSettings Services { get; set; }
+            public string Environment { get; set; }
+            public long RetryDelayInMilliseconds { get; set; }
+            [Optional]
+            public ChaosSettings ChaosKitty { get; set; }
+        }
+
+        public class ChaosSettings
+        {
+            public double StateOfChaos { get; set; }
         }
 
         public class DbSettings
@@ -122,13 +132,6 @@ namespace Lykke.Job.TransactionHandler.Services
         public class RabbitMqSettings
         {
             public string ConnectionString { get; set; }
-
-            public string ExternalHost { get; set; }
-
-            public int Port { get; set; }
-            public string Username { get; set; }
-            public string Password { get; set; }
-
             public string ExchangeSwap { get; set; }
             public string ExchangeLimit { get; set; }
 

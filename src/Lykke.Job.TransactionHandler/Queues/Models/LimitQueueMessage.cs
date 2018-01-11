@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Newtonsoft.Json;
@@ -141,8 +140,8 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             withdrawAssetRecord.Amount = -1 * limitVolume;
             withdrawAssetRecord.AssetId = trade.Asset;
 
-            depositAssetRecord.Id = Utils.GenerateRecordId(depositAssetRecord.DateTime);
-            withdrawAssetRecord.Id = Utils.GenerateRecordId(withdrawAssetRecord.DateTime);
+            depositAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(depositAssetRecord.DateTime);
+            withdrawAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(withdrawAssetRecord.DateTime);
 
             return new ClientTrade[] { depositAssetRecord, withdrawAssetRecord };
         }
