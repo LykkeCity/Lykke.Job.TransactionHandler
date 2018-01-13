@@ -43,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
-            var rabbitMqSettings = new RabbitMQ.Client.ConnectionFactory { Uri = _settings.RabbitMq.ConnectionString };
+            var rabbitMqSettings = new RabbitMQ.Client.ConnectionFactory { Uri = _settings.TransactionHandlerJob.SagasRabbitMqConnStr };
 #if DEBUG
             var virtualHost = "/debug";
             var messagingEngine = new MessagingEngine(_log,
