@@ -40,8 +40,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 sender.SendCommand(new SetLinkedCashInOperationCommand
                 {
                     Message = message,
-                    Id = context.AddData.ForwardWithdrawal.Id,
-                    CashInId = context.CashOperationId
+                    Id = context.AddData.ForwardWithdrawal.Id
                 }, "forward-withdrawal");
             }
         }

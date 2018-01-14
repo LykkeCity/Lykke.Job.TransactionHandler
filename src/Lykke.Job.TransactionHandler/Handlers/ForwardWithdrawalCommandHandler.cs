@@ -29,9 +29,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             ChaosKitty.Meow();
 
-            await _forwardWithdrawalRepository.SetLinkedCashInOperationId(command.Message.ClientId, command.Id, command.CashInId);
+            await _forwardWithdrawalRepository.SetLinkedCashInOperationId(command.Message.ClientId, command.Id, command.Id); // todo: remove this legacy
 
-            eventPublisher.PublishEvent(new ForwardWithdawalLinkedEvent { Message = command.Message, CashInId = command.CashInId });
+            eventPublisher.PublishEvent(new ForwardWithdawalLinkedEvent { Message = command.Message });
 
             return CommandHandlingResult.Ok();
         }

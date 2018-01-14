@@ -7,8 +7,5 @@ namespace Lykke.Job.TransactionHandler.Events
     {
         [ProtoMember(1)]
         public Queues.Models.CashInOutQueueMessage Message { get; set; }
-
-        [ProtoMember(2)]
-        public string CashInId { get; set; }
     }
 }

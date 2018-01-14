@@ -4,7 +4,6 @@ using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Utils;
@@ -22,7 +21,6 @@ namespace Lykke.Job.TransactionHandler.Projections
         private readonly Core.Services.BitCoin.IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IClientSettingsRepository _clientSettingsRepository;
         private readonly IBitCoinTransactionsRepository _bitcoinTransactionsRepository;
 
         public OperationHistoryProjection(
@@ -31,7 +29,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] Core.Services.BitCoin.IBitcoinTransactionService bitcoinTransactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
-            [NotNull] IClientSettingsRepository clientSettingsRepository,
             [NotNull] IBitCoinTransactionsRepository bitcoinTransactionsRepository)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
@@ -39,7 +36,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
-            _clientSettingsRepository = clientSettingsRepository ?? throw new ArgumentNullException(nameof(clientSettingsRepository));
             _bitcoinTransactionsRepository = bitcoinTransactionsRepository ?? throw new ArgumentNullException(nameof(bitcoinTransactionsRepository));
         }
 
@@ -149,12 +145,11 @@ namespace Lykke.Job.TransactionHandler.Projections
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
             var baseAsset = await _assetsServiceWithCache.TryGetAssetAsync(asset.ForwardBaseAsset);
 
-            var isOffchainClient = await _clientSettingsRepository.IsOffchainClient(message.ClientId);
-            var isBtcOffchainClient = isOffchainClient && asset.Blockchain == Blockchain.Bitcoin;
+            var isBtcOffchainClient = asset.Blockchain == Blockchain.Bitcoin;
 
             var operation = new CashInOutOperation
             {
-                Id = evt.CashInId,
+                Id = context.AddData.ForwardWithdrawal.Id,
                 ClientId = message.ClientId,
                 Multisig = walletCredentials.MultiSig,
                 AssetId = baseAsset.Id,
