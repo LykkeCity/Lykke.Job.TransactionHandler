@@ -7,11 +7,8 @@ namespace Lykke.Job.TransactionHandler.Commands
     {
         [ProtoMember(1)]
         public Queues.Models.CashInOutQueueMessage Message { get; set; }
-        
+
         [ProtoMember(2)]
         public string Id { get; set; }
-
-        [ProtoMember(3)]
-        public string CashInId { get; set; }
     }
 }

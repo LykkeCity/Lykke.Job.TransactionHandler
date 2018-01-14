@@ -7,7 +7,6 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Queues.Models;
@@ -24,7 +23,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private readonly ILog _log;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly IBitCoinTransactionsRepository _bitcoinTransactionsRepository;
-        private readonly IClientSettingsRepository _clientSettingsRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IClientAccountClient _clientAccountClient;
@@ -36,7 +34,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
             [NotNull] ILog log,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] IBitCoinTransactionsRepository bitcoinTransactionsRepository,
-            [NotNull] IClientSettingsRepository clientSettingsRepository,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
             [NotNull] IClientAccountClient clientAccountClient,
@@ -47,7 +44,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
             _bitcoinTransactionsRepository = bitcoinTransactionsRepository ?? throw new ArgumentNullException(nameof(bitcoinTransactionsRepository));
-            _clientSettingsRepository = clientSettingsRepository ?? throw new ArgumentNullException(nameof(clientSettingsRepository));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
             _clientAccountClient = clientAccountClient ?? throw new ArgumentNullException(nameof(clientAccountClient));
@@ -101,8 +97,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         {
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
 
-            if (!await _clientSettingsRepository.IsOffchainClient(message.ClientId) || asset.Blockchain != Blockchain.Bitcoin ||
-                asset.IsTrusted && asset.Id != LykkeConstants.BitcoinAssetId)
+            if (asset.Blockchain != Blockchain.Bitcoin || asset.IsTrusted && asset.Id != LykkeConstants.BitcoinAssetId)
                 return;
 
             if (asset.Id == LykkeConstants.BitcoinAssetId)
