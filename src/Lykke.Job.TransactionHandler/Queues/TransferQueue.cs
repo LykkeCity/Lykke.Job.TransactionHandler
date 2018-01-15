@@ -121,8 +121,11 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
 
             var logTask = _transferLogRepository.CreateAsync(queueMessage.Id, queueMessage.Date, queueMessage.FromClientId, queueMessage.ToClientid, queueMessage.AssetId, queueMessage.Amount, queueMessage.FeeSettings?.ToJson(), queueMessage.FeeData?.ToJson());
+            
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
+            var feeAmount = (queueMessage.FeeData?.Amount.ParseAnyDouble() ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
 
-            var amount = queueMessage.Amount.ParseAnyDouble() - (queueMessage.FeeData?.Amount.ParseAnyDouble() ?? 0.0);
+            var amount = queueMessage.Amount.ParseAnyDouble() - feeAmount;
             //Get eth request if it is ETH transfer
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
 
@@ -217,8 +220,6 @@ namespace Lykke.Job.TransactionHandler.Queues
             await _bitCoinTransactionsRepository.UpdateAsync(transaction.TransactionId, cmd.ToJson(), null, "");
 
             await _bitcoinTransactionService.SetTransactionContext(transaction.TransactionId, contextData);
-
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
 
             if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value
                         && asset.Blockchain == Blockchain.Bitcoin
