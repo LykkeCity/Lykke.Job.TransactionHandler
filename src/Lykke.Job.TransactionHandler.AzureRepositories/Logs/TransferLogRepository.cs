@@ -1,8 +1,6 @@
 ﻿using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.Logs;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Logs

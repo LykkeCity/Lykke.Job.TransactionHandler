@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Lykke.Job.TransactionHandler.Core;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
-using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
-using Lykke.Service.ClientAccount.Client;
 
 namespace Lykke.Job.TransactionHandler.Services.Offchain
 {
@@ -13,17 +10,16 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
     {
         private readonly IOffchainRequestRepository _offchainRequestRepository;
         private readonly IOffchainTransferRepository _offchainTransferRepository;
-        private readonly IClientSettingsRepository _clientSettingsRepository;
-        private readonly IClientAccountClient _clientAccountClient;
-        private readonly IAppNotifications _appNotifications;
+        private readonly INotificationsService _notificationsService;
 
-        public OffchainRequestService(IOffchainRequestRepository offchainRequestRepository, IOffchainTransferRepository offchainTransferRepository, IClientSettingsRepository clientSettingsRepository, IClientAccountClient clientAccountClient, IAppNotifications appNotifications)
+        public OffchainRequestService(
+            IOffchainRequestRepository offchainRequestRepository, 
+            IOffchainTransferRepository offchainTransferRepository, 
+            INotificationsService notificationsService)
         {
             _offchainRequestRepository = offchainRequestRepository;
             _offchainTransferRepository = offchainTransferRepository;
-            _clientSettingsRepository = clientSettingsRepository;
-            _clientAccountClient = clientAccountClient;
-            _appNotifications = appNotifications;
+            _notificationsService = notificationsService;
         }
 
         public async Task CreateOffchainRequest(string transactionId, string clientId, string assetId, decimal amount, string orderId, OffchainTransferType type)
@@ -32,23 +28,12 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
 
             await _offchainRequestRepository.CreateRequest(transactionId, clientId, assetId, RequestType.RequestTransfer, type, null);
         }
-
-        public async Task NotifyUser(string clientId)
-        {
-            var pushSettings = await _clientSettingsRepository.GetSettings<PushNotificationsSettings>(clientId);
-            if (pushSettings.Enabled)
-            {
-                var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
-
-                await _appNotifications.SendDataNotificationToAllDevicesAsync(new[] { clientAcc.NotificationsId }, NotificationType.OffchainRequest, "Wallet");
-            }
-        }
-
+        
         public async Task CreateOffchainRequestAndNotify(string transactionId, string clientId, string assetId, decimal amount,
             string orderId, OffchainTransferType type)
         {
             await CreateOffchainRequest(transactionId, clientId, assetId, amount, orderId, type);
-            await NotifyUser(clientId);
+            await _notificationsService.OffchainNotifyUser(clientId);
         }
 
         public Task CreateOffchainRequestAndLock(string transactionId, string clientId, string assetId, decimal amount, string orderId,
@@ -61,7 +46,7 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
             string orderId, OffchainTransferType type)
         {
             await CreateAndAggregate(transactionId, clientId, assetId, amount, orderId, type, null);
-            await NotifyUser(clientId);
+            await _notificationsService.OffchainNotifyUser(clientId);
         }
 
         private async Task CreateAndAggregate(string transactionId, string clientId, string assetId, decimal amount,
@@ -89,7 +74,7 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
             if (lkkAmount > 0)
                 await CreateOffchainRequest(Guid.NewGuid().ToString(), clientId, LykkeConstants.LykkeAssetId, lkkAmount, null, OffchainTransferType.HubCashout);
 
-            await NotifyUser(clientId);
+            await _notificationsService.OffchainNotifyUser(clientId);
         }
     }
 }

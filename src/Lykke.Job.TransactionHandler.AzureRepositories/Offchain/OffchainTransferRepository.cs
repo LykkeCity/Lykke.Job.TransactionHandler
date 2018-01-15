@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AzureStorage;
-using Common;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Microsoft.WindowsAzure.Storage.Table;
-using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
 {

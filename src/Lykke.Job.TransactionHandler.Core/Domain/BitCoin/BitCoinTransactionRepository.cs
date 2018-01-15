@@ -29,7 +29,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         string BlockchainHash { get; }
     }
 
-    public interface IBitCoinTransactionsRepository
+    public interface ITransactionsRepository
     {
         Task CreateAsync(string transactionId, string commandType, string requestData, string contextData, string response, string blockchainHash = null);
         Task CreateOrUpdateAsync(string transactionId, string commandType);

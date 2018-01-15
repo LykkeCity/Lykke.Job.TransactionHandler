@@ -83,9 +83,9 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Blockchain
     {
         private readonly INoSQLTableStorage<BcnCredentialsRecordEntity> _tableStorage;
 
-        public BcnClientCredentialsRepository(INoSQLTableStorage<BcnCredentialsRecordEntity> _tableStorage)
+        public BcnClientCredentialsRepository(INoSQLTableStorage<BcnCredentialsRecordEntity> tableStorage)
         {
-            this._tableStorage = _tableStorage;
+            _tableStorage = tableStorage;
         }
 
         public async Task SaveAsync(IBcnCredentialsRecord credsRecord)

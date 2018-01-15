@@ -31,7 +31,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Domain.MarginTrading;
@@ -78,6 +77,7 @@ using Lykke.Service.EthereumCore.Client;
 using Lykke.Service.OperationsRepository.Client;
 using Lykke.Job.TransactionHandler.Core.Domain.Logs;
 using Lykke.Job.TransactionHandler.AzureRepositories.Logs;
+using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Common;
 
 namespace Lykke.Job.TransactionHandler.Modules
@@ -120,6 +120,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             // NOTE: You can implement your own poison queue notifier. See https://github.com/LykkeCity/JobTriggers/blob/master/readme.md
             // builder.Register<PoisionQueueNotifierImplementation>().As<IPoisionQueueNotifier>();
 
+            builder.RegisterInstance(_settings.Ethereum).SingleInstance();
+
             _services.RegisterAssetsClient(AssetServiceSettings.Create(new Uri(_settings.Assets.ServiceUrl), _jobSettings.AssetsCache.ExpirationPeriod));
 
             Mapper.Initialize(cfg =>
@@ -134,7 +136,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             Mapper.Configuration.AssertConfigurationIsValid();
 
             BindRabbitMq(builder);
-            BindMatchingEngineChannel(builder);
             BindRepositories(builder);
             BindServices(builder);
             BindCachedDicts(builder);
@@ -162,15 +163,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     async () => (await ctx.Resolve<IAssetSettingRepository>().GetAssetSettings()).ToDictionary(itm => itm.Asset));
             }).SingleInstance();
         }
-
-        private void BindMatchingEngineChannel(ContainerBuilder container)
-        {
-            var socketLog = new SocketLogDynamic(i => { },
-                str => Console.WriteLine(DateTime.UtcNow.ToIsoDateTime() + ": " + str));
-
-            container.BindMeClient(_settings.MatchingEngineClient.IpEndpoint.GetClientIpEndPoint(), socketLog);
-        }
-
+        
         private void BindServices(ContainerBuilder builder)
         {
             builder.RegisterType<HttpRequestClient>().SingleInstance();
@@ -208,7 +201,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<EmailSender>().As<IEmailSender>().SingleInstance();
             builder.RegisterType<SrvEmailsFacade>().As<ISrvEmailsFacade>().SingleInstance();
 
-            builder.RegisterType<BitcoinTransactionService>().As<IBitcoinTransactionService>().SingleInstance();
+            builder.RegisterType<TransactionService>().As<ITransactionService>().SingleInstance();
+            builder.RegisterType<NotificationsService>().As<INotificationsService>().SingleInstance();
 
             builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
 
@@ -223,8 +217,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new AssetSettingRepository(
                     AzureTableStorage<AssetSettingEntity>.Create(_dbSettingsManager.ConnectionString(x => x.DictsConnString), "AssetSettings", _log)));
 
-            builder.RegisterInstance<IBitCoinTransactionsRepository>(
-                new BitCoinTransactionsRepository(
+            builder.RegisterInstance<ITransactionsRepository>(
+                new TransactionsRepository(
                     AzureTableStorage<BitCoinTransactionEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "BitCoinTransactions", _log)));
 
             builder.RegisterInstance<IWalletCredentialsRepository>(
@@ -276,9 +270,9 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance<IEmailCommandProducer>(
                 new EmailCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "emailsqueue")));
 
-            builder.RegisterInstance<IOffchainOrdersRepository>(
-                new OffchainOrderRepository(
-                    AzureTableStorage<OffchainOrder>.Create(_dbSettingsManager.ConnectionString(x => x.OffchainConnString), "OffchainOrders", _log)));
+            builder.RegisterInstance<IOrdersRepository>(
+                new OrderRepository(
+                    AzureTableStorage<Order>.Create(_dbSettingsManager.ConnectionString(x => x.OffchainConnString), "OffchainOrders", _log)));
 
             builder.RegisterInstance<IOffchainRequestRepository>(
                 new OffchainRequestRepository(

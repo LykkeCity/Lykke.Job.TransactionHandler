@@ -22,22 +22,22 @@ namespace Lykke.Job.TransactionHandler.Sagas
     {
         private readonly ILog _log;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
-        private readonly IBitCoinTransactionsRepository _bitcoinTransactionsRepository;
+        private readonly ITransactionsRepository _bitcoinTransactionsRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IClientAccountClient _clientAccountClient;
-        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly ITransactionService _transactionService;
         private readonly ICqrsEngine _cqrsEngine;
         private readonly IBitcoinCashinRepository _bitcoinCashinTypeRepository;
 
         public CashInOutMessageProcessor(
             [NotNull] ILog log,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
-            [NotNull] IBitCoinTransactionsRepository bitcoinTransactionsRepository,
+            [NotNull] ITransactionsRepository bitcoinTransactionsRepository,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
             [NotNull] IClientAccountClient clientAccountClient,
-            [NotNull] IBitcoinTransactionService bitcoinTransactionService,
+            [NotNull] ITransactionService transactionService,
             [NotNull] ICqrsEngine cqrsEngine,
             [NotNull] IBitcoinCashinRepository bitcoinCashinRepository)
         {
@@ -47,7 +47,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
             _clientAccountClient = clientAccountClient ?? throw new ArgumentNullException(nameof(clientAccountClient));
-            _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
+            _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
             _bitcoinCashinTypeRepository = bitcoinCashinRepository ?? throw new ArgumentNullException(nameof(bitcoinCashinRepository));
         }
@@ -75,16 +75,16 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 {
                     case BitCoinCommands.CashIn:
                     case BitCoinCommands.Issue:
-                        await ProcessIssue(transaction, message);
+                        await ProcessIssue(message);
                         break;
                     case BitCoinCommands.CashOut:
-                        await ProcessCashOut(transaction, message);
+                        await ProcessCashOut(message);
                         break;
                     case BitCoinCommands.Destroy:
-                        await ProcessDestroy(transaction, message);
+                        await ProcessDestroy(message);
                         break;
                     case BitCoinCommands.ManualUpdate:
-                        await ProcessManualUpdate(transaction, message);
+                        ProcessManualUpdate(message);
                         break;
                     default:
                         await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(CashInOutQueueMessage), message.ToJson(), $"Unknown command type (value = [{transaction.CommandType}])");
@@ -124,7 +124,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
         }
 
-        private async Task ProcessIssue(IBitcoinTransaction transaction, CashInOutQueueMessage message)
+        private async Task ProcessIssue(CashInOutQueueMessage message)
         {
             var isClientTrusted = await _clientAccountClient.IsTrustedAsync(message.ClientId);
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
@@ -137,13 +137,14 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
 
             var amount = message.Amount.ParseAnyDouble();
-            var context = await _bitcoinTransactionService.GetTransactionContext<IssueContextData>(transaction.TransactionId);
-            context.CashOperationId = transaction.TransactionId;
+            var transactionId = message.Id;
+            var context = await _transactionService.GetTransactionContext<IssueContextData>(transactionId);
+            context.CashOperationId = transactionId;
             _cqrsEngine.SendCommand(new SaveIssueTransactionStateCommand
             {
                 Command = new IssueCommand
                 {
-                    TransactionId = Guid.Parse(transaction.TransactionId),
+                    TransactionId = Guid.Parse(transactionId),
                     Context = context.ToJson(),
                     Amount = Math.Abs(amount),
                     AssetId = message.AssetId,
@@ -154,16 +155,17 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }, "tx-handler", "transactions");
         }
 
-        private async Task ProcessDestroy(IBitcoinTransaction transaction, CashInOutQueueMessage message)
+        private async Task ProcessDestroy(CashInOutQueueMessage message)
         {
             var amount = message.Amount.ParseAnyDouble();
-            var context = await _bitcoinTransactionService.GetTransactionContext<UncolorContextData>(transaction.TransactionId);
-            context.CashOperationId = transaction.TransactionId;
+            var transactionId = message.Id;
+            var context = await _transactionService.GetTransactionContext<UncolorContextData>(transactionId);
+            context.CashOperationId = transactionId;
             _cqrsEngine.SendCommand(new SaveDestroyTransactionStateCommand
             {
                 Command = new DestroyCommand
                 {
-                    TransactionId = Guid.Parse(transaction.TransactionId),
+                    TransactionId = Guid.Parse(transactionId),
                     Context = context.ToJson(),
                     Amount = Math.Abs(amount),
                     AssetId = message.AssetId,
@@ -174,7 +176,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }, "tx-handler", "transactions");
         }
 
-        private async Task ProcessManualUpdate(IBitcoinTransaction transaction, CashInOutQueueMessage message)
+        private void ProcessManualUpdate(CashInOutQueueMessage message)
         {
             _cqrsEngine.SendCommand(new RegisterCashInOutOperationCommand
             {
@@ -182,13 +184,14 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }, "tx-handler", "operations");
         }
 
-        private async Task ProcessCashOut(IBitcoinTransaction transaction, CashInOutQueueMessage message)
+        private async Task ProcessCashOut(CashInOutQueueMessage message)
         {
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
             var amount = message.Amount.ParseAnyDouble();
-            var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transaction.TransactionId);
+            var transactionId = message.Id;
+            var context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
 
-            context.CashOperationId = transaction.TransactionId;
+            context.CashOperationId = transactionId;
             _cqrsEngine.SendCommand(new SaveCashoutTransactionStateCommand
             {
                 Command = new CashOutCommand
@@ -198,7 +201,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Context = context.ToJson(),
                     SourceAddress = walletCredentials.MultiSig,
                     DestinationAddress = context.Address,
-                    TransactionId = Guid.Parse(transaction.TransactionId)
+                    TransactionId = Guid.Parse(transactionId)
                 },
                 Context = context,
                 Message = message

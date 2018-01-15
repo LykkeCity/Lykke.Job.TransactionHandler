@@ -21,13 +21,13 @@ namespace Lykke.Job.TransactionHandler.Handlers
         public BitcoinCommandHandler(
             [NotNull] ILog log,
             [NotNull] IBitcoinApiClient bitcoinApiClient,
-            TimeSpan retryTimeout,
-            [NotNull] IQueueExt queueExt)
+            [NotNull] IQueueExt queueExt,
+            TimeSpan retryTimeout)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _bitcoinApiClient = bitcoinApiClient ?? throw new ArgumentNullException(nameof(bitcoinApiClient));
-            _retryTimeout = retryTimeout;
             _queueExt = queueExt ?? throw new ArgumentNullException(nameof(queueExt));
+            _retryTimeout = retryTimeout;
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SendBitcoinCommand command)

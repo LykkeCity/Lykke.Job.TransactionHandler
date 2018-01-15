@@ -60,11 +60,11 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
         }
     }
 
-    public class BitCoinTransactionsRepository : IBitCoinTransactionsRepository
+    public class TransactionsRepository : ITransactionsRepository
     {
         private readonly INoSQLTableStorage<BitCoinTransactionEntity> _tableStorage;
 
-        public BitCoinTransactionsRepository(INoSQLTableStorage<BitCoinTransactionEntity> tableStorage)
+        public TransactionsRepository(INoSQLTableStorage<BitCoinTransactionEntity> tableStorage)
         {
             _tableStorage = tableStorage;
         }

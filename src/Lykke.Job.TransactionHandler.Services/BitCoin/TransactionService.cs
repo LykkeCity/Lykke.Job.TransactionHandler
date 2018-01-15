@@ -1,21 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Common;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 
 namespace Lykke.Job.TransactionHandler.Services.BitCoin
 {
-    public class BitcoinTransactionService : IBitcoinTransactionService
+    public class TransactionService : ITransactionService
     {
-        private readonly IBitCoinTransactionsRepository _bitCoinTransactionsRepository;
+        private readonly ITransactionsRepository _transactionsRepository;
         private readonly IBitcoinTransactionContextBlobStorage _contextBlobStorage;
 
-        public BitcoinTransactionService(IBitCoinTransactionsRepository bitCoinTransactionsRepository, IBitcoinTransactionContextBlobStorage contextBlobStorage)
+        public TransactionService(ITransactionsRepository transactionsRepository, IBitcoinTransactionContextBlobStorage contextBlobStorage)
         {
-            _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
+            _transactionsRepository = transactionsRepository;
             _contextBlobStorage = contextBlobStorage;
         }
 
@@ -24,7 +21,7 @@ namespace Lykke.Job.TransactionHandler.Services.BitCoin
             var fromBlob = await _contextBlobStorage.Get(transactionId);
             if (string.IsNullOrWhiteSpace(fromBlob))
             {
-                var transaction = await _bitCoinTransactionsRepository.FindByTransactionIdAsync(transactionId);
+                var transaction = await _transactionsRepository.FindByTransactionIdAsync(transactionId);
                 fromBlob = transaction?.ContextData;
             }
 
@@ -46,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Services.BitCoin
 
         public Task CreateOrUpdateAsync(string meOrderId)
         {
-            return _bitCoinTransactionsRepository.CreateOrUpdateAsync(meOrderId, BitCoinCommands.SwapOffchain);
+            return _transactionsRepository.CreateOrUpdateAsync(meOrderId, BitCoinCommands.SwapOffchain);
         }
     }
 }

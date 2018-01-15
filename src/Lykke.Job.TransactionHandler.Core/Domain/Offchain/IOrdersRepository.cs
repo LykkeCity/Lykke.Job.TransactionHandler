@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
 {
-    public interface IOffchainOrder
+    public interface IOrder
     {
         string Id { get; }
         string OrderId { get; }
@@ -18,8 +18,8 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
         bool IsLimit { get; set; }
     }
 
-    public interface IOffchainOrdersRepository
+    public interface IOrdersRepository
     {
-        Task<IOffchainOrder> GetOrder(string id);
+        Task<IOrder> GetOrder(string id);
     }
 }

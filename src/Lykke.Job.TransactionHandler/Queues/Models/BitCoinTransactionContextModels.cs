@@ -1,7 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
+using Lykke.Job.TransactionHandler.Sagas.Services;
+using Lykke.Service.Assets.Client.Models;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
-namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
+namespace Lykke.Job.TransactionHandler.Queues.Models
 {
     public class GenerateWalletContextData : BaseContextData
     {
@@ -108,6 +114,21 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         }
 
         public List<Operation> Operations { get; set; } = new List<Operation>();
+        public AggregatedTransfer SellTransfer { get; set; }
+        public AggregatedTransfer BuyTransfer { get; set; }
+        public ClientTrade[] ClientTrades { get; set; }
+        public bool IsTrustedClient { get; set; }
+        public TradeQueueItem.MarketOrder Order { get; set; }
+        public List<TradeQueueItem.TradeInfo> Trades { get; set; }
+        [JsonConverter(typeof(StringEnumConverter))]
+        public OperationStatus Status { get; set; }
+    }
+
+    public class AggregatedTransfer
+    {
+        public string TransferId { get; set; }
+        public decimal Amount { get; set; }
+        public Asset Asset { get; set; }
     }
 
     public class DirectSwapContextData : BaseContextData
@@ -284,11 +305,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         public string AddressTo { get; set; }
 
         public string CashOperationId { get; set; }
-    }
-
-    public class BaseContextData
-    {
-        public string[] SignsClientIds { get; set; }
     }
 
     public class TransferToMarginContextData : BaseContextData

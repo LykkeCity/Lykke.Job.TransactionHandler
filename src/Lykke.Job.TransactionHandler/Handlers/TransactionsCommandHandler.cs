@@ -14,24 +14,22 @@ namespace Lykke.Job.TransactionHandler.Handlers
     public class TransactionsCommandHandler
     {
         private readonly ILog _log;
-        private readonly IBitCoinTransactionsRepository _bitcoinTransactionsRepository;
-        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly ITransactionsRepository _bitcoinTransactionsRepository;
+        private readonly ITransactionService _transactionService;
 
         public TransactionsCommandHandler(
             [NotNull] ILog log,
-            [NotNull] IBitCoinTransactionsRepository bitcoinTransactionsRepository,
-            [NotNull] IBitcoinTransactionService bitcoinTransactionService)
+            [NotNull] ITransactionsRepository bitcoinTransactionsRepository,
+            [NotNull] ITransactionService transactionService)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _bitcoinTransactionsRepository = bitcoinTransactionsRepository ?? throw new ArgumentNullException(nameof(bitcoinTransactionsRepository));
-            _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
+            _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveCashoutTransactionStateCommand command, IEventPublisher eventPublisher)
         {
             await _log.WriteInfoAsync(nameof(TransactionsCommandHandler), nameof(Commands.SaveCashoutTransactionStateCommand), command.ToJson(), "");
-
-            ChaosKitty.Meow();
 
             await SaveState(command.Command, command.Context);
 
@@ -70,7 +68,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var requestData = command.ToJson();
 
             await _bitcoinTransactionsRepository.UpdateAsync(transactionId, requestData, null, "");
-            await _bitcoinTransactionService.SetTransactionContext(transactionId, context);
+            await _transactionService.SetTransactionContext(transactionId, context);
         }
     }
 }

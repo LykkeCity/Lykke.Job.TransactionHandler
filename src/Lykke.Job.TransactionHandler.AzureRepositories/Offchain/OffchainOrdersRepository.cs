@@ -5,7 +5,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
 {
-    public class OffchainOrder : BaseEntity, IOffchainOrder
+    public class Order : BaseEntity, IOrder
     {
         public string Id => RowKey;
 
@@ -26,11 +26,11 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
             return "Order";
         }
 
-        public static OffchainOrder Create(string clientId, string asset, string assetPair, decimal volume, decimal reservedVolme,
+        public static Order Create(string clientId, string asset, string assetPair, decimal volume, decimal reservedVolme,
             bool straight, decimal price = 0)
         {
             var id = Guid.NewGuid().ToString();
-            return new OffchainOrder
+            return new Order
             {
                 PartitionKey = GeneratePartitionKey(),
                 RowKey = id,
@@ -48,18 +48,18 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
         }
     }
 
-    public class OffchainOrderRepository : IOffchainOrdersRepository
+    public class OrderRepository : IOrdersRepository
     {
-        private readonly INoSQLTableStorage<OffchainOrder> _storage;
+        private readonly INoSQLTableStorage<Order> _storage;
 
-        public OffchainOrderRepository(INoSQLTableStorage<OffchainOrder> storage)
+        public OrderRepository(INoSQLTableStorage<Order> storage)
         {
             _storage = storage;
         }
 
-        public async Task<IOffchainOrder> GetOrder(string id)
+        public async Task<IOrder> GetOrder(string id)
         {
-            return await _storage.GetDataAsync(OffchainOrder.GeneratePartitionKey(), id);
+            return await _storage.GetDataAsync(Order.GeneratePartitionKey(), id);
         }
     }
 }

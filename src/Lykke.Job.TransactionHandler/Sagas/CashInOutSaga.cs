@@ -5,8 +5,8 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core;
-using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Events;
+using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
@@ -16,16 +16,16 @@ namespace Lykke.Job.TransactionHandler.Sagas
     public class CashInOutSaga
     {
         private readonly ILog _log;
-        private readonly Core.Services.BitCoin.IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly Core.Services.BitCoin.ITransactionService _transactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
 
         public CashInOutSaga(
             [NotNull] ILog log,
-            [NotNull] Core.Services.BitCoin.IBitcoinTransactionService bitcoinTransactionService,
+            [NotNull] Core.Services.BitCoin.ITransactionService transactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
+            _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
         }
         
@@ -52,7 +52,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var amount = message.Amount.ParseAnyDouble();
             var clientId = message.ClientId;
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
-            var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transactionId);
+            var context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
             var isForwardWithdawal = context.AddData?.ForwardWithdrawal != null;
             var isSwiftCashout = context.AddData?.SwiftData != null;
             var cashOperationId = context.CashOperationId;

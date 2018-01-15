@@ -5,19 +5,16 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core;
-using Lykke.Job.TransactionHandler.Core.Domain.Assets;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
-using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.Quanta;
-using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
+using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Resources;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.JobTriggers.Triggers.Attributes;
@@ -32,8 +29,8 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 {
     public class OffchainTransactionFinalizeFunction
     {
-        private readonly IBitCoinTransactionsRepository _bitCoinTransactionsRepository;
-        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly ITransactionsRepository _transactionsRepository;
+        private readonly ITransactionService _transactionService;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly ICashOutAttemptOperationsRepositoryClient _cashOutAttemptRepositoryClient;
         private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
@@ -41,10 +38,6 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly IPersonalDataService _personalDataService;
         private readonly IOffchainTransferRepository _offchainTransferRepository;
         private readonly ITransferOperationsRepositoryClient _transferEventsRepositoryClient;
-        private readonly IOffchainRequestService _offchainRequestService;
-        private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IOffchainRequestRepository _offchainRequestRepository;
-        private readonly CachedDataDictionary<string, IAssetSetting> _assetSettings;
         private readonly IPaymentTransactionsRepository _paymentTransactionsRepository;
         private readonly IAppNotifications _appNotifications;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
@@ -58,13 +51,11 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly SrvSlackNotifications _srvSlackNotifications;
         private readonly ILog _log;
 
-        private readonly IChronoBankService _chronoBankService;
-        private readonly ISrvSolarCoinHelper _srvSolarCoinHelper;
         private readonly IQuantaService _quantaService;
         private readonly IOperationsClient _operationsClient;
 
         public OffchainTransactionFinalizeFunction(
-            IBitCoinTransactionsRepository bitCoinTransactionsRepository,
+            ITransactionsRepository transactionsRepository,
             ILog log,
             ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             IExchangeOperationsServiceClient exchangeOperationsService,
@@ -75,23 +66,17 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             IClientAccountClient clientAccountClient,
             IPersonalDataService personalDataService,
             IOffchainTransferRepository offchainTransferRepository,
-            IChronoBankService chronoBankService,
-            ISrvSolarCoinHelper srvSolarCoinHelper,
             ITransferOperationsRepositoryClient transferEventsRepositoryClient,
             IQuantaService quantaService,
-            IOffchainRequestService offchainRequestService,
-            IWalletCredentialsRepository walletCredentialsRepository,
-            IOffchainRequestRepository offchainRequestRepository,
-            CachedDataDictionary<string, IAssetSetting> assetSettings,
             IMarginDataServiceResolver marginDataServiceResolver,
             IMarginTradingPaymentLogRepository marginTradingPaymentLog,
             IPaymentTransactionsRepository paymentTransactionsRepository,
             IAppNotifications appNotifications,
-            IBitcoinTransactionService bitcoinTransactionService,
+            ITransactionService transactionService,
             IOperationsClient operationsClient, 
             IAssetsServiceWithCache assetsServiceWithCache)
         {
-            _bitCoinTransactionsRepository = bitCoinTransactionsRepository;
+            _transactionsRepository = transactionsRepository;
             _log = log;
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
             _exchangeOperationsService = exchangeOperationsService;
@@ -102,20 +87,14 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             _clientAccountClient = clientAccountClient;
             _personalDataService = personalDataService;
             _offchainTransferRepository = offchainTransferRepository;
-            _chronoBankService = chronoBankService;
-            _srvSolarCoinHelper = srvSolarCoinHelper;
             _transferEventsRepositoryClient = transferEventsRepositoryClient;
             _quantaService = quantaService;
-            _offchainRequestService = offchainRequestService;
-            _walletCredentialsRepository = walletCredentialsRepository;
-            _offchainRequestRepository = offchainRequestRepository;
-            _assetSettings = assetSettings;
 
             _marginDataServiceResolver = marginDataServiceResolver;
             _marginTradingPaymentLog = marginTradingPaymentLog;
             _paymentTransactionsRepository = paymentTransactionsRepository;
             _appNotifications = appNotifications;
-            _bitcoinTransactionService = bitcoinTransactionService;
+            _transactionService = transactionService;
             _operationsClient = operationsClient;
             _assetsServiceWithCache = assetsServiceWithCache;
         }
@@ -133,7 +112,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                     ? transfer.OrderId
                     : transfer.Id;
 
-            var transaction = await _bitCoinTransactionsRepository.SaveResponseAndHashAsync(transactionId, null, message.TransactionHash);
+            var transaction = await _transactionsRepository.SaveResponseAndHashAsync(transactionId, null, message.TransactionHash);
 
             if (transaction == null)
             {
@@ -163,14 +142,14 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
         private async Task FinalizeIssue(IBitcoinTransaction transaction)
         {
-            var contextData = await _bitcoinTransactionService.GetTransactionContext<IssueContextData>(transaction.TransactionId);
+            var contextData = await _transactionService.GetTransactionContext<IssueContextData>(transaction.TransactionId);
 
             await _cashOperationsRepositoryClient.SetIsSettledAsync(contextData.ClientId, contextData.CashOperationId, true);
         }
 
         private async Task FinalizeTransfer(IBitcoinTransaction transaction, IOffchainTransfer transfer)
         {
-            var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId);
+            var contextData = await _transactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId);
 
             switch (contextData.TransferType)
             {
@@ -323,7 +302,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 await _srvSlackNotifications.SendNotification(ChannelTypes.Errors, $"Cashout failed in ME, client: {offchainTransfer.ClientId}, transfer: {transaction.TransactionId}, ME code result: {data.Code}");
             }
 
-            var contextData = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transaction.TransactionId);
+            var contextData = await _transactionService.GetTransactionContext<CashOutContextData>(transaction.TransactionId);
 
             var swiftData = contextData.AddData?.SwiftData;
             if (swiftData != null)
@@ -359,7 +338,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
                     if (!transactionsContextData.ContainsKey(transfer.OrderId))
                     {
-                        var ctx = await _bitcoinTransactionService.GetTransactionContext<SwapOffchainContextData>(transaction.TransactionId);
+                        var ctx = await _transactionService.GetTransactionContext<SwapOffchainContextData>(transaction.TransactionId);
                         if (ctx == null)
                             continue;
 

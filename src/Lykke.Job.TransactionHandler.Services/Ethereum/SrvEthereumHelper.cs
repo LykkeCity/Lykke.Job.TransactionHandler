@@ -5,7 +5,6 @@ using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Service.Assets.Client.Models;
 using Nethereum.Util;
 using ErrorResponse = Lykke.Job.TransactionHandler.Core.Services.Ethereum.ErrorResponse;
-using System.Numerics;
 using Lykke.Service.Assets.Client;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             {
                 // Check each case
                 return _addressUtil.IsChecksumAddress(address);
-            };
+            }
         }
 
         public async Task<EthereumResponse<GetContractModel>> GetContractAsync(Asset asset, string userAddress)

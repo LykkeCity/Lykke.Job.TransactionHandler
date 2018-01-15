@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
+using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.JobTriggers.Triggers.Attributes;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 
@@ -8,14 +9,14 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 {
     public class HashEventsFunction
     {
-        private readonly IBitCoinTransactionsRepository _bitcoinTransactionRepository;
-        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly ITransactionsRepository _bitcoinTransactionRepository;
+        private readonly ITransactionService _transactionService;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
 
-        public HashEventsFunction(IBitCoinTransactionsRepository bitcoinTransactionRepository, IBitcoinTransactionService bitcoinTransactionService, ICashOperationsRepositoryClient cashOperationsRepositoryClient)
+        public HashEventsFunction(ITransactionsRepository bitcoinTransactionRepository, ITransactionService transactionService, ICashOperationsRepositoryClient cashOperationsRepositoryClient)
         {
             _bitcoinTransactionRepository = bitcoinTransactionRepository;
-            _bitcoinTransactionService = bitcoinTransactionService;
+            _transactionService = transactionService;
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
         }
 
@@ -28,7 +29,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             switch (tx?.CommandType)
             {
                 case BitCoinCommands.CashOut:
-                    var cashOutContext = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(tx.TransactionId);
+                    var cashOutContext = await _transactionService.GetTransactionContext<CashOutContextData>(tx.TransactionId);
 
                     await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(cashOutContext.ClientId, cashOutContext.CashOperationId, ev.Hash);
 
