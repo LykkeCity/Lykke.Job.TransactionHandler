@@ -338,20 +338,18 @@ namespace Lykke.Job.TransactionHandler.Queues
                 // already handled in wallet api
                 case OrderStatus.InOrderBook:
                 case OrderStatus.Cancelled:
-                    return;
-                case OrderStatus.Processing:
-                    msg = string.Format(TextResources.LimitOrderPartiallyExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
-                    break;
-                case OrderStatus.Matched:
-                    msg = string.Format(TextResources.LimitOrderExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
-                    break;
                 case OrderStatus.Dust:
                 case OrderStatus.NoLiquidity:
                 case OrderStatus.NotEnoughFunds:
                 case OrderStatus.ReservedVolumeGreaterThanBalance:
                 case OrderStatus.UnknownAsset:
                 case OrderStatus.LeadToNegativeSpread:
-                    msg = string.Format(TextResources.LimitOrderRejected, typeString, order.AssetPairId, volume, order.Price, priceAsset.DisplayId);
+                    return;
+                case OrderStatus.Processing:
+                    msg = string.Format(TextResources.LimitOrderPartiallyExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
+                    break;
+                case OrderStatus.Matched:
+                    msg = string.Format(TextResources.LimitOrderExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(OrderStatus));
