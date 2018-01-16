@@ -30,10 +30,11 @@ namespace Lykke.Job.TransactionHandler.Services
             public string ExchangeOperationsServiceUrl { get; set; }
             public ServiceSettings Services { get; set; }
             public string Environment { get; set; }
+            public string QueuePostfix { get; set; }
             public long RetryDelayInMilliseconds { get; set; }
             public string SagasRabbitMqConnStr { get; set; } 
             [Optional]
-            public ChaosSettings ChaosKitty { get; set; }
+            public ChaosSettings ChaosKitty { get; set; }            
         }
 
         public class ChaosSettings

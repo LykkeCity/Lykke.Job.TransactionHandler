@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
+using Lykke.Job.TransactionHandler.Core.Domain.Clients;
+using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events;
+using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
@@ -16,6 +20,8 @@ namespace Lykke.Job.TransactionHandler.Projections
 {
     public class OperationHistoryProjection
     {
+        private readonly ILimitOrdersRepository _limitOrdersRepository;
+        private readonly IClientCacheRepository _clientCacheRepository;
         private readonly ILog _log;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly Core.Services.BitCoin.IBitcoinTransactionService _bitcoinTransactionService;
@@ -27,8 +33,12 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] Core.Services.BitCoin.IBitcoinTransactionService bitcoinTransactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
-            [NotNull] IWalletCredentialsRepository walletCredentialsRepository)
+            [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
+            ILimitOrdersRepository limitOrdersRepository, 
+            IClientCacheRepository clientCacheRepository)
         {
+            _limitOrdersRepository = limitOrdersRepository;
+            _clientCacheRepository = clientCacheRepository;
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
             _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
@@ -101,7 +111,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             var transactionId = evt.Command.TransactionId.ToString();
             var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transactionId);
             var isForwardWithdawal = context.AddData?.ForwardWithdrawal != null;
-            
+
             var operation = new CashInOutOperation
             {
                 Id = context.CashOperationId,
@@ -154,6 +164,14 @@ namespace Lykke.Job.TransactionHandler.Projections
             await RegisterOperation(operation);
         }
 
+        public async Task Handle(LimitOrderSavedEvent evt)
+        {
+            if (evt.IsTrustedClient)
+                return;
+
+            await _clientCacheRepository.UpdateLimitOrdersCount(evt.ClientId, evt.ActiveOrdersCount);
+        }
+
         private async Task RegisterOperation(CashInOutOperation operation)
         {
             var operationId = await _cashOperationsRepositoryClient.RegisterAsync(operation);
@@ -163,6 +181,6 @@ namespace Lykke.Job.TransactionHandler.Projections
                     nameof(RegisterOperation), operation.ToJson(),
                     $"Unexpected response from Operations Service: {operationId}");
             }
-        }
+        }        
     }
 }

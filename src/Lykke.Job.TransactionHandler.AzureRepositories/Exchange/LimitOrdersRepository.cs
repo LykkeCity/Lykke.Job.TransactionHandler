@@ -129,9 +129,13 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
             await _tableStorage.InsertOrMergeAsync(byClientEntity);
 
             if (status == OrderStatus.InOrderBook || status == OrderStatus.Processing)
+            {                                    
                 await _tableStorage.InsertOrMergeAsync(byClientEntityActive);
+            }
             else
-                await _tableStorage.DeleteAsync(LimitOrderEntity.ByClientIdActive.GeneratePartitionKey(limitOrder.ClientId), limitOrder.Id);
+            {                                   
+                await  _tableStorage.DeleteAsync(LimitOrderEntity.ByClientIdActive.GeneratePartitionKey(limitOrder.ClientId), limitOrder.Id);
+            }
         }
 
         public async Task<ILimitOrder> GetOrderAsync(string orderId)
