@@ -66,7 +66,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     (decimal)Math.Abs(command.Amount),
                     asset);
 
-                if (response.HasError)
+                if (response.HasError && response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists)
                     errorMessage = response.Error.ToJson();
             }
             else
@@ -82,7 +82,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     command.Address,
                     (decimal)Math.Abs(command.Amount));
 
-                if (response.HasError)
+                if (response.HasError && response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists)
                     errorMessage = response.Error.ToJson();
             }
 
@@ -95,7 +95,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             return CommandHandlingResult.Ok();
         }
-        
+
         public async Task<CommandHandlingResult> Handle(EthTransferTrustedWalletCommand command)
         {
             await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(EthTransferTrustedWalletCommand), command.ToJson());
@@ -108,52 +108,45 @@ namespace Lykke.Job.TransactionHandler.Handlers
             if (transferType == TransferType.BetweenTrusted)
                 return CommandHandlingResult.Ok();
 
-            try
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(txRequest.AssetId);
+            var clientAddress = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
+            var hotWalletAddress = _settings.HotwalletAddress;
+
+            string addressFrom;
+            string addressTo;
+            Guid transferId;
+            string sign;
+            switch (transferType)
             {
-                var asset = await _assetsServiceWithCache.TryGetAssetAsync(txRequest.AssetId);
-                var clientAddress = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
-                var hotWalletAddress = _settings.HotwalletAddress;
-
-                string addressFrom;
-                string addressTo;
-                Guid transferId;
-                string sign;
-                switch (transferType)
-                {
-                    case TransferType.ToTrustedWallet:
-                        addressFrom = clientAddress;
-                        addressTo = hotWalletAddress;
-                        transferId = txRequest.SignedTransfer.Id;
-                        sign = txRequest.SignedTransfer.Sign;
-                        break;
-                    case TransferType.FromTrustedWallet:
-                        addressFrom = hotWalletAddress;
-                        addressTo = clientAddress;
-                        transferId = txRequest.Id;
-                        sign = string.Empty;
-                        break;
-                    default:
-                        await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(EthTransferTrustedWalletCommand),
-                            "Unknown transfer type", null);
-                        return CommandHandlingResult.Ok(); // todo: Fail?
-                }
-
-                var ethResponse = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
-                    addressTo, txRequest.Volume);
-
-                if (ethResponse.HasError)
-                {
-                    await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(EthTransferTrustedWalletCommand), ethResponse.Error.ToJson(), null);
-                    return CommandHandlingResult.Ok(); // todo: Fail?
-                }
-
-                await _operationsClient.Complete(transferId);
+                case TransferType.ToTrustedWallet:
+                    addressFrom = clientAddress;
+                    addressTo = hotWalletAddress;
+                    transferId = txRequest.SignedTransfer.Id;
+                    sign = txRequest.SignedTransfer.Sign;
+                    break;
+                case TransferType.FromTrustedWallet:
+                    addressFrom = hotWalletAddress;
+                    addressTo = clientAddress;
+                    transferId = txRequest.Id;
+                    sign = string.Empty;
+                    break;
+                default:
+                    await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(EthTransferTrustedWalletCommand),
+                        "Unknown transfer type", null);
+                    return CommandHandlingResult.Fail(_retryTimeout);
             }
-            catch (Exception e)
+
+            var response = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
+                addressTo, txRequest.Volume);
+
+            if (response.HasError && response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists)
             {
-                await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(EthTransferTrustedWalletCommand), e.Message, e);
-                return CommandHandlingResult.Fail(TimeSpan.FromSeconds(20));
+                var errorMessage = response.Error.ToJson();
+                await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(EthTransferTrustedWalletCommand), command.ToJson(), new Exception(errorMessage));
+                return CommandHandlingResult.Fail(_retryTimeout);
             }
+
+            await _operationsClient.Complete(transferId);
 
             return CommandHandlingResult.Ok();
         }

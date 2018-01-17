@@ -90,7 +90,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterType<OperationHistoryProjection>();
             builder.RegisterType<NotificationsProjection>();
-            
+
             builder.RegisterType<TradeSaga>();
             builder.RegisterType<TransferSaga>();
 

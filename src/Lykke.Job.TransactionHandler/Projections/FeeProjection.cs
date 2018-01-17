@@ -25,11 +25,13 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TradeCreatedEvent evt)
         {
+            // todo: remove?
             await _log.WriteInfoAsync(nameof(FeeProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
 
             ChaosKitty.Meow();
 
             var queueMessage = evt.QueueMessage;
+            // todo: multithread + idempotent
             var feeLogTasks = queueMessage.Trades.Select(ti => _feeLogRepository.CreateAsync(new OrderFeeLog
             {
                 OrderId = queueMessage.Order.Id,
@@ -39,6 +41,6 @@ namespace Lykke.Job.TransactionHandler.Projections
                 Type = "market"
             }));
             await Task.WhenAll(feeLogTasks);
-        }        
+        }
     }
 }

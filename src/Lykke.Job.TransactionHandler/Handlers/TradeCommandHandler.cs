@@ -4,6 +4,7 @@ using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
+using Lykke.Job.TransactionHandler.AzureRepositories;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Commands;
@@ -47,9 +48,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
             {
-                await _log.WriteInfoAsync(nameof(TradeSaga), nameof(TradeCommandHandler), queueMessage.ToJson(), "Message processing being aborted, due to order status is not matched");
+                await _log.WriteInfoAsync(nameof(TradeSaga), nameof(TradeCommandHandler), queueMessage.ToJson(),
+                    "Message processing being aborted, due to order status is not matched");
 
-                return CommandHandlingResult.Ok(); // todo: Fail?
+                return CommandHandlingResult.Ok();
             }
 
             var context = await _transactionService.GetTransactionContext<SwapOffchainContextData>(queueMessage.Order.Id) ?? new SwapOffchainContextData();
@@ -69,20 +71,21 @@ namespace Lykke.Job.TransactionHandler.Handlers
             return CommandHandlingResult.Ok();
         }
 
-        public async Task<CommandHandlingResult> Handle(CreateTransactionCommand command, IEventPublisher eventPublisher)
+        public async Task<CommandHandlingResult> Handle(CreateTransactionCommand command)
         {
             await _log.WriteInfoAsync(nameof(TradeCommandHandler), nameof(CreateTransactionCommand), command.ToJson());
 
             ChaosKitty.Meow();
 
-            var transaction = _transactionsRepository.FindByTransactionIdAsync(command.OrderId);
-
-            if (transaction == null)
+            try
             {
                 await _transactionsRepository.CreateAsync(command.OrderId, BitCoinCommands.SwapOffchain, "", null, "");
             }
-
-            eventPublisher.PublishEvent(new TransactionCreatedEvent { OrderId = command.OrderId });
+            catch (Microsoft.WindowsAzure.Storage.StorageException exception)
+            {
+                if (exception.RequestInformation.HttpStatusCode != AzureHelper.ConflictStatusCode)
+                    throw;
+            }
 
             return CommandHandlingResult.Ok();
         }

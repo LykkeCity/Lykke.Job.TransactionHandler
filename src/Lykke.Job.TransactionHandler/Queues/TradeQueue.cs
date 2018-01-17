@@ -49,7 +49,12 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             try
             {
-                _subscriber = new RabbitMqSubscriber<TradeQueueItem>(settings, new DeadQueueErrorHandlingStrategy(_log, settings))
+                _subscriber = new RabbitMqSubscriber<TradeQueueItem>(
+                        settings,
+                        new ResilientErrorHandlingStrategy(_log, settings,
+                            retryTimeout: TimeSpan.FromSeconds(20),
+                            retryNum: 3,
+                            next: new DeadQueueErrorHandlingStrategy(_log, settings)))
                     .SetMessageDeserializer(new JsonMessageDeserializer<TradeQueueItem>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
                     .Subscribe(ProcessMessage)
@@ -71,12 +76,10 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task ProcessMessage(TradeQueueItem queueMessage)
         {
-            var createTradeCommand = new Commands.CreateTradeCommand
+            _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
             {
                 QueueMessage = queueMessage
-            };
-
-            _cqrsEngine.SendCommand(createTradeCommand, "tx-handler", "tx-handler");
+            }, "tx-handler", "tx-handler");
         }
 
         public void Dispose()

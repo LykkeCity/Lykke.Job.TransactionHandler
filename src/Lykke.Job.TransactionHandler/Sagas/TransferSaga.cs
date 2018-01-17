@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
@@ -28,20 +29,21 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private readonly ITransactionService _transactionService;
 
         public TransferSaga(
-            ILog log,
-            IOffchainRequestService offchainRequestService,
-            IClientAccountClient clientAccountClient,
-            IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            IOperationsClient operationsClient,
-            IAssetsServiceWithCache assetsServiceWithCache, ITransactionService transactionService)
+            [NotNull] ILog log,
+            [NotNull] IOffchainRequestService offchainRequestService,
+            [NotNull] IClientAccountClient clientAccountClient,
+            [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
+            [NotNull] IOperationsClient operationsClient,
+            [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
+            [NotNull] ITransactionService transactionService)
         {
-            _log = log;
-            _offchainRequestService = offchainRequestService;
-            _clientAccountClient = clientAccountClient;
-            _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
-            _operationsClient = operationsClient;
-            _assetsServiceWithCache = assetsServiceWithCache;
-            _transactionService = transactionService;
+            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _offchainRequestService = offchainRequestService ?? throw new ArgumentNullException(nameof(offchainRequestService));
+            _clientAccountClient = clientAccountClient ?? throw new ArgumentNullException(nameof(clientAccountClient));
+            _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
+            _operationsClient = operationsClient ?? throw new ArgumentNullException(nameof(operationsClient));
+            _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
+            _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
         }
 
         private async Task Handle(TransferCreatedEvent evt, ICommandSender sender)

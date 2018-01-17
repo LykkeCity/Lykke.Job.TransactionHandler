@@ -1,6 +1,8 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Events;
@@ -13,9 +15,9 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private readonly ILog _log;
 
         public TradeSaga(
-            ILog log)
+            [NotNull] ILog log)
         {
-            _log = log;
+            _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
         private async Task Handle(TradeCreatedEvent evt, ICommandSender sender)
@@ -27,12 +29,10 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 return;
             }
 
-            var cmd = new CreateTransactionCommand
+            sender.SendCommand(new CreateTransactionCommand
             {
                 OrderId = evt.OrderId,
-            };
-
-            sender.SendCommand(cmd, "tx-handler");
+            }, "tx-handler");
         }
     }
 }
