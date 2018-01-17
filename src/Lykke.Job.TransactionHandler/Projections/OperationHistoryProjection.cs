@@ -11,6 +11,8 @@ using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
+using System.Linq;
+using Lykke.Job.TransactionHandler.Queues.Models;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
@@ -64,6 +66,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = asset.IsTrusted ? TransactionStates.SettledOffchain : TransactionStates.InProcessOffchain
             };
 
+            operation.AddFeeDataToOperation(message, _log);
+
             await RegisterOperation(operation);
         }
 
@@ -90,6 +94,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 TransactionId = transactionId
             };
 
+            operation.AddFeeDataToOperation(message, _log);
+
             await RegisterOperation(operation);
         }
 
@@ -107,7 +113,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             var isForwardWithdawal = context.AddData?.ForwardWithdrawal != null;
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
-
+            
             var isBtcOffchainClient = asset.Blockchain == Blockchain.Bitcoin;
 
             var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(message.Id);
@@ -126,6 +132,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transaction.BlockchainHash,
                 State = isForwardWithdawal ? TransactionStates.SettledOffchain : GetTransactionState(transaction.BlockchainHash, isBtcOffchainClient)
             };
+
+            operation.AddFeeDataToOperation(message, _log);
 
             await RegisterOperation(operation);
         }
@@ -164,6 +172,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                     : TransactionStates.InProcessOnchain
             };
 
+            operation.AddFeeDataToOperation(message, _log);
+
             await RegisterOperation(operation);
         }
 
@@ -177,7 +187,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                     ? TransactionStates.InProcessOnchain
                     : TransactionStates.SettledOnchain);
         }
-
+        
         private async Task RegisterOperation(CashInOutOperation operation)
         {
             var operationId = await _cashOperationsRepositoryClient.RegisterAsync(operation);

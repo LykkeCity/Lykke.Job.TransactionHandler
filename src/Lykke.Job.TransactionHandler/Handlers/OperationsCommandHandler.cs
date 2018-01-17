@@ -64,6 +64,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 State = GetTransactionState(transaction.BlockchainHash, isBtcOffchainClient)
             };
 
+            operation.AddFeeDataToOperation(message, _log);
+
             await RegisterOperation(operation);
 
             return CommandHandlingResult.Ok();
