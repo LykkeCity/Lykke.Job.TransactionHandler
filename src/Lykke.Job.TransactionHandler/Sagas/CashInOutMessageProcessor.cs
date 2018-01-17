@@ -15,6 +15,8 @@ using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
+using Lykke.Job.TransactionHandler.Core.Domain.Logs;
+using System.Linq;
 
 namespace Lykke.Job.TransactionHandler.Sagas
 {
@@ -29,9 +31,11 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly ICqrsEngine _cqrsEngine;
         private readonly IBitcoinCashinRepository _bitcoinCashinTypeRepository;
+        private readonly ICashInOutLogRepository _cashInOutLogRepository;
 
         public CashInOutMessageProcessor(
             [NotNull] ILog log,
+            [NotNull] ICashInOutLogRepository cashInOutLogRepository,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] IBitCoinTransactionsRepository bitcoinTransactionsRepository,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
@@ -50,11 +54,12 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
             _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
             _bitcoinCashinTypeRepository = bitcoinCashinRepository ?? throw new ArgumentNullException(nameof(bitcoinCashinRepository));
+            _cashInOutLogRepository = cashInOutLogRepository ?? throw new ArgumentNullException(nameof(cashInOutLogRepository));
         }
 
         public async Task ProcessMessage(CashInOutQueueMessage message)
         {
-            await _log.WriteInfoAsync(nameof(CashInOutMessageProcessor), nameof(CashInOutQueueMessage), message.ToJson(), "");
+            await _cashInOutLogRepository.CreateAsync(message.Id, message.ClientId, message.Date, message.Amount, message.AssetId, message.FeeInstructions?.ToJson(), message.FeeTransfers?.ToJson());
 
             ChaosKitty.Meow();
 
@@ -185,10 +190,15 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private async Task ProcessCashOut(IBitcoinTransaction transaction, CashInOutQueueMessage message)
         {
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
-            var amount = message.Amount.ParseAnyDouble();
+            
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
+            var feeAmount = (message.FeeTransfers?.FirstOrDefault()?.Volume ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
+            var amount = message.Amount.ParseAnyDouble() - feeAmount;
+
             var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transaction.TransactionId);
 
             context.CashOperationId = transaction.TransactionId;
+
             _cqrsEngine.SendCommand(new SaveCashoutTransactionStateCommand
             {
                 Command = new CashOutCommand

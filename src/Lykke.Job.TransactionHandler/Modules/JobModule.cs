@@ -315,6 +315,10 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new TransferLogRepository(
                     AzureTableStorage<TransferLogEntity>.Create(_dbSettingsManager.ConnectionString(x => x.LogsConnString), "TransfersFeeLog", _log)));
 
+            builder.RegisterInstance<ICashInOutLogRepository>(
+                new CashInOutLogRepository(
+                    AzureTableStorage<CashInOutLogEntity>.Create(_dbSettingsManager.ConnectionString(x => x.LogsConnString), "CashInOutFeeLog", _log)));
+
             builder.RegisterInstance<IBlobRepository>(
                 new BlobRepository(
                     AzureTableStorage<BlobEntity>.Create(_dbSettingsManager.ConnectionString(x => x.IncomingMessagesConnString), "IncomingMessages", _log)));

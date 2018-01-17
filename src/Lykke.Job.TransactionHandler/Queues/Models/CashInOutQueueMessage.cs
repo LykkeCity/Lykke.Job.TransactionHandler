@@ -1,6 +1,8 @@
 ﻿using System;
 using Newtonsoft.Json;
 using ProtoBuf;
+using JetBrains.Annotations;
+using System.Collections.Generic;
 
 namespace Lykke.Job.TransactionHandler.Queues.Models
 {
@@ -24,5 +26,15 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
         [ProtoMember(5)]
         [JsonProperty("volume")]
         public string Amount { get; set; }
+
+        [ProtoMember(6)]
+        [CanBeNull]
+        [JsonProperty("feeInstructions")]
+        public List<FeeInstruction> FeeInstructions { get; set; }
+
+        [ProtoMember(7)]
+        [CanBeNull]
+        [JsonProperty("feeTransfers")]
+        public List<FeeTransfer> FeeTransfers { get; set; }
     }
 }
