@@ -1,18 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using Autofac;
-using AzureStorage.Queue;
 using Common.Log;
 using Inceptum.Cqrs.Configuration;
 using Inceptum.Messaging;
 using Inceptum.Messaging.RabbitMq;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
-using Lykke.Job.TransactionHandler.Commands.Bitcoin;
 using Lykke.Job.TransactionHandler.Commands.Ethereum;
 using Lykke.Job.TransactionHandler.Events;
-using Lykke.Job.TransactionHandler.Events.Bitcoin;
-using Lykke.Job.TransactionHandler.Events.Ethereum;
+using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Projections;
 using Lykke.Job.TransactionHandler.Queues.Models;
@@ -29,11 +26,9 @@ namespace Lykke.Job.TransactionHandler.Modules
     {
         private readonly AppSettings _settings;
         private readonly ILog _log;
-        private readonly IReloadingManager<AppSettings.DbSettings> _dbSettingsManager;
 
         public CqrsModule(IReloadingManager<AppSettings> settingsManager, ILog log)
         {
-            _dbSettingsManager = settingsManager.Nested(x => x.TransactionHandlerJob.Db);
             _settings = settingsManager.CurrentValue;
             _log = log;
         }
@@ -45,9 +40,9 @@ namespace Lykke.Job.TransactionHandler.Modules
                 ChaosKitty.StateOfChaos = _settings.TransactionHandlerJob.ChaosKitty.StateOfChaos;
             }
 
-            Inceptum.Messaging.Serialization.MessagePackSerializerFactory.Defaults.FormatterResolver = MessagePack.Resolvers.ContractlessStandardResolver.Instance;
-
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
+
+            Inceptum.Messaging.Serialization.MessagePackSerializerFactory.Defaults.FormatterResolver = MessagePack.Resolvers.ContractlessStandardResolver.Instance;
 
             var rabbitMqSettings = new RabbitMQ.Client.ConnectionFactory { Uri = _settings.TransactionHandlerJob.SagasRabbitMqConnStr };
 #if DEBUG
@@ -68,24 +63,37 @@ namespace Lykke.Job.TransactionHandler.Modules
 #endif
 
             var defaultRetryDelay = _settings.TransactionHandlerJob.RetryDelayInMilliseconds;
+            var longRetryDelay = defaultRetryDelay * 60;
 
             builder.RegisterType<CashInOutMessageProcessor>();
             builder.RegisterType<CashInOutSaga>();
             builder.RegisterType<ForwardWithdawalSaga>();
+            builder.RegisterType<TradeSaga>();
+            builder.RegisterType<TransferSaga>();
             builder.RegisterType<HistorySaga>();
             builder.RegisterType<NotificationsSaga>();
 
             builder.RegisterType<ForwardWithdrawalCommandHandler>();
             builder.RegisterType<BitcoinCommandHandler>()
-                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(defaultRetryDelay)))
-                .WithParameter(TypedParameter.From(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "intransactions")));
+                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));
             builder.RegisterType<ChronoBankCommandHandler>();
             builder.RegisterType<EthereumCommandHandler>()
                 .WithParameter(TypedParameter.From(_settings.Ethereum))
-                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(defaultRetryDelay)));
+                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));
             builder.RegisterType<SolarCoinCommandHandler>();
             builder.RegisterType<OffchainCommandHandler>();
             builder.RegisterType<OperationsCommandHandler>();
+            builder.RegisterType<TradeCommandHandler>();
+
+            builder.RegisterType<OperationHistoryProjection>();
+            builder.RegisterType<EmailProjection>();
+            builder.RegisterType<OrdersProjection>();
+            builder.RegisterType<FeeProjection>();
+            builder.RegisterType<TransfersProjection>();
+
+            builder.RegisterType<ContextFactory>().As<IContextFactory>().SingleInstance();
+            builder.RegisterType<ClientTradesFactory>().As<IClientTradesFactory>().SingleInstance();
+
             builder.RegisterType<TransactionsCommandHandler>();
             builder.RegisterType<HistoryCommandHandler>();
             builder.RegisterType<LimitOrderCommandHandler>();
@@ -97,29 +105,12 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<LimitOrdersProjection>();
             builder.RegisterType<LimitTradeEventsProjection>();
             builder.RegisterType<NotificationsProjection>();   
-            builder.RegisterType<OperationHistoryProjection>();                     
-
-            // todo: check
-            builder.RegisterType<TradeSaga>();
-            builder.RegisterType<TransferSaga>();
-
-            builder.RegisterType<TradeCommandHandler>();
-            builder.RegisterType<TransferCommandHandler>();
-            builder.RegisterType<NotificationsCommandHandler>();
-
-            builder.RegisterType<HistoryProjection>();
-            builder.RegisterType<FeeProjection>();
-            builder.RegisterType<ContextFactory>().As<IContextFactory>().SingleInstance();
-            builder.RegisterType<ClientTradesFactory>().As<IClientTradesFactory>().SingleInstance();
+            builder.RegisterType<OperationHistoryProjection>(); 
 
             builder.Register(ctx =>
             {
-                var defaultPipeline = "commands";
-                var defaultRoute = "self";
-                var operationHistoryProjection = ctx.Resolve<OperationHistoryProjection>();
-                var notificationsProjection = ctx.Resolve<NotificationsProjection>();
-                var historyProjection = ctx.Resolve<HistoryProjection>();
-                var feeProjection = ctx.Resolve<FeeProjection>();
+                const string defaultPipeline = "commands";
+                const string defaultRoute = "Self";
 
                 return new CqrsEngine(_log,
                     ctx.Resolve<IDependencyResolver>(),
@@ -132,6 +123,16 @@ namespace Lykke.Job.TransactionHandler.Modules
                         environment: "lykke", 
                         exclusiveQueuePostfix: _settings.TransactionHandlerJob.QueuePostfix)),
 
+                Register.BoundedContext(BoundedContexts.Self),
+
+                Register.BoundedContext(BoundedContexts.Trades)
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(CreateTradeCommand), typeof(CreateTransactionCommand))
+                        .On(defaultRoute)
+                    .PublishingEvents(typeof(TradeCreatedEvent))
+                        .With(defaultPipeline)
+                    .WithCommandsHandler<TradeCommandHandler>(),
+
                 Register.BoundedContext("tx-handler")
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(ProcessLimitOrderCommand))
@@ -141,23 +142,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .With("events")
                     .WithCommandsHandler<LimitOrderCommandHandler>(),
 
-                Register.BoundedContext("tx-handler")
-                    .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(CreateTradeCommand), typeof(CreateTransactionCommand))
-                        .On(defaultRoute)
-                    .PublishingEvents(typeof(TradeCreatedEvent), typeof(TransactionCreatedEvent))
-                        .With(defaultPipeline)
-                    .WithCommandsHandler<TradeCommandHandler>(),
-
-                Register.BoundedContext("transfers")
-                    .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(CreateTransferCommand))
-                        .On(defaultRoute)
-                    .PublishingEvents(typeof(TransferCreatedEvent))
-                        .With(defaultPipeline)
-                    .WithCommandsHandler<TransferCommandHandler>(),
-
-                Register.BoundedContext("forward-withdrawal")
+                Register.BoundedContext(BoundedContexts.ForwardWithdrawal)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(SetLinkedCashInOperationCommand))
                         .On(defaultRoute)
@@ -165,35 +150,31 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .With(defaultPipeline)
                     .WithCommandsHandler<ForwardWithdrawalCommandHandler>(),
 
-                Register.BoundedContext("bitcoin")
+                Register.BoundedContext(BoundedContexts.Bitcoin)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand), typeof(SegwitTransferCommand))
+                    .ListeningCommands(typeof(BitcoinCashOutCommand), typeof(SegwitTransferCommand))
                         .On(defaultRoute)
                     .WithCommandsHandler<BitcoinCommandHandler>(),
 
-                Register.BoundedContext("chronobank")
+                Register.BoundedContext(BoundedContexts.Chronobank)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(ChronoBankCashOutCommand))
                         .On(defaultRoute)
                     .WithCommandsHandler<ChronoBankCommandHandler>(),
 
-                Register.BoundedContext("ethereum")
+                Register.BoundedContext(BoundedContexts.Ethereum)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(ProcessEthereumCashoutCommand), typeof(EthCreateTransactionRequestCommand), typeof(EthGuaranteeTransferCommand), typeof(EthBuyCommand))
+                    .ListeningCommands(typeof(ProcessEthereumCashoutCommand), typeof(EthTransferTrustedWalletCommand))
                         .On(defaultRoute)
-                    .PublishingEvents(typeof(EthTransactionRequestCreatedEvent), typeof(EthGuaranteeTransferCompletedEvent), typeof(EthTransferCompletedEvent))
-                        .With(defaultPipeline)
                     .WithCommandsHandler<EthereumCommandHandler>(),
 
-                Register.BoundedContext("offchain")
+                Register.BoundedContext(BoundedContexts.Offchain)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand), typeof(TransferFromHubCommand), typeof(ReturnCommand))
+                    .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand))
                         .On(defaultRoute)
-                    .PublishingEvents(typeof(OffchainRequestCreatedEvent))
-                        .With(defaultPipeline)
                     .WithCommandsHandler<OffchainCommandHandler>(),
 
-                Register.BoundedContext("solarcoin")
+                Register.BoundedContext(BoundedContexts.Solarcoin)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(SolarCashOutCommand))
                         .On(defaultRoute)
@@ -201,34 +182,37 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .With(defaultPipeline)
                     .WithCommandsHandler<SolarCoinCommandHandler>(),
 
-                Register.BoundedContext("operations")
+                Register.BoundedContext(BoundedContexts.Operations)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(RegisterCashInOutOperationCommand))
+                    .ListeningCommands(
+                            typeof(SaveTransferOperationStateCommand),
+                            typeof(SaveManualOperationStateCommand),
+                            typeof(SaveCashoutOperationStateCommand),
+                            typeof(SaveIssueOperationStateCommand))
                         .On(defaultRoute)
+                    .PublishingEvents(
+                            typeof(TransferOperationStateSavedEvent),
+                            typeof(ManualTransactionStateSavedEvent),
+                            typeof(IssueTransactionStateSavedEvent),
+                            typeof(CashoutTransactionStateSavedEvent))
+                        .With(defaultPipeline)
                     .WithCommandsHandler<OperationsCommandHandler>(),
 
-                Register.BoundedContext("transactions")
+                Register.BoundedContext(BoundedContexts.OperationsHistory)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(SaveCashoutTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveIssueTransactionStateCommand))
-                        .On(defaultRoute)
-                    .PublishingEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
-                        .With(defaultPipeline)
-                    .WithCommandsHandler<TransactionsCommandHandler>(),
-
-                Register.BoundedContext("history")
-                    .ListeningEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent),
+                    .ListeningEvents(
+                            typeof(TransferOperationStateSavedEvent),
+                            typeof(ManualTransactionStateSavedEvent),
+                            typeof(IssueTransactionStateSavedEvent),
                             typeof(CashoutTransactionStateSavedEvent))
-                        .From("transactions").On(defaultRoute)
-                    .WithProjection(operationHistoryProjection, "transactions")
+                        .From(BoundedContexts.Operations).On(defaultRoute)
+                    .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.Operations)
                     .ListeningEvents(typeof(ForwardWithdawalLinkedEvent))
-                        .From("forward-withdrawal").On(defaultRoute)
-                    .WithProjection(operationHistoryProjection, "forward-withdrawal")
+                        .From(BoundedContexts.ForwardWithdrawal).On(defaultRoute)
+                    .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.ForwardWithdrawal)
                     .ListeningEvents(typeof(TradeCreatedEvent))
-                        .From("tx-handler").On(defaultRoute)
-                    .WithProjection(historyProjection, "tx-handler")
-                    .ListeningEvents(typeof(TradeCreatedEvent))
-                        .From("tx-handler").On(defaultRoute)
-                    .WithProjection(feeProjection, "tx-handler"),
+                        .From(BoundedContexts.Trades).On(defaultRoute)
+                    .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.Trades),
 
                 Register.BoundedContext("operations-history")
                     .ListeningEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
@@ -261,56 +245,61 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingEvents(typeof(LimitOrderSavedEvent))
                         .With("events"),
                 
-                Register.BoundedContext("notifications")
+                Register.BoundedContext(BoundedContexts.Orders)
+                    .ListeningEvents(typeof(TradeCreatedEvent))
+                        .From(BoundedContexts.Trades).On(defaultRoute)
+                    .WithProjection(typeof(OrdersProjection), BoundedContexts.Trades),
+
+                Register.BoundedContext(BoundedContexts.Fee)
+                    .ListeningEvents(typeof(TradeCreatedEvent))
+                        .From(BoundedContexts.Trades).On(defaultRoute)
+                    .WithProjection(typeof(FeeProjection), BoundedContexts.Trades),
+
+                Register.BoundedContext(BoundedContexts.Transfers)
+                    .ListeningEvents(typeof(TransferOperationStateSavedEvent))
+                        .From(BoundedContexts.Operations).On(defaultRoute)
+                    .WithProjection(typeof(TransfersProjection), BoundedContexts.Operations),
+
+                Register.BoundedContext(BoundedContexts.Email)
                     .ListeningEvents(typeof(SolarCashOutCompletedEvent))
-                        .From("solarcoin").On(defaultRoute)
-                    .WithProjection(typeof(NotificationsProjection), "solarcoin"),
+                        .From(BoundedContexts.Solarcoin).On(defaultRoute)
+                    .WithProjection(typeof(EmailProjection), BoundedContexts.Solarcoin),
 
                 Register.BoundedContext("push")                        
                         .ListeningCommands(typeof(LimitTradeNotifySendCommand)).On(defaultPipeline)
                         .WithCommandsHandler<NotificationsCommandHandler>(),
 
-                Register.Saga<CashInOutSaga>("cash-out-saga")
-                    .ListeningEvents(typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
-                        .From("transactions").On(defaultRoute)
-                    .PublishingCommands(typeof(SendBitcoinCommand), typeof(BitcoinCashOutCommand))
-                        .To("bitcoin").With(defaultPipeline)
+                Register.Saga<CashInOutSaga>($"{BoundedContexts.Self}.cash-out-saga")
+                    .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
+                        .From(BoundedContexts.Operations).On(defaultRoute)
+                    .PublishingCommands(typeof(BitcoinCashOutCommand))
+                        .To(BoundedContexts.Bitcoin).With(defaultPipeline)
                     .PublishingCommands(typeof(ChronoBankCashOutCommand))
-                        .To("chronobank").With(defaultPipeline)
+                        .To(BoundedContexts.Chronobank).With(defaultPipeline)
                     .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
-                        .To("ethereum").With(defaultPipeline)
+                        .To(BoundedContexts.Ethereum).With(defaultPipeline)
                     .PublishingCommands(typeof(SolarCashOutCommand))
-                        .To("solarcoin").With(defaultPipeline)
+                        .To(BoundedContexts.Solarcoin).With(defaultPipeline)
                     .PublishingCommands(typeof(BlockchainCashoutProcessor.Contract.Commands.StartCashoutCommand))
                         .To(BlockchainCashoutProcessor.Contract.BlockchainCashoutProcessorBoundedContext.Name).With(defaultPipeline),
 
-                Register.Saga<ForwardWithdawalSaga>("forward-withdrawal-saga")
+                Register.Saga<ForwardWithdawalSaga>($"{BoundedContexts.Self}.forward-withdrawal-saga")
                     .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
-                        .From("transactions").On(defaultRoute)
+                        .From(BoundedContexts.Operations).On(defaultRoute)
                     .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
-                        .To("forward-withdrawal").With(defaultPipeline),
+                        .To(BoundedContexts.ForwardWithdrawal).With(defaultPipeline),
 
-                Register.Saga<TradeSaga>("trade-saga")
-                    .ListeningEvents(typeof(TradeCreatedEvent), typeof(TransactionCreatedEvent))
-                        .From("tx-handler").On(defaultRoute)
-                    .ListeningEvents(typeof(EthTransactionRequestCreatedEvent))
-                        .From("ethereum").On(defaultRoute)
-                    .ListeningEvents(typeof(OffchainRequestCreatedEvent))
-                        .From("offchain").On(defaultRoute)
+                Register.Saga<TradeSaga>($"{BoundedContexts.Self}.trade-saga")
+                    .ListeningEvents(typeof(TradeCreatedEvent))
+                        .From(BoundedContexts.Trades).On(defaultRoute)
                     .PublishingCommands(typeof(CreateTransactionCommand))
-                        .To("tx-handler").With(defaultPipeline)
-                    .PublishingCommands(typeof(EthGuaranteeTransferCommand), typeof(EthBuyCommand), typeof(EthCreateTransactionRequestCommand))
-                        .To("ethereum").With(defaultPipeline)
-                    .PublishingCommands(typeof(ReturnCommand), typeof(TransferFromHubCommand))
-                        .To("offchain").With(defaultPipeline)
-                    .PublishingCommands(typeof(OffchainNotifyCommand))
-                        .To("notifications").With(defaultPipeline),
+                        .To(BoundedContexts.Trades).With(defaultPipeline),
 
-                Register.Saga<TransferSaga>("transfers-saga")
-                    .ListeningEvents(typeof(TransferCreatedEvent))
-                        .From("transfers").On(defaultRoute)
+                Register.Saga<TransferSaga>($"{BoundedContexts.Self}.transfers-saga")
+                    .ListeningEvents(typeof(TransferOperationStateSavedEvent))
+                        .From(BoundedContexts.Operations).On(defaultRoute)
                     .PublishingCommands(typeof(EthTransferTrustedWalletCommand))
-                        .To("transfers").With(defaultPipeline),
+                        .To(BoundedContexts.Ethereum).With(defaultPipeline),
 
                 Register.Saga<HistorySaga>("history-saga")
                     .ListeningEvents(typeof(LimitOrderExecutedEvent))
@@ -326,17 +315,25 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.DefaultRouting
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
+                        .To(BoundedContexts.Offchain).With(defaultPipeline)
+                    .PublishingCommands(typeof(SegwitTransferCommand))
+                        .To(BoundedContexts.Bitcoin).With(defaultPipeline)
+                    .PublishingCommands(typeof(SaveManualOperationStateCommand), typeof(SaveIssueOperationStateCommand), typeof(SaveCashoutOperationStateCommand))
+                        .To(BoundedContexts.Operations).With(defaultPipeline)
+                    .PublishingCommands(typeof(CreateTradeCommand))
+                        .To(BoundedContexts.Trades).With(defaultPipeline)
+                    .PublishingCommands(typeof(SaveTransferOperationStateCommand))
+                        .To(BoundedContexts.Operations).With(defaultPipeline)
+
+                Register.DefaultRouting
+                    .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
                         .To("offchain").With(defaultPipeline)
                     .PublishingCommands(typeof(SegwitTransferCommand))
                         .To("bitcoin").With(defaultPipeline)
                     .PublishingCommands(typeof(RegisterCashInOutOperationCommand))
                         .To("operations").With(defaultPipeline)
                     .PublishingCommands(typeof(SaveIssueTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveCashoutTransactionStateCommand))
-                        .To("transactions").With(defaultPipeline)
-                    .PublishingCommands(typeof(CreateTradeCommand))
-                        .To("tx-handler").With(defaultPipeline)
-                    .PublishingCommands(typeof(CreateTransferCommand))
-                        .To("transfers").With(defaultPipeline)
+                        .To("transactions").With(defaultPipeline)                    
                 );
             })
             .As<ICqrsEngine>().SingleInstance();

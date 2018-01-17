@@ -17,19 +17,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
         {
             return "BitcoinCashin";
         }
-
-        public static BitcoinCashinEntity Create(string id, string clientId, string address, string hash, bool isSegwit)
-        {
-            return new BitcoinCashinEntity
-            {
-                Address = address,
-                ClientId = clientId,
-                IsSegwit = isSegwit,
-                TxHash = hash,
-                PartitionKey = GeneratePartitionKey(),
-                RowKey = id
-            };
-        }
     }
 
     public class BitcoinCashinRepository : IBitcoinCashinRepository

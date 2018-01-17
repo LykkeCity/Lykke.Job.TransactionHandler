@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using AutoMapper;
@@ -7,10 +6,8 @@ using AzureStorage.Blob;
 using AzureStorage.Queue;
 using AzureStorage.Tables;
 using AzureStorage.Tables.Templates.Index;
-using Common;
 using Common.Log;
 using Lykke.Bitcoin.Api.Client;
-using Lykke.Job.TransactionHandler.AzureRepositories.Assets;
 using Lykke.Job.TransactionHandler.AzureRepositories.BitCoin;
 using Lykke.Job.TransactionHandler.AzureRepositories.Blockchain;
 using Lykke.Job.TransactionHandler.AzureRepositories.CashOperations;
@@ -25,7 +22,6 @@ using Lykke.Job.TransactionHandler.AzureRepositories.Offchain;
 using Lykke.Job.TransactionHandler.AzureRepositories.PaymentSystems;
 using Lykke.Job.TransactionHandler.AzureRepositories.Quanta;
 using Lykke.Job.TransactionHandler.AzureRepositories.SolarCoin;
-using Lykke.Job.TransactionHandler.Core.Domain.Assets;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
@@ -64,7 +60,6 @@ using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.Job.TransactionHandler.Services.Offchain;
 using Lykke.Job.TransactionHandler.Services.Quanta;
 using Lykke.Job.TransactionHandler.Services.SolarCoin;
-using Lykke.MatchingEngine.Connector.Services;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
@@ -138,7 +133,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             BindRabbitMq(builder);
             BindRepositories(builder);
             BindServices(builder);
-            BindCachedDicts(builder);
             BindClients(builder);
 
             builder.Populate(_services);
@@ -152,16 +146,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterLykkeServiceClient(_settings.ClientAccountClient.ServiceUrl);
             builder.RegisterOperationsClient(_settings.TransactionHandlerJob.Services.OperationsUrl);
-        }
-
-        public static void BindCachedDicts(ContainerBuilder builder)
-        {
-            builder.Register(x =>
-            {
-                var ctx = x.Resolve<IComponentContext>();
-                return new CachedDataDictionary<string, IAssetSetting>(
-                    async () => (await ctx.Resolve<IAssetSettingRepository>().GetAssetSettings()).ToDictionary(itm => itm.Asset));
-            }).SingleInstance();
         }
         
         private void BindServices(ContainerBuilder builder)
@@ -213,10 +197,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
         private void BindRepositories(ContainerBuilder builder)
         {
-            builder.RegisterInstance<IAssetSettingRepository>(
-                new AssetSettingRepository(
-                    AzureTableStorage<AssetSettingEntity>.Create(_dbSettingsManager.ConnectionString(x => x.DictsConnString), "AssetSettings", _log)));
-
             builder.RegisterInstance<ITransactionsRepository>(
                 new TransactionsRepository(
                     AzureTableStorage<BitCoinTransactionEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "BitCoinTransactions", _log)));

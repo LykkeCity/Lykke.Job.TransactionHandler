@@ -9,7 +9,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 using Lykke.Job.TransactionHandler.Events;
-using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
