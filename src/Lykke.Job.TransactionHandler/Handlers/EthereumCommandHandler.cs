@@ -8,7 +8,6 @@ using Lykke.Job.TransactionHandler.Commands.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
-using Lykke.Job.TransactionHandler.Events.Ethereum;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Utils;
@@ -21,7 +20,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
     public class EthereumCommandHandler
     {
         private readonly ILog _log;
-        private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly ISrvEthereumHelper _srvEthereumHelper;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IEthClientEventLogs _ethClientEventLogs;
@@ -32,7 +30,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public EthereumCommandHandler(
             [NotNull] ILog log,
-            [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             [NotNull] ISrvEthereumHelper srvEthereumHelper,
             [NotNull] IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             [NotNull] IEthClientEventLogs ethClientEventLogs,
@@ -42,7 +39,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
             TimeSpan retryTimeout)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
             _srvEthereumHelper = srvEthereumHelper ?? throw new ArgumentNullException(nameof(srvEthereumHelper));
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository ?? throw new ArgumentNullException(nameof(bcnClientCredentialsRepository));
             _ethClientEventLogs = ethClientEventLogs ?? throw new ArgumentNullException(nameof(ethClientEventLogs));
@@ -76,40 +72,18 @@ namespace Lykke.Job.TransactionHandler.Handlers
             else
             {
                 var transactionId = Guid.Parse(command.TransactionId);
-                if (!asset.IsTrusted)
-                {
-                    var address = await _bcnClientCredentialsRepository.GetClientAddress(command.ClientId);
-                    var txRequest = await _ethereumTransactionRequestRepository.GetAsync(transactionId);
+                var address = _settings.HotwalletAddress;
 
-                    txRequest.OperationIds = new[] { command.CashOperationId };
-                    await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
+                var response = await _srvEthereumHelper.SendCashOutAsync(
+                    transactionId,
+                    string.Empty,
+                    asset,
+                    address,
+                    command.Address,
+                    (decimal)Math.Abs(command.Amount));
 
-                    var response = await _srvEthereumHelper.SendCashOutAsync(
-                        txRequest.Id,
-                        txRequest.SignedTransfer.Sign,
-                        asset,
-                        address,
-                        txRequest.AddressTo,
-                        txRequest.Volume);
-
-                    if (response.HasError)
-                        errorMessage = response.Error.ToJson();
-                }
-                else
-                {
-                    var address = _settings.HotwalletAddress;
-
-                    var response = await _srvEthereumHelper.SendCashOutAsync(
-                        transactionId,
-                        string.Empty,
-                        asset,
-                        address,
-                        command.Address,
-                        (decimal)Math.Abs(command.Amount));
-
-                    if (response.HasError)
-                        errorMessage = response.Error.ToJson();
-                }
+                if (response.HasError)
+                    errorMessage = response.Error.ToJson();
             }
 
             if (errorMessage != null)
@@ -121,128 +95,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             return CommandHandlingResult.Ok();
         }
-
-        public async Task<CommandHandlingResult> Handle(EthCreateTransactionRequestCommand command, IEventPublisher eventPublisher)
-        {
-            await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(EthCreateTransactionRequestCommand), command.ToJson());
-
-            ChaosKitty.Meow();
-
-            var toAddress = await _bcnClientCredentialsRepository.GetClientAddress(command.ClientId);
-            var id = new Guid(command.Id);
-
-            var ethRequest = await _ethereumTransactionRequestRepository.GetAsync(id);
-
-            if (ethRequest == null)
-            {
-                await _ethereumTransactionRequestRepository.InsertAsync(new EthereumTransactionRequest
-                {
-                    Id = id,
-                    AddressTo = toAddress,
-                    AssetId = command.AssetId,
-                    ClientId = command.ClientId,
-                    OperationIds = command.OperationIds,
-                    OperationType = OperationType.Trade,
-                    OrderId = command.OrderId,
-                    Volume = command.Amount
-                });
-            }
-
-            eventPublisher.PublishEvent(new EthTransactionRequestCreatedEvent
-            {
-                TransactionId = command.Id,
-                OrderId = command.OrderId,
-                ClientId = command.ClientId,
-                AssetId = command.AssetId,
-                Amount = command.Amount
-            });
-
-            return CommandHandlingResult.Ok();
-        }
-
-        public async Task<CommandHandlingResult> Handle(EthGuaranteeTransferCommand command, IEventPublisher eventPublisher)
-        {
-            await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(EthGuaranteeTransferCommand), command.ToJson());
-
-            ChaosKitty.Meow();
-
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.Asset.Id);
-
-            if (asset.IsTrusted)
-            {
-                return CommandHandlingResult.Ok();
-            }
-
-            try
-            {
-                var fromAddress = await _bcnClientCredentialsRepository.GetClientAddress(command.ClientId);
-                var ethereumTxRequest = await _ethereumTransactionRequestRepository.GetByOrderAsync(command.OrderId);
-                var change = ethereumTxRequest.Volume - Math.Abs(command.Amount);
-
-                EthereumResponse<OperationResponse> res;
-                var minAmountForAsset = (decimal)Math.Pow(10, -command.Asset.Accuracy);
-
-                if (change > 0 && Math.Abs(change) >= minAmountForAsset)
-                {
-                    res = await _srvEthereumHelper.SendTransferWithChangeAsync(change,
-                        ethereumTxRequest.SignedTransfer.Sign, ethereumTxRequest.SignedTransfer.Id,
-                        command.Asset, fromAddress, _settings.HotwalletAddress, ethereumTxRequest.Volume);
-                }
-                else
-                {
-                    res = await _srvEthereumHelper.SendTransferAsync(ethereumTxRequest.SignedTransfer.Id, ethereumTxRequest.SignedTransfer.Sign,
-                        command.Asset, fromAddress, _settings.HotwalletAddress, ethereumTxRequest.Volume);
-                }
-
-                if (res.HasError)
-                {
-                    if (res.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
-                        throw new ApplicationException(res.Error.ToJson());
-                }
-            }
-            catch (Exception e)
-            {
-                await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(EthGuaranteeTransferCommand), command.ToJson(), e);
-
-                throw;
-            }
-
-            eventPublisher.PublishEvent(new EthGuaranteeTransferCompletedEvent { OrderId = command.OrderId });
-
-            return CommandHandlingResult.Ok();
-        }
-
-        public async Task<CommandHandlingResult> Handle(EthBuyCommand command, IEventPublisher eventPublisher)
-        {
-            await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(EthBuyCommand), command.ToJson());
-
-            ChaosKitty.Meow();
-
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
-
-            if (asset.IsTrusted)
-            {
-                return CommandHandlingResult.Ok();
-            }
-
-            var toAddress = await _bcnClientCredentialsRepository.GetClientAddress(command.ClientId);
-            var res = await _srvEthereumHelper.SendTransferAsync(new Guid(command.TransactionId), string.Empty, asset,
-                _settings.HotwalletAddress, toAddress, command.Amount);
-
-            if (res.HasError && res.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
-            {
-                var errMsg = res.Error.ToJson();
-
-                await _log.WriteWarningAsync(nameof(EthereumCommandHandler), nameof(EthBuyCommand), errMsg, string.Empty);
-
-                throw new InvalidOperationException(errMsg);
-            }
-
-            eventPublisher.PublishEvent(new EthTransferCompletedEvent { OrderId = command.OrderId });
-
-            return CommandHandlingResult.Ok();
-        }
-
+        
         public async Task<CommandHandlingResult> Handle(EthTransferTrustedWalletCommand command)
         {
             await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(EthTransferTrustedWalletCommand), command.ToJson());

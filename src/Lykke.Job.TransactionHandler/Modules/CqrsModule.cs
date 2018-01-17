@@ -86,6 +86,23 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<TradeCommandHandler>();
 
             builder.RegisterType<OperationHistoryProjection>();
+            builder.RegisterType<TransactionsCommandHandler>();
+
+            builder.RegisterType<OperationHistoryProjection>();
+            builder.RegisterType<NotificationsProjection>();
+            
+            builder.RegisterType<TradeSaga>();
+            builder.RegisterType<TransferSaga>();
+
+            builder.RegisterType<TradeCommandHandler>();
+            builder.RegisterType<TransferCommandHandler>();
+
+            builder.RegisterType<HistoryProjection>();
+            builder.RegisterType<FeeProjection>();
+            builder.RegisterType<ContextFactory>().As<IContextFactory>().SingleInstance();
+            builder.RegisterType<ClientTradesFactory>().As<IClientTradesFactory>().SingleInstance();
+
+            builder.RegisterType<OperationHistoryProjection>();
             builder.RegisterType<EmailProjection>();
             builder.RegisterType<OrdersProjection>();
             builder.RegisterType<FeeProjection>();
@@ -132,6 +149,14 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingEvents(typeof(TradeCreatedEvent))
                         .With(defaultPipeline)
                     .WithCommandsHandler<TradeCommandHandler>(),
+
+                Register.BoundedContext("transfers")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(CreateTransferCommand))
+                        .On(defaultRoute)
+                    .PublishingEvents(typeof(TransferCreatedEvent))
+                        .With(defaultPipeline)
+                    .WithCommandsHandler<TransferCommandHandler>(),
 
                 Register.BoundedContext("tx-handler")
                     .FailedCommandRetryDelay(defaultRetryDelay)
