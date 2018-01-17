@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="Lykke.Common" Version="4.1.0" />
-    <PackageReference Include="Lykke.Service.Assets.Client" Version="2.1.0.18" />
+    <PackageReference Include="Lykke.Service.Assets.Client" Version="2.1.0.126" />
     <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.85" />
   </ItemGroup>
 
