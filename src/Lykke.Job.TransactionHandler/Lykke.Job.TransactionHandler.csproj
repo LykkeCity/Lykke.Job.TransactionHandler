@@ -29,7 +29,7 @@
     <PackageReference Include="Lykke.Messaging.RabbitMq" Version="0.1.14" />
     <PackageReference Include="Lykke.RabbitMqBroker" Version="4.3.1" />
     <PackageReference Include="Lykke.Service.Assets.Client" Version="2.1.0.18" />
-    <PackageReference Include="Lykke.Service.ExchangeOperations.Client" Version="1.0.22" />
+    <PackageReference Include="Lykke.Service.ExchangeOperations.Client" Version="1.1.4" />
     <PackageReference Include="Lykke.Service.ExchangeOperations.Contracts" Version="1.0.6" />
     <PackageReference Include="Lykke.Service.Operations.Client" Version="1.0.7" />
     <PackageReference Include="Lykke.Service.PersonalData" Version="1.0.29" />

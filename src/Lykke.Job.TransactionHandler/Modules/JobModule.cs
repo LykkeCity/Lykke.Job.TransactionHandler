@@ -318,6 +318,9 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance<IBlobRepository>(
                 new BlobRepository(
                     AzureTableStorage<BlobEntity>.Create(_dbSettingsManager.ConnectionString(x => x.IncomingMessagesConnString), "IncomingMessages", _log)));
+
+            builder.RegisterInstance<IClientCommentsRepository>(
+                new ClientCommentsRepository(AzureTableStorage<ClientCommentEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "ClientComments", _log)));
         }
 
         private void BindRabbitMq(ContainerBuilder builder)
