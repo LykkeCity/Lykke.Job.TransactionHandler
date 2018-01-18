@@ -31,14 +31,9 @@ namespace Lykke.Job.TransactionHandler.Services.BitCoin
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(fromBlob);
         }
 
-        public Task SetTransactionContext<T>(string transactionId, T context) where T: BaseContextData
+        public Task SetTransactionContext<T>(string transactionId, T context) where T : BaseContextData
         {
             return _contextBlobStorage.Set(transactionId, context.ToJson());
-        }
-
-        public Task SetStringTransactionContext(string transactionId, string context)
-        {
-            return _contextBlobStorage.Set(transactionId, context);
         }
 
         public Task CreateOrUpdateAsync(string meOrderId)

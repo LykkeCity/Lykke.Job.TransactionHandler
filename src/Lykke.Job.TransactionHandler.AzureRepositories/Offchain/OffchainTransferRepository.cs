@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
-using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
 {
@@ -86,40 +84,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
                         entity.Onchain = onchain.Value;
                     return entity;
                 });
-        }
-
-        public async Task UpdateTransfer(string transferId, string externalTransferId, bool closing = false, bool? onchain = null)
-        {
-            await _storage.ReplaceAsync(OffchainTransferEntity.ByCommon.GeneratePartitionKey(), transferId,
-                entity =>
-                {
-                    entity.ExternalTransferId = externalTransferId;
-                    entity.ChannelClosing = closing;
-                    if (onchain != null)
-                        entity.Onchain = onchain.Value;
-                    return entity;
-                });
-        }
-
-        public async Task<IEnumerable<IOffchainTransfer>> GetTransfersByDate(OffchainTransferType type, DateTimeOffset @from, DateTimeOffset to)
-        {
-            var filter1 = TableQuery.CombineFilters(
-                TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal,
-                    OffchainTransferEntity.ByCommon.GeneratePartitionKey()),
-                TableOperators.And,
-                TableQuery.GenerateFilterConditionForInt("Type", QueryComparisons.Equal, (int)type)
-            );
-
-            var filter2 = TableQuery.CombineFilters(
-                TableQuery.GenerateFilterConditionForDate("CreatedDt", QueryComparisons.GreaterThanOrEqual, from),
-                TableOperators.And,
-                TableQuery.GenerateFilterConditionForDate("CreatedDt", QueryComparisons.LessThanOrEqual, to)
-            );
-
-            var query = new TableQuery<OffchainTransferEntity>().Where(
-                TableQuery.CombineFilters(filter1, TableOperators.And, filter2));
-
-            return await _storage.WhereAsync(query);
         }
 
         public async Task AddChildTransfer(string transferId, IOffchainTransfer child)

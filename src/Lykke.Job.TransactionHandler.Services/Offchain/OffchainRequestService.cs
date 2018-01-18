@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 
@@ -13,8 +12,8 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
         private readonly INotificationsService _notificationsService;
 
         public OffchainRequestService(
-            IOffchainRequestRepository offchainRequestRepository, 
-            IOffchainTransferRepository offchainTransferRepository, 
+            IOffchainRequestRepository offchainRequestRepository,
+            IOffchainTransferRepository offchainTransferRepository,
             INotificationsService notificationsService)
         {
             _offchainRequestRepository = offchainRequestRepository;
@@ -28,7 +27,7 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
 
             await _offchainRequestRepository.CreateRequest(transactionId, clientId, assetId, RequestType.RequestTransfer, type, null);
         }
-        
+
         public async Task CreateOffchainRequestAndNotify(string transactionId, string clientId, string assetId, decimal amount,
             string orderId, OffchainTransferType type)
         {
@@ -64,17 +63,6 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
                 await _offchainTransferRepository.AddChildTransfer(oldTransferId, newTransfer);
                 await _offchainTransferRepository.SetTransferIsChild(newTransfer.Id, oldTransferId);
             }
-        }
-
-        public async Task CreateHubCashoutRequests(string clientId, decimal bitcoinAmount = 0, decimal lkkAmount = 0)
-        {
-            if (bitcoinAmount > 0)
-                await CreateOffchainRequest(Guid.NewGuid().ToString(), clientId, LykkeConstants.BitcoinAssetId, bitcoinAmount, null, OffchainTransferType.HubCashout);
-
-            if (lkkAmount > 0)
-                await CreateOffchainRequest(Guid.NewGuid().ToString(), clientId, LykkeConstants.LykkeAssetId, lkkAmount, null, OffchainTransferType.HubCashout);
-
-            await _notificationsService.OffchainNotifyUser(clientId);
         }
     }
 }

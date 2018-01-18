@@ -28,18 +28,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
         }
-        
-        private async Task Handle(DestroyTransactionStateSavedEvent evt, ICommandSender sender)
-        {
-            await _log.WriteInfoAsync(nameof(CashInOutSaga), nameof(DestroyTransactionStateSavedEvent), evt.ToJson(), "");
-
-            ChaosKitty.Meow();
-
-            sender.SendCommand(new Commands.SendBitcoinCommand
-            {
-                Command = evt.Command
-            }, BoundedContexts.Bitcoin);
-        }
 
         private async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
         {

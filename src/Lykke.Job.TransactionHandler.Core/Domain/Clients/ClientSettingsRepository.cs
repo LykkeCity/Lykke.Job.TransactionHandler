@@ -58,15 +58,5 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Clients
         {
             Task<T> GetSettings<T>(string traderId) where T : TraderSettingsBase, new();
         }
-
-        public static class ClientSettingExt
-        {
-            public static async Task<bool> IsOffchainClient(this IClientSettingsRepository repository, string clientId)
-            {
-                var setting = await repository.GetSettings<IsOffchainUserSettings>(clientId);
-
-                return setting.IsOffchain;
-            }
-        }
     }
 }

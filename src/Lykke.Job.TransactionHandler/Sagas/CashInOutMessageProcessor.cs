@@ -80,9 +80,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     case BitCoinCommands.CashOut:
                         await ProcessCashOut(message);
                         break;
-                    case BitCoinCommands.Destroy:
-                        await ProcessDestroy(message);
-                        break;
                     case BitCoinCommands.ManualUpdate:
                         ProcessManualUpdate(message);
                         break;
@@ -149,27 +146,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Amount = Math.Abs(amount),
                     AssetId = message.AssetId,
                     Multisig = walletCredentials.MultiSig
-                },
-                Context = context,
-                Message = message
-            }, "CashInOutQueue", BoundedContexts.Operations);
-        }
-
-        private async Task ProcessDestroy(CashInOutQueueMessage message)
-        {
-            var amount = message.Amount.ParseAnyDouble();
-            var transactionId = message.Id;
-            var context = await _transactionService.GetTransactionContext<UncolorContextData>(transactionId);
-            context.CashOperationId = transactionId;
-            _cqrsEngine.SendCommand(new SaveDestroyOperationStateCommand
-            {
-                Command = new DestroyCommand
-                {
-                    TransactionId = Guid.Parse(transactionId),
-                    Context = context.ToJson(),
-                    Amount = Math.Abs(amount),
-                    AssetId = message.AssetId,
-                    Address = context.AddressFrom
                 },
                 Context = context,
                 Message = message

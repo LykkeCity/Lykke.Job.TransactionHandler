@@ -36,7 +36,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         Task<IBitcoinTransaction> FindByTransactionIdAsync(string transactionId);
         Task<IBitcoinTransaction> SaveResponseAndHashAsync(string transactionId, string resp, string hash, DateTime? dateTime = null);
         Task UpdateAsync(string transactionId, string requestData, string contextData, string response);
-        Task DeleteAsync(string transactionId);
     }
 
     public static class BintCoinTransactionsRepositoryExt
@@ -44,11 +43,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         public static T GetContextData<T>(this IBitcoinTransaction src)
         {
             return Newtonsoft.Json.JsonConvert.DeserializeObject<T>(src.ContextData);
-        }
-
-        public static BaseContextData GetBaseContextData(this IBitcoinTransaction src)
-        {
-            return Newtonsoft.Json.JsonConvert.DeserializeObject<BaseContextData>(src.ContextData);
         }
     }
 }

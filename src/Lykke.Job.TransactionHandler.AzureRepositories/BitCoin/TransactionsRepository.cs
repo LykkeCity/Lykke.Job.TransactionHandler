@@ -115,13 +115,5 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
                 return entity;
             });
         }
-
-        public Task DeleteAsync(string transactionId)
-        {
-            var partitionKey = BitCoinTransactionEntity.ByTransactionId.GeneratePartitionKey();
-            var rowKey = BitCoinTransactionEntity.ByTransactionId.GenerateRowKey(transactionId);
-
-            return _tableStorage.DeleteAsync(partitionKey, rowKey);
-        }
     }
 }

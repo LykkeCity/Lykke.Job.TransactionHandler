@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.Blockchain
 {
@@ -17,8 +16,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Blockchain
     {
         Task<IBcnCredentialsRecord> GetAsync(string clientId, string assetId);
         Task<IBcnCredentialsRecord> GetByAssetAddressAsync(string assetAddress);
-        Task<IEnumerable<IBcnCredentialsRecord>> GetAsync(string clientId);
         Task<string> GetClientAddress(string clientId);
     }
-
 }

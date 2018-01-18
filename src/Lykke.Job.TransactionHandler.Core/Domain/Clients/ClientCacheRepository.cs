@@ -9,8 +9,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Clients
 
     public interface IClientCacheRepository
     {
-        Task<IClientCache> GetCache(string clientId);
-
         Task UpdateLimitOrdersCount(string clientId, int count);
     }
 }

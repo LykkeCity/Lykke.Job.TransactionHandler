@@ -157,31 +157,6 @@ namespace Lykke.Job.TransactionHandler.Services.Notifications
             await SendAndroidNotificationAsync(notificationIds, gcmMessage);
         }
 
-        public async Task SendTextNotificationAsync(string[] notificationIds, NotificationType type, string message)
-        {
-            var apnsMessage = new IosNotification
-            {
-                Aps = new IosFields
-                {
-                    Alert = message,
-                    Type = type
-                }
-            };
-
-            var gcmMessage = new AndoridPayloadNotification
-            {
-                Data = new AndroidPayloadFields
-                {
-                    Entity = EventsAndEntities.GetEntity(type),
-                    Event = EventsAndEntities.GetEvent(type),
-                    Message = message,
-                }
-            };
-
-            await SendIosNotificationAsync(notificationIds, apnsMessage);
-            await SendAndroidNotificationAsync(notificationIds, gcmMessage);
-        }
-
         public async Task SendLimitOrderNotification(string[] notificationsIds, string message, OrderType orderType,
             OrderStatus status)
         {
@@ -242,16 +217,6 @@ namespace Lykke.Job.TransactionHandler.Services.Notifications
             await SendAndroidNotificationAsync(notificationsIds, gcmMessage);
         }
 
-        public async Task SendRawIosNotification(string notificationId, string payload)
-        {
-            await SendRawNotificationAsync(Device.Ios, new[] { notificationId }, payload);
-        }
-
-        public async Task SendRawAndroidNotification(string notificationId, string payload)
-        {
-            await SendRawNotificationAsync(Device.Android, new[] { notificationId }, payload);
-        }
-
         private async Task SendIosNotificationAsync(string[] notificationIds, IIosNotification notification)
         {
             await SendRawNotificationAsync(Device.Ios, notificationIds, notification.ToJson(ignoreNulls: true));
@@ -283,42 +248,6 @@ namespace Lykke.Job.TransactionHandler.Services.Notifications
             }
         }
 
-        public async Task SendPushTxDialogAsync(string[] notificationsIds, double amount, string assetId, string addressFrom,
-            string addressTo, string message)
-        {
-            var apnsMessage = new IosNotification
-            {
-                Aps = new PushTxDialogFieldsIos
-                {
-                    Alert = message,
-                    Amount = amount,
-                    AssetId = assetId,
-                    Type = NotificationType.PushTxDialog,
-                    AddressFrom = addressFrom,
-                    AddressTo = addressTo
-                }
-            };
-
-            var gcmMessage = new AndoridPayloadNotification
-            {
-                Data = new PushTxDialogFieldsAndroid
-                {
-                    Entity = EventsAndEntities.GetEntity(NotificationType.PushTxDialog),
-                    Event = EventsAndEntities.GetEvent(NotificationType.PushTxDialog),
-                    PushTxItem = new PushTxDialogFieldsAndroid.PushDialogTxItemModel
-                    {
-                        Amount = amount,
-                        AssetId = assetId,
-                        AddressFrom = addressFrom,
-                        AddressTo = addressTo
-                    },
-                    Message = message,
-                }
-            };
-
-            await SendIosNotificationAsync(notificationsIds, apnsMessage);
-            await SendAndroidNotificationAsync(notificationsIds, gcmMessage);
-        }
     }
 
 }

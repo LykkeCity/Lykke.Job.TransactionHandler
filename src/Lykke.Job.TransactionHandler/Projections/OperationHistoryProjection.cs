@@ -119,32 +119,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             await RegisterOperation(operation);
         }
 
-        public async Task Handle(DestroyTransactionStateSavedEvent evt)
-        {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(DestroyTransactionStateSavedEvent), evt.ToJson(), "");
-
-            ChaosKitty.Meow();
-
-            var message = evt.Message;
-            var amount = evt.Command.Amount;
-            var transactionId = evt.Command.TransactionId.ToString();
-            var context = await _transactionService.GetTransactionContext<UncolorContextData>(transactionId);
-            var operation = new CashInOutOperation
-            {
-                Id = context.CashOperationId,
-                ClientId = message.ClientId,
-                Multisig = context.AddressFrom,
-                AssetId = message.AssetId,
-                Amount = -Math.Abs(amount),
-                DateTime = DateTime.UtcNow,
-                AddressFrom = context.AddressFrom,
-                AddressTo = context.AddressTo,
-                TransactionId = transactionId
-            };
-
-            await RegisterOperation(operation);
-        }
-
         public async Task Handle(CashoutTransactionStateSavedEvent evt)
         {
             await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");

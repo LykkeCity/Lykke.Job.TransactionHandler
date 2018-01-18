@@ -38,17 +38,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
             return CommandHandlingResult.Ok();
         }
 
-        public async Task<CommandHandlingResult> Handle(Commands.SaveDestroyOperationStateCommand command, IEventPublisher eventPublisher)
-        {
-            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveDestroyOperationStateCommand), command.ToJson(), "");
-
-            await SaveState(command.Command, command.Context);
-
-            eventPublisher.PublishEvent(new DestroyTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
-
-            return CommandHandlingResult.Ok();
-        }
-
         public async Task<CommandHandlingResult> Handle(Commands.SaveIssueOperationStateCommand command, IEventPublisher eventPublisher)
         {
             await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveIssueOperationStateCommand), command.ToJson(), "");

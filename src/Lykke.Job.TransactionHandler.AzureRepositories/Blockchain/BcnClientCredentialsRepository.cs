@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -57,11 +56,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Blockchain
         {
             return await _tableStorage.GetDataAsync(BcnCredentialsRecordEntity.ByClientId.GeneratePartition(clientId),
                 BcnCredentialsRecordEntity.ByClientId.GenerateRowKey(assetId));
-        }
-
-        public async Task<IEnumerable<IBcnCredentialsRecord>> GetAsync(string clientId)
-        {
-            return await _tableStorage.GetDataAsync(BcnCredentialsRecordEntity.ByClientId.GeneratePartition(clientId));
         }
 
         public async Task<string> GetClientAddress(string clientId)

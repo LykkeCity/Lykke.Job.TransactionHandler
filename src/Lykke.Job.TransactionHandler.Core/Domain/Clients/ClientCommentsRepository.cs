@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.Clients
@@ -27,7 +25,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Clients
 
     public interface IClientCommentsRepository
     {
-        Task<IEnumerable<IClientComment>> GetClientCommentsAsync(string clientId);
         Task AddClientCommentAsync(IClientComment data);
     }
 }

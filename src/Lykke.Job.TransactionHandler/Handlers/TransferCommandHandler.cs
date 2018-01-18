@@ -122,7 +122,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var transaction = await _transactionsRepository.FindByTransactionIdAsync(queueMessage.Id);
             if (transaction == null)
             {
-                await _log.WriteWarningAsync(nameof(TransferCommandHandler), nameof(CreateTransferCommand), queueMessage.ToJson(), "unkown transaction");
+                await _log.WriteWarningAsync(nameof(TransferCommandHandler), nameof(CreateTransferCommand), queueMessage.ToJson(), "unknown transaction");
                 return CommandHandlingResult.Fail(TimeSpan.FromSeconds(20));
             }
 
@@ -144,6 +144,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             contextData.Transfers[0].OperationId = destTransfer.Id;
             contextData.Transfers[1].OperationId = sourceTransfer.Id;
 
+            // todo: -> step: save state
             var contextJson = contextData.ToJson();
             var cmd = new TransferCommand
             {
@@ -157,6 +158,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             await _transactionsRepository.UpdateAsync(transaction.TransactionId, cmd.ToJson(), null, "");
             await _transactionService.SetTransactionContext(transaction.TransactionId, contextData);
+
 
             eventPublisher.PublishEvent(new TransferCreatedEvent
             {

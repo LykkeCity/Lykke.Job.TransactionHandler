@@ -32,11 +32,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Clients
             _storage = storage;
         }
 
-        public async Task<IClientCache> GetCache(string clientId)
-        {
-            return await _storage.GetDataAsync(ClientCacheEntity.GeneratePartitionKey(), clientId) ?? new ClientCacheEntity();
-        }
-
         public Task UpdateLimitOrdersCount(string clientId, int count)
         {
             var entity = ClientCacheEntity.Create(clientId);
