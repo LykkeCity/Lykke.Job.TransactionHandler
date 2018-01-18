@@ -32,7 +32,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             sender.SendCommand(new CreateTransactionCommand
             {
                 OrderId = evt.OrderId,
-            }, "tx-handler");
+            }, BoundedContexts.Trades);
         }
     }
 }

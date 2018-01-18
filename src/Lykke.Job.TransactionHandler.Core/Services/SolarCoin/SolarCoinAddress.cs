@@ -1,14 +1,8 @@
 ﻿using System;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Services.SolarCoin
 {
-    public interface ISrvSolarCoinHelper
-    {
-        Task SendCashOutRequest(string id, SolarCoinAddress addressTo, double amount);
-    }
-
     public class SolarCoinAddress
     {
         private string _address;

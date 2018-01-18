@@ -15,8 +15,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
     {
         private readonly ILog _log;
         private readonly IBitcoinApiClient _bitcoinApiClient;
-        private readonly TimeSpan _retryTimeout;
         private readonly IQueueExt _queueExt;
+        private readonly TimeSpan _retryTimeout;
 
         public BitcoinCommandHandler(
             [NotNull] ILog log,

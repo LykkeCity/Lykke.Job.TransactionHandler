@@ -79,7 +79,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
             {
                 QueueMessage = queueMessage
-            }, "tx-handler", "tx-handler");
+            }, "TradeQueue", BoundedContexts.Trades);
         }
 
         public void Dispose()

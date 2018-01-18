@@ -5,15 +5,15 @@ using ProtoBuf;
 namespace Lykke.Job.TransactionHandler.Commands
 {
     [ProtoContract]
-    public class SaveIssueTransactionStateCommand
+    public class SaveCashoutOperationStateCommand
     {
         [ProtoMember(1)]
         public CashInOutQueueMessage Message { get; set; }
 
         [ProtoMember(2)]
-        public IssueCommand Command { get; set; }
+        public CashOutCommand Command { get; set; }
 
         [ProtoMember(3)]
-        public IssueContextData Context { get; set; }
+        public CashOutContextData Context { get; set; }
     }
 }

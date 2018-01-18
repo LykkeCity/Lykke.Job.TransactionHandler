@@ -7,29 +7,25 @@ using Lykke.Job.TransactionHandler.AzureRepositories;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Utils;
-using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
-    public class HistoryProjection
+    public class OrdersProjection
     {
         private readonly ILog _log;
         private readonly IMarketOrdersRepository _marketOrdersRepository;
-        private readonly ITradeOperationsRepositoryClient _clientTradesRepository;
 
-        public HistoryProjection(
+        public OrdersProjection(
             [NotNull] ILog log,
-            [NotNull] IMarketOrdersRepository marketOrdersRepository,
-            [NotNull] ITradeOperationsRepositoryClient clientTradesRepository)
+            [NotNull] IMarketOrdersRepository marketOrdersRepository)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _marketOrdersRepository = marketOrdersRepository ?? throw new ArgumentNullException(nameof(marketOrdersRepository));
-            _clientTradesRepository = clientTradesRepository ?? throw new ArgumentNullException(nameof(clientTradesRepository));
         }
 
         public async Task Handle(TradeCreatedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(HistoryProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
+            await _log.WriteInfoAsync(nameof(OrdersProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
 
             ChaosKitty.Meow();
 
@@ -41,11 +37,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             {
                 if (exception.RequestInformation.HttpStatusCode != AzureHelper.ConflictStatusCode)
                     throw;
-            }
-
-            if (evt.ClientTrades != null)
-            {
-                await _clientTradesRepository.SaveAsync(evt.ClientTrades);
             }
         }
     }

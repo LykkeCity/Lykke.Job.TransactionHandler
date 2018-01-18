@@ -74,7 +74,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _cqrsEngine.SendCommand(new Commands.CreateTransferCommand
             {
                 QueueMessage = queueMessage
-            }, "transfers", "transfers");
+            }, "TransferQueue", BoundedContexts.Transfers);
         }
 
         public void Dispose()

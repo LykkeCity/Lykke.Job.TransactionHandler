@@ -38,18 +38,15 @@ using Lykke.Job.TransactionHandler.Core.Domain.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email.Sender;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.Quanta;
-using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
 using Lykke.Job.TransactionHandler.AzureRepositories.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
@@ -59,7 +56,6 @@ using Lykke.Job.TransactionHandler.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.Job.TransactionHandler.Services.Offchain;
 using Lykke.Job.TransactionHandler.Services.Quanta;
-using Lykke.Job.TransactionHandler.Services.SolarCoin;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
@@ -147,7 +143,7 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterLykkeServiceClient(_settings.ClientAccountClient.ServiceUrl);
             builder.RegisterOperationsClient(_settings.TransactionHandlerJob.Services.OperationsUrl);
         }
-        
+
         private void BindServices(ContainerBuilder builder)
         {
             builder.RegisterType<HttpRequestClient>().SingleInstance();
@@ -164,8 +160,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                 _settings.AppNotifications.HubConnString,
                 _settings.AppNotifications.HubName));
 
-            builder.RegisterType<ChronoBankService>().As<IChronoBankService>().SingleInstance();
-            builder.RegisterType<SrvSolarCoinHelper>().As<ISrvSolarCoinHelper>().SingleInstance();
             builder.RegisterType<QuantaService>().As<IQuantaService>().SingleInstance();
 
             builder.Register<IEthereumApi>(x =>

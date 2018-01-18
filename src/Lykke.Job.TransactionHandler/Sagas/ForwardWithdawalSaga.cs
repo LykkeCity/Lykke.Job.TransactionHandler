@@ -41,7 +41,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 {
                     Message = message,
                     Id = context.AddData.ForwardWithdrawal.Id
-                }, "forward-withdrawal");
+                }, BoundedContexts.ForwardWithdrawal);
             }
         }
 

@@ -91,15 +91,15 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 {
                     case OperationType.TransferToTrusted:
                         cmd.TransferType = TransferType.ToTrustedWallet;
-                        sender.SendCommand(cmd, "transfers");
+                        sender.SendCommand(cmd, BoundedContexts.Transfers);
                         break;
                     case OperationType.TransferFromTrusted:
                         cmd.TransferType = TransferType.FromTrustedWallet;
-                        sender.SendCommand(cmd, "transfers");
+                        sender.SendCommand(cmd, BoundedContexts.Transfers);
                         break;
                     case OperationType.TransferBetweenTrusted:
                         cmd.TransferType = TransferType.BetweenTrusted;
-                        sender.SendCommand(cmd, "transfers");
+                        sender.SendCommand(cmd, BoundedContexts.Transfers);
                         break;
                 }
             }

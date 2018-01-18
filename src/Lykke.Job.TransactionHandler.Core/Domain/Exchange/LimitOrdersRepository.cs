@@ -13,8 +13,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
     {
         Task CreateOrUpdateAsync(ILimitOrder marketOrder);
         Task<ILimitOrder> GetOrderAsync(string orderId);
-        Task<IEnumerable<ILimitOrder>> GetOrdersAsync(IEnumerable<string> orderIds);
         Task<IEnumerable<ILimitOrder>> GetActiveOrdersAsync(string clientId);
-        Task<IEnumerable<ILimitOrder>> GetOrdersAsync(string clientId);
     }
 }

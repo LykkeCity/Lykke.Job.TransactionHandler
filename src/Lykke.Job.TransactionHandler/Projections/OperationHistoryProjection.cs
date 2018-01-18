@@ -24,6 +24,7 @@ namespace Lykke.Job.TransactionHandler.Projections
     {        
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly ILog _log;
+        private readonly ITradeOperationsRepositoryClient _clientTradesRepository;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly Core.Services.BitCoin.ITransactionService _transactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
@@ -31,6 +32,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public OperationHistoryProjection(
             [NotNull] ILog log,
+            [NotNull] ITradeOperationsRepositoryClient clientTradesRepository,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] Core.Services.BitCoin.ITransactionService transactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
@@ -39,10 +41,55 @@ namespace Lykke.Job.TransactionHandler.Projections
         {            
             _clientCacheRepository = clientCacheRepository;
             _log = log ?? throw new ArgumentNullException(nameof(log));
+            _clientTradesRepository = clientTradesRepository ?? throw new ArgumentNullException(nameof(clientTradesRepository));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
+        }
+
+        public async Task Handle(TradeCreatedEvent evt)
+        {
+            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
+
+            ChaosKitty.Meow();
+
+            if (evt.ClientTrades != null)
+            {
+                await _clientTradesRepository.SaveAsync(evt.ClientTrades);
+            }
+        }
+
+        public async Task Handle(ManualTransactionStateSavedEvent evt)
+        {
+            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(ManualTransactionStateSavedEvent), evt.ToJson(), "");
+
+            ChaosKitty.Meow();
+
+            var message = evt.Message;
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
+            var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
+            var isBtcOffchainClient = asset.Blockchain == Blockchain.Bitcoin;
+
+            var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(message.Id);
+            var context = transaction.GetContextData<CashOutContextData>();
+            var operation = new CashInOutOperation
+            {
+                Id = transaction.TransactionId,
+                ClientId = message.ClientId,
+                Multisig = walletCredentials.MultiSig,
+                AssetId = message.AssetId,
+                Amount = message.Amount.ParseAnyDouble(),
+                DateTime = DateTime.UtcNow,
+                AddressFrom = walletCredentials.MultiSig,
+                AddressTo = context.Address,
+                TransactionId = transaction.TransactionId,
+                Type = CashOperationType.None,
+                BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transaction.BlockchainHash,
+                State = GetTransactionState(transaction.BlockchainHash, isBtcOffchainClient)
+            };
+
+            await RegisterOperation(operation);
         }
 
         public async Task Handle(IssueTransactionStateSavedEvent evt)
@@ -180,7 +227,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             var operationId = await _cashOperationsRepositoryClient.RegisterAsync(operation);
             if (operationId != operation.Id)
             {
-                await _log.WriteWarningAsync(nameof(OperationsCommandHandler),
+                await _log.WriteWarningAsync(nameof(OperationHistoryProjection),
                     nameof(RegisterOperation), operation.ToJson(),
                     $"Unexpected response from Operations Service: {operationId}");
             }

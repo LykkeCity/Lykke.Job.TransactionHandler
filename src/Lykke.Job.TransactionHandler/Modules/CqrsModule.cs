@@ -97,8 +97,11 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<TradeCommandHandler>();
             builder.RegisterType<TransferCommandHandler>();
 
-            builder.RegisterType<HistoryProjection>();
+            builder.RegisterType<OperationHistoryProjection>();
+            builder.RegisterType<EmailProjection>();
+            builder.RegisterType<OrdersProjection>();
             builder.RegisterType<FeeProjection>();
+
             builder.RegisterType<ContextFactory>().As<IContextFactory>().SingleInstance();
             builder.RegisterType<ClientTradesFactory>().As<IClientTradesFactory>().SingleInstance();
 
@@ -150,7 +153,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .With(defaultPipeline)
                     .WithCommandsHandler<TradeCommandHandler>(),
 
-                Register.BoundedContext("transfers")
+                Register.BoundedContext(BoundedContexts.Transfers)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(CreateTransferCommand))
                         .On(defaultRoute)

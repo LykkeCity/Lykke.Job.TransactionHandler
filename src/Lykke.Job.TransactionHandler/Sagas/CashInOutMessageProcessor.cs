@@ -22,7 +22,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
     {
         private readonly ILog _log;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
-        private readonly ITransactionsRepository _bitcoinTransactionsRepository;
+        private readonly ITransactionsRepository _transactionsRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IClientAccountClient _clientAccountClient;
@@ -33,7 +33,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         public CashInOutMessageProcessor(
             [NotNull] ILog log,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
-            [NotNull] ITransactionsRepository bitcoinTransactionsRepository,
+            [NotNull] ITransactionsRepository transactionsRepository,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
             [NotNull] IClientAccountClient clientAccountClient,
@@ -43,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
-            _bitcoinTransactionsRepository = bitcoinTransactionsRepository ?? throw new ArgumentNullException(nameof(bitcoinTransactionsRepository));
+            _transactionsRepository = transactionsRepository ?? throw new ArgumentNullException(nameof(transactionsRepository));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
             _clientAccountClient = clientAccountClient ?? throw new ArgumentNullException(nameof(clientAccountClient));
@@ -58,7 +58,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
             ChaosKitty.Meow();
 
-            var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(message.Id);
+            var transaction = await _transactionsRepository.FindByTransactionIdAsync(message.Id);
             if (transaction == null)
             {
                 if (_cashOperationsRepositoryClient.GetAsync(message.ClientId, message.Id) == null)
@@ -111,7 +111,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                         ClientId = message.ClientId,
                         AssetId = message.AssetId,
                         Amount = (decimal)message.Amount.ParseAnyDouble()
-                    }, "tx-handler", "offchain");
+                    }, "CashInOutQueue", BoundedContexts.Offchain);
                 }
                 else
                 {
@@ -119,7 +119,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     {
                         Id = message.Id,
                         Address = cashinType.Address
-                    }, "tx-handler", "bitcoin");
+                    }, "CashInOutQueue", BoundedContexts.Bitcoin);
                 }
             }
         }
@@ -140,7 +140,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var transactionId = message.Id;
             var context = await _transactionService.GetTransactionContext<IssueContextData>(transactionId);
             context.CashOperationId = transactionId;
-            _cqrsEngine.SendCommand(new SaveIssueTransactionStateCommand
+            _cqrsEngine.SendCommand(new SaveIssueOperationStateCommand
             {
                 Command = new IssueCommand
                 {
@@ -152,7 +152,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 },
                 Context = context,
                 Message = message
-            }, "tx-handler", "transactions");
+            }, "CashInOutQueue", BoundedContexts.Operations);
         }
 
         private async Task ProcessDestroy(CashInOutQueueMessage message)
@@ -161,7 +161,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var transactionId = message.Id;
             var context = await _transactionService.GetTransactionContext<UncolorContextData>(transactionId);
             context.CashOperationId = transactionId;
-            _cqrsEngine.SendCommand(new SaveDestroyTransactionStateCommand
+            _cqrsEngine.SendCommand(new SaveDestroyOperationStateCommand
             {
                 Command = new DestroyCommand
                 {
@@ -173,15 +173,15 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 },
                 Context = context,
                 Message = message
-            }, "tx-handler", "transactions");
+            }, "CashInOutQueue", BoundedContexts.Operations);
         }
 
         private void ProcessManualUpdate(CashInOutQueueMessage message)
         {
-            _cqrsEngine.SendCommand(new RegisterCashInOutOperationCommand
+            _cqrsEngine.SendCommand(new SaveManualOperationStateCommand
             {
                 Message = message
-            }, "tx-handler", "operations");
+            }, "CashInOutQueue", BoundedContexts.Operations);
         }
 
         private async Task ProcessCashOut(CashInOutQueueMessage message)
@@ -192,7 +192,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
 
             context.CashOperationId = transactionId;
-            _cqrsEngine.SendCommand(new SaveCashoutTransactionStateCommand
+            _cqrsEngine.SendCommand(new SaveCashoutOperationStateCommand
             {
                 Command = new CashOutCommand
                 {
@@ -205,7 +205,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 },
                 Context = context,
                 Message = message
-            }, "tx-handler", "transactions");
+            }, "CashInOutQueue", BoundedContexts.Operations);
         }
     }
 }

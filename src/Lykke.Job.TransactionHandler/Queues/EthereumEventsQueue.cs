@@ -283,7 +283,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessFailedCashout(CoinEvent queueMessage)
         {
-            CashOutContextData context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
+            CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
 
             if (context != null)
             {

@@ -5,7 +5,7 @@ using ProtoBuf;
 namespace Lykke.Job.TransactionHandler.Commands
 {
     [ProtoContract]
-    public class SaveDestroyTransactionStateCommand
+    public class SaveDestroyOperationStateCommand
     {
         [ProtoMember(1)]
         public CashInOutQueueMessage Message { get; set; }

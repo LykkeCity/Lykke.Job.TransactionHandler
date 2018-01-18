@@ -38,7 +38,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             sender.SendCommand(new Commands.SendBitcoinCommand
             {
                 Command = evt.Command
-            }, "bitcoin");
+            }, BoundedContexts.Bitcoin);
         }
 
         private async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
@@ -82,7 +82,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     ClientId = clientId,
                     AssetId = asset.Id,
                     CashOperationId = cashOperationId
-                }, "ethereum");
+                }, BoundedContexts.Ethereum);
             }
             else if (asset.Id == LykkeConstants.SolarAssetId)
             {
@@ -92,7 +92,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     TransactionId = transactionId,
                     Address = context.Address,
                     Amount = Math.Abs(amount)
-                }, "solarcoin");
+                }, BoundedContexts.Solarcoin);
             }
             else if (asset.Id == LykkeConstants.ChronoBankAssetId)
             {
@@ -101,7 +101,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     TransactionId = transactionId,
                     Amount = Math.Abs(amount),
                     Address = context.Address
-                }, "chronobank");
+                }, BoundedContexts.Chronobank);
             }
             else if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal)
             {
@@ -111,7 +111,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Amount = Math.Abs(amount),
                     Address = context.Address,
                     AssetId = asset.Id
-                }, "bitcoin");
+                }, BoundedContexts.Bitcoin);
             }
         }
     }

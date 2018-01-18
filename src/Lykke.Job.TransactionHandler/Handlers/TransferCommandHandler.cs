@@ -156,7 +156,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
             };
 
             await _transactionsRepository.UpdateAsync(transaction.TransactionId, cmd.ToJson(), null, "");
-
             await _transactionService.SetTransactionContext(transaction.TransactionId, contextData);
 
             eventPublisher.PublishEvent(new TransferCreatedEvent
