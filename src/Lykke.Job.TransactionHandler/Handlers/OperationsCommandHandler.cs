@@ -42,9 +42,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             ChaosKitty.Meow();
 
             var message = command.Message;
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
-            var isBtcOffchainClient = asset.Blockchain == Blockchain.Bitcoin;
 
             var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(message.Id);
             var context = transaction.GetContextData<CashOutContextData>();
@@ -60,24 +58,13 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 AddressTo = context.Address,
                 TransactionId = transaction.TransactionId,
                 Type = CashOperationType.None,
-                BlockChainHash = asset.IssueAllowed && isBtcOffchainClient ? string.Empty : transaction.BlockchainHash,
-                State = GetTransactionState(transaction.BlockchainHash, isBtcOffchainClient)
+                BlockChainHash = string.Empty,
+                State = TransactionStates.SettledOffchain
             };
 
             await RegisterOperation(operation);
 
             return CommandHandlingResult.Ok();
-        }
-
-        private static TransactionStates GetTransactionState(string blockchainHash, bool isBtcOffchainClient)
-        {
-            return isBtcOffchainClient
-                ? (string.IsNullOrWhiteSpace(blockchainHash)
-                    ? TransactionStates.SettledOffchain
-                    : TransactionStates.SettledOnchain)
-                : (string.IsNullOrWhiteSpace(blockchainHash)
-                    ? TransactionStates.InProcessOnchain
-                    : TransactionStates.SettledOnchain);
         }
 
         private async Task RegisterOperation(CashInOutOperation operation)
