@@ -108,7 +108,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                         ClientId = message.ClientId,
                         AssetId = message.AssetId,
                         Amount = (decimal)message.Amount.ParseAnyDouble()
-                    }, "CashInOutQueue", BoundedContexts.Offchain);
+                    }, BoundedContexts.Self, BoundedContexts.Offchain);
                 }
                 else
                 {
@@ -116,7 +116,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     {
                         Id = message.Id,
                         Address = cashinType.Address
-                    }, "CashInOutQueue", BoundedContexts.Bitcoin);
+                    }, BoundedContexts.Self, BoundedContexts.Bitcoin);
                 }
             }
         }
@@ -149,7 +149,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 },
                 Context = context,
                 Message = message
-            }, "CashInOutQueue", BoundedContexts.Operations);
+            }, BoundedContexts.Self, BoundedContexts.Operations);
         }
 
         private void ProcessManualUpdate(CashInOutQueueMessage message)
@@ -157,7 +157,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _cqrsEngine.SendCommand(new SaveManualOperationStateCommand
             {
                 Message = message
-            }, "CashInOutQueue", BoundedContexts.Operations);
+            }, BoundedContexts.Self, BoundedContexts.Operations);
         }
 
         private async Task ProcessCashOut(CashInOutQueueMessage message)
@@ -181,7 +181,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 },
                 Context = context,
                 Message = message
-            }, "CashInOutQueue", BoundedContexts.Operations);
+            }, BoundedContexts.Self, BoundedContexts.Operations);
         }
     }
 }

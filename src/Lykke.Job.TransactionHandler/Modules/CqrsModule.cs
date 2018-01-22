@@ -101,6 +101,7 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<EmailProjection>();
             builder.RegisterType<OrdersProjection>();
             builder.RegisterType<FeeProjection>();
+            builder.RegisterType<TransfersProjection>();
 
             builder.RegisterType<ContextFactory>().As<IContextFactory>().SingleInstance();
             builder.RegisterType<ClientTradesFactory>().As<IClientTradesFactory>().SingleInstance();
@@ -142,6 +143,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                         "messagepack", 
                         environment: "lykke", 
                         exclusiveQueuePostfix: _settings.TransactionHandlerJob.QueuePostfix)),
+
+                Register.BoundedContext(BoundedContexts.Self),
 
                 Register.BoundedContext(BoundedContexts.Self),
 

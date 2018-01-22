@@ -23,19 +23,19 @@ namespace Lykke.Job.TransactionHandler.Projections
             _feeLogRepository = feeLogRepository ?? throw new ArgumentNullException(nameof(feeLogRepository));
         }
 
+        // todo: remove?
         public async Task Handle(TradeCreatedEvent evt)
         {
-            // todo: remove?
             await _log.WriteInfoAsync(nameof(FeeProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
 
             ChaosKitty.Meow();
 
-            var queueMessage = evt.QueueMessage;
+            var message = evt.QueueMessage;
             // todo: multithread + idempotent
-            var feeLogTasks = queueMessage.Trades.Select(ti => _feeLogRepository.CreateAsync(new OrderFeeLog
+            var feeLogTasks = message.Trades.Select(ti => _feeLogRepository.CreateAsync(new OrderFeeLog
             {
-                OrderId = queueMessage.Order.Id,
-                OrderStatus = queueMessage.Order.Status,
+                OrderId = message.Order.Id,
+                OrderStatus = message.Order.Status,
                 FeeInstruction = ti.FeeInstruction?.ToJson(),
                 FeeTransfer = ti.FeeTransfer?.ToJson(),
                 Type = "market"

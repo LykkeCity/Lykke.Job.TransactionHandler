@@ -8,7 +8,7 @@
     <PackageReference Include="Lykke.Common" Version="4.2.0" />
     <PackageReference Include="Lykke.Service.ClientAccount.Client" Version="1.1.16" />
     <PackageReference Include="Lykke.Service.EthereumCore.Client" Version="1.0.40" />
-    <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.85" />
+    <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.88" />
     <PackageReference Include="Lykke.Service.PersonalData" Version="1.0.32" />
     <PackageReference Include="Lykke.SettingsReader" Version="1.1.4" />
     <PackageReference Include="NetJSON" Version="1.2.2" />

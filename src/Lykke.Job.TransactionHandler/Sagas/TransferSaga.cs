@@ -4,6 +4,7 @@ using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
+using Lykke.Job.TransactionHandler.AzureRepositories;
 using Lykke.Job.TransactionHandler.Commands.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
@@ -46,9 +47,9 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
         }
 
-        private async Task Handle(TransferCreatedEvent evt, ICommandSender sender)
+        private async Task Handle(TransferOperationStateSavedEvent evt, ICommandSender sender)
         {
-            await _log.WriteInfoAsync(nameof(TransferSaga), nameof(TransferCreatedEvent), evt.ToJson());
+            await _log.WriteInfoAsync(nameof(TransferSaga), nameof(TransferOperationStateSavedEvent), evt.ToJson());
 
             var transactionId = evt.TransactionId;
             var queueMessage = evt.QueueMessage;
@@ -62,23 +63,30 @@ namespace Lykke.Job.TransactionHandler.Sagas
             {
                 try
                 {
-                    await _offchainRequestService.CreateOffchainRequestAndNotify(transactionId,
-                        queueMessage.ToClientid, queueMessage.AssetId, (decimal)amount, null,
-                        OffchainTransferType.CashinToClient);
+                    await _offchainRequestService.CreateOffchainRequestAndNotify(
+                        transactionId: transactionId,
+                        clientId: queueMessage.ToClientid,
+                        assetId: queueMessage.AssetId,
+                        amount: (decimal)amount,
+                        orderId: null,
+                        type: OffchainTransferType.CashinToClient);
                 }
-                catch (Exception)
+                catch (Microsoft.WindowsAzure.Storage.StorageException exception)
                 {
-                    await _log.WriteWarningAsync(nameof(TransferSaga), nameof(TransferCreatedEvent), "",
+                    if (exception.RequestInformation.HttpStatusCode != AzureHelper.ConflictStatusCode)
+                        throw;
+
+                    await _log.WriteWarningAsync(nameof(TransferSaga), nameof(TransferOperationStateSavedEvent), "",
                         $"Transfer already exists {transactionId}");
                 }
             }
 
-            var context = await GetContext(evt.TransactionId);
-
             // handling of ETH transfers to trusted wallets if it is ETH transfer
-            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
+            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transactionId));
             if (ethTxRequest != null)
             {
+                var context = await _transactionService.GetTransactionContext<TransferContextData>(transactionId);
+
                 ethTxRequest.OperationIds = new[] { context.Transfers[0].OperationId, context.Transfers[1].OperationId };
                 await _ethereumTransactionRequestRepository.UpdateAsync(ethTxRequest);
 
@@ -91,15 +99,15 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 {
                     case OperationType.TransferToTrusted:
                         cmd.TransferType = TransferType.ToTrustedWallet;
-                        sender.SendCommand(cmd, BoundedContexts.Transfers);
+                        sender.SendCommand(cmd, BoundedContexts.Ethereum);
                         break;
                     case OperationType.TransferFromTrusted:
                         cmd.TransferType = TransferType.FromTrustedWallet;
-                        sender.SendCommand(cmd, BoundedContexts.Transfers);
+                        sender.SendCommand(cmd, BoundedContexts.Ethereum);
                         break;
                     case OperationType.TransferBetweenTrusted:
                         cmd.TransferType = TransferType.BetweenTrusted;
-                        sender.SendCommand(cmd, BoundedContexts.Transfers);
+                        sender.SendCommand(cmd, BoundedContexts.Ethereum);
                         break;
                 }
             }
@@ -107,11 +115,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
             {
                 await _operationsClient.Complete(new Guid(transactionId));
             }
-        }
-
-        private async Task<TransferContextData> GetContext(string orderId)
-        {
-            return await _transactionService.GetTransactionContext<TransferContextData>(orderId);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Common.Log;
+using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.RabbitMqBroker;
@@ -9,30 +10,30 @@ using Lykke.Job.TransactionHandler.Services;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public class TradeQueue : IQueueSubscriber
+    public class TransferQueueOnSaga : IQueueSubscriber
     {
 #if DEBUG
-        private const string QueueName = "transactions.trades-dev";
+        private const string QueueName = "transactions.transfer-dev";
         private const bool QueueDurable = false;
 #else
-        private const string QueueName = "transactions.trades";
+        private const string QueueName = "transactions.transfer";
         private const bool QueueDurable = true;
 #endif
 
         private readonly ILog _log;
+        private readonly AppSettings.RabbitMqSettings _rabbitConfig;
+        private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
         private readonly ICqrsEngine _cqrsEngine;
 
-        private readonly AppSettings.RabbitMqSettings _rabbitConfig;
-        private RabbitMqSubscriber<TradeQueueItem> _subscriber;
 
-        public TradeQueue(
-            AppSettings.RabbitMqSettings config,
-            ILog log,
-            ICqrsEngine cqrsEngine)
+        public TransferQueueOnSaga(
+            [NotNull] AppSettings.RabbitMqSettings config,
+            [NotNull] ILog log,
+            [NotNull] ICqrsEngine cqrsEngine)
         {
-            _rabbitConfig = config;
-            _log = log;
-            _cqrsEngine = cqrsEngine;
+            _rabbitConfig = config ?? throw new ArgumentNullException(nameof(config));
+            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
         }
 
         public void Start()
@@ -41,21 +42,21 @@ namespace Lykke.Job.TransactionHandler.Queues
             {
                 ConnectionString = _rabbitConfig.ConnectionString,
                 QueueName = QueueName,
-                ExchangeName = _rabbitConfig.ExchangeSwap,
-                DeadLetterExchangeName = $"{_rabbitConfig.ExchangeSwap}.dlx",
+                ExchangeName = _rabbitConfig.ExchangeTransfer,
+                DeadLetterExchangeName = $"{_rabbitConfig.ExchangeTransfer}.dlx",
                 RoutingKey = "",
                 IsDurable = QueueDurable
             };
 
             try
             {
-                _subscriber = new RabbitMqSubscriber<TradeQueueItem>(
+                _subscriber = new RabbitMqSubscriber<TransferQueueMessage>(
                         settings,
                         new ResilientErrorHandlingStrategy(_log, settings,
                             retryTimeout: TimeSpan.FromSeconds(20),
                             retryNum: 3,
                             next: new DeadQueueErrorHandlingStrategy(_log, settings)))
-                    .SetMessageDeserializer(new JsonMessageDeserializer<TradeQueueItem>())
+                    .SetMessageDeserializer(new JsonMessageDeserializer<TransferQueueMessage>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
                     .Subscribe(ProcessMessage)
                     .CreateDefaultBinding()
@@ -64,7 +65,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
             catch (Exception ex)
             {
-                _log.WriteErrorAsync(nameof(TradeQueue), nameof(Start), null, ex).Wait();
+                _log.WriteErrorAsync(nameof(TransferQueueOnSaga), nameof(Start), null, ex).Wait();
                 throw;
             }
         }
@@ -74,12 +75,12 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        private async Task ProcessMessage(TradeQueueItem queueMessage)
+        private async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
-            _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
+            _cqrsEngine.SendCommand(new Commands.SaveTransferOperationStateCommand
             {
                 QueueMessage = queueMessage
-            }, BoundedContexts.Self, BoundedContexts.Trades);
+            }, BoundedContexts.Self, BoundedContexts.Operations);
         }
 
         public void Dispose()
