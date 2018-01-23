@@ -1,12 +1,11 @@
 ﻿using Lykke.Job.TransactionHandler.Queues.Models;
-using ProtoBuf;
+using MessagePack;
 
 namespace Lykke.Job.TransactionHandler.Commands
 {
-    [ProtoContract]
+    [MessagePackObject(keyAsPropertyName: true)]
     public class CreateTradeCommand
     {
-        [ProtoMember(1)]       
         public TradeQueueItem QueueMessage { get; set; }
     }
 }

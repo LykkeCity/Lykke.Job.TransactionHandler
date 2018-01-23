@@ -1,11 +1,10 @@
-﻿using ProtoBuf;
+﻿using MessagePack;
 
 namespace Lykke.Job.TransactionHandler.Commands
 {
-    [ProtoContract]
+    [MessagePackObject(keyAsPropertyName: true)]
     public class BitcoinCashOutCommand : ProcessCashOutBaseCommand
     {
-        [ProtoMember(4)]
         public string AssetId { get; set; }
     }
 }

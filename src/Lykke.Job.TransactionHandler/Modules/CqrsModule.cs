@@ -146,8 +146,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.BoundedContext(BoundedContexts.Self),
 
-                Register.BoundedContext(BoundedContexts.Self),
-
                 Register.BoundedContext(BoundedContexts.Trades)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(CreateTradeCommand), typeof(CreateTransactionCommand))
