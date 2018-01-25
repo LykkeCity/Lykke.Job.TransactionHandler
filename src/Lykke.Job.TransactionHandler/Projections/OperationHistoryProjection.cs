@@ -15,12 +15,12 @@ using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
+using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
     public class OperationHistoryProjection
-    {
-        private readonly ILimitOrdersRepository _limitOrdersRepository;
+    {        
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly ILog _log;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
@@ -33,11 +33,9 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] Core.Services.BitCoin.IBitcoinTransactionService bitcoinTransactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
-            [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
-            ILimitOrdersRepository limitOrdersRepository, 
+            [NotNull] IWalletCredentialsRepository walletCredentialsRepository,            
             IClientCacheRepository clientCacheRepository)
-        {
-            _limitOrdersRepository = limitOrdersRepository;
+        {            
             _clientCacheRepository = clientCacheRepository;
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
@@ -168,8 +166,10 @@ namespace Lykke.Job.TransactionHandler.Projections
         {
             if (evt.IsTrustedClient)
                 return;
+            
+            var activeLimitOrdersCount = evt.ActiveLimitOrders.Count();
 
-            await _clientCacheRepository.UpdateLimitOrdersCount(evt.ClientId, evt.ActiveOrdersCount);
+            await _clientCacheRepository.UpdateLimitOrdersCount(evt.ClientId, activeLimitOrdersCount);
         }
 
         private async Task RegisterOperation(CashInOutOperation operation)

@@ -177,41 +177,31 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .WithProjection(typeof(OperationHistoryProjection), "transactions")
                     .ListeningEvents(typeof(ForwardWithdawalLinkedEvent))
                         .From("forward-withdrawal").On(defaultRoute)
-                        .WithProjection(typeof(OperationHistoryProjection), "forward-withdrawal")
+                        .WithProjection(typeof(OperationHistoryProjection), "forward-withdrawal")                                        
                     .ListeningEvents(typeof(LimitOrderSavedEvent))
-                        .From("operations-history").On("events")
-                        .WithProjection(typeof(OperationHistoryProjection), "operations-history")                    
+                        .From("operations-history").On("client-cache")
+                        .WithProjection(typeof(OperationHistoryProjection), "operations-history")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("limit-orders")
+                        .WithProjection(typeof(LimitOrdersProjection), "tx-handler")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("limit-trade-events")
+                        .WithProjection(typeof(LimitTradeEventsProjection), "tx-handler")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("fee")
+                        .WithProjection(typeof(FeeLogsProjection), "tx-handler")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("operations-context")
+                        .WithProjection(typeof(FeeLogsProjection), "tx-handler")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("client-trades")
+                        .WithProjection(typeof(FeeLogsProjection), "tx-handler")
                     .ListeningCommands(typeof(CreateOrUpdateLimitOrderCommand))
                         .On(defaultPipeline)
                         .WithCommandsHandler<HistoryCommandHandler>()                    
                     .PublishingEvents(typeof(LimitOrderSavedEvent))
                         .With("events"),
-
-                Register.BoundedContext("history-limit-orders")
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From("tx-handler").On("events")
-                        .WithProjection(typeof(LimitTradeEventsProjection), "tx-handler"),
-
-                Register.BoundedContext("history-limit-trade-events")
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From("tx-handler").On("events")
-                        .WithProjection(typeof(LimitOrdersProjection), "tx-handler"),
-
-                Register.BoundedContext("history-fee-logs")
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From("tx-handler").On("events")
-                        .WithProjection(typeof(FeeLogsProjection), "tx-handler"),
-
-                Register.BoundedContext("operations-context")
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From("tx-handler").On("events")
-                        .WithProjection(typeof(ContextProjection), "tx-handler"),
-
-                Register.BoundedContext("history-client-trades")
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From("tx-handler").On("events")
-                        .WithProjection(typeof(ClientTradesProjection), "tx-handler"),
-
+                
                 Register.BoundedContext("notifications")
                     .ListeningEvents(typeof(SolarCashOutCompletedEvent))
                         .From("solarcoin").On(defaultRoute)

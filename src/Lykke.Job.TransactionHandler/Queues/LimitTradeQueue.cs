@@ -13,7 +13,7 @@ namespace Lykke.Job.TransactionHandler.Queues
     public class LimitTradeQueue : IQueueSubscriber
     {
 #if DEBUG
-        private const string QueueName = "transactions.limit-trades-dev-mmusin";
+        private const string QueueName = "transactions.limit-trades-dev";
         private const bool QueueDurable = false;
 #else
         private const string QueueName = "transactions.limit-trades";

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
@@ -28,11 +29,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder);
 
-            int activeOrdersCount = 0;
+            IEnumerable<ILimitOrder> activeLimitOrders = null;
 
             if (!command.IsTrustedClient)
             {
-                activeOrdersCount = (await _limitOrdersRepository.GetActiveOrdersAsync(command.LimitOrder.ClientId)).Count();
+                activeLimitOrders = await _limitOrdersRepository.GetActiveOrdersAsync(command.LimitOrder.ClientId);
             }
 
             eventPublisher.PublishEvent(new LimitOrderSavedEvent
@@ -40,7 +41,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 Id = command.LimitOrder.Id,
                 ClientId = command.LimitOrder.ClientId,
                 IsTrustedClient = command.IsTrustedClient,
-                ActiveOrdersCount = activeOrdersCount
+                ActiveLimitOrders = activeLimitOrders
             });
 
             return CommandHandlingResult.Ok();
