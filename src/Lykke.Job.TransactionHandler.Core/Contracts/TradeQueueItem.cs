@@ -95,12 +95,8 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
             public string LimitAsset { get; set; }
 
             [CanBeNull]
-            [JsonProperty("feeInstruction")]
-            public FeeInstruction FeeInstruction { get; set; }
-
-            [CanBeNull]
-            [JsonProperty("feeTransfer")]
-            public FeeTransfer FeeTransfer { get; set; }
+            [JsonProperty("fees")]
+            public List<Fee> Fees { get; set; }
         }
     }
 }

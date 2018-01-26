@@ -24,10 +24,7 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
             {
                 OperationId = feeDataSource.Id,
                 Type = FeeOperationType.CashInOut,
-                Transfers = feeDataSource.FeeTransfers?.ToJson(),
-                Instructions = feeDataSource.FeeInstructions?.ToJson(),
-                Data = string.Empty,
-                Settings = string.Empty
+                Fee = feeDataSource.Fees?.ToJson()
             };
 
             await _feelogRepository.CreateAsync(newItem);
@@ -39,10 +36,7 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
             {
                 OperationId = feeDataSource.Id,
                 Type = FeeOperationType.Transfer,
-                Transfers = string.Empty,
-                Instructions = string.Empty,
-                Data = feeDataSource.FeeData?.ToJson(),
-                Settings = feeDataSource.FeeSettings?.ToJson()
+                Fee = feeDataSource.Fees?.ToJson()
             };
 
             await _feelogRepository.CreateAsync(newItem);
@@ -55,10 +49,7 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
                 var newItem = new FeeLogEntry
                 {
                     OperationId = feeDataSource.Order.Id,
-                    Instructions = x.FeeInstruction?.ToJson(),
-                    Transfers = x.FeeTransfer?.ToJson(),
-                    Settings = string.Empty,
-                    Data = string.Empty,
+                    Fee = x.Fees?.ToJson(),
                     Type = FeeOperationType.Trade
                 };
 
@@ -83,10 +74,7 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
                 var newItem = new FeeLogEntry
                 {
                     OperationId = feeDataSource.Order.Id,
-                    Instructions = x.FeeInstruction?.ToJson(),
-                    Transfers = x.FeeTransfer?.ToJson(),
-                    Settings = string.Empty,
-                    Data = string.Empty,
+                    Fee = x.Fees?.ToJson(),
                     Type = FeeOperationType.LimitTrade
                 };
 

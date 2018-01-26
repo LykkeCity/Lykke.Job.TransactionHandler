@@ -66,12 +66,8 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
             [JsonProperty("oppositeVolume")] public double OppositeVolume { get; set; }
 
             [CanBeNull]
-            [JsonProperty("feeInstruction")]
-            public FeeInstruction FeeInstruction { get; set; }
-
-            [CanBeNull]
-            [JsonProperty("feeTransfer")]
-            public FeeTransfer FeeTransfer { get; set; }
+            [JsonProperty("fees")]
+            public List<Fee> Fees { get; set; }
         }
     }
 }

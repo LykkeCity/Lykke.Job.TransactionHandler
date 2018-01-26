@@ -27,14 +27,10 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
         [JsonProperty("volume")]
         public string Amount { get; set; }
 
-        [ProtoMember(6)]
-        [CanBeNull]
-        [JsonProperty("feeInstructions")]
-        public List<FeeInstruction> FeeInstructions { get; set; }
 
-        [ProtoMember(7)]
+        [ProtoMember(6)]
+        [JsonProperty("fees")]
         [CanBeNull]
-        [JsonProperty("feeTransfers")]
-        public List<FeeTransfer> FeeTransfers { get; set; }
+        public List<Fee> Fees { get; set; }
     }
 }

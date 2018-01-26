@@ -9,10 +9,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Fee
     public class FeeLogEntryEntity : TableEntity, IFeeLogEntry
     {
         public string Id => RowKey;
-        public string Instructions { get; set; }
-        public string Transfers { get; set; }
-        public string Data { get; set; }
-        public string Settings { get; set; }
+        public string Fee { get; set; }
         public FeeOperationType Type { get; set; }
         public string OperationId { get; set; }
 
@@ -24,10 +21,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Fee
                 RowKey = GenerateRowKey(),
                 OperationId = item.OperationId,
                 Type = item.Type,
-                Data = item.Data,
-                Instructions = item.Instructions,
-                Settings = item.Settings,
-                Transfers = item.Transfers
+                Fee = item.Fee
             };
         }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
@@ -29,11 +30,11 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
         public FeeType Type { get; set; }
 
         [ProtoMember(2)]
-        [JsonProperty("sizeType")]
+        [JsonProperty("takerSizeType")]
         public FeeSizeType SizeType { get; set; }
 
         [ProtoMember(3)]
-        [JsonProperty("size")]
+        [JsonProperty("takerSize")]
         public double? Size { get; set; }
 
         [ProtoMember(4)]
@@ -45,6 +46,10 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
         [JsonProperty("targetClientId")]
         [CanBeNull]
         public string TargetClientId { get; set; }
+
+        [ProtoMember(6)]
+        [JsonProperty("assetIds")]
+        public List<string> AssetIds { get; set; }
     }
 
     [ProtoContract]
@@ -74,5 +79,18 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
         [ProtoMember(6)]
         [JsonProperty("asset")]
         public string Asset { get; set; }
+    }
+
+    [ProtoContract]
+    public class Fee
+    {
+        [ProtoMember(1)]
+        [JsonProperty("instruction")]
+        public FeeInstruction Instruction { get; set; }
+
+        [ProtoMember(2)]
+        [JsonProperty("transfer")]
+        [CanBeNull]
+        public FeeTransfer Transfer { get; set; }
     }
 }

@@ -6,10 +6,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Fee
     {
         string OperationId { get; set; }
         FeeOperationType Type { get; set; }
-        string Instructions { get; set; }
-        string Transfers { get; set; }
-        string Data { get; set; }
-        string Settings { get; set; }
+        string Fee { get; set; }
 
     }
 
@@ -17,10 +14,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Fee
     {
         public string OperationId { get; set; }
         public FeeOperationType Type { get; set; }
-        public string Instructions { get; set; }
-        public string Transfers { get; set; }
-        public string Data { get; set; }
-        public string Settings { get; set; }
+        public string Fee { get; set; }
     }
 
     public enum FeeOperationType

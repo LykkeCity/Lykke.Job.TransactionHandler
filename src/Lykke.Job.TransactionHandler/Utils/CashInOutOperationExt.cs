@@ -1,10 +1,7 @@
 ﻿using Common;
 using Common.Log;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using FeeType = Lykke.Service.OperationsRepository.AutorestClient.Models.FeeType;
 
@@ -17,7 +14,8 @@ namespace Lykke.Job.TransactionHandler.Utils
             var feeSize = 0.0;
             var feeType = FeeType.Absolute;
 
-            var feeInstruction = message?.FeeInstructions?.FirstOrDefault();
+            var feeInstruction = message?.Fees?.FirstOrDefault()?.Instruction;
+            
             if (feeInstruction != null)
             {
                 feeSize = feeInstruction.Size ?? 0.0;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -123,7 +124,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             await _feeLogService.WriteFeeInfo(queueMessage);
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
-            var feeAmount = (queueMessage.FeeData?.Amount.ParseAnyDouble() ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
+            
+            var feeAmount = (queueMessage.Fees?.FirstOrDefault()?.Transfer?.Volume ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
 
             var amount = queueMessage.Amount.ParseAnyDouble() - feeAmount;
             //Get eth request if it is ETH transfer
