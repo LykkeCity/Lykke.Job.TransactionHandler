@@ -23,6 +23,9 @@ using Newtonsoft.Json.Converters;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using Lykke.Service.ExchangeOperations.Client;
+using Lykke.Job.TransactionHandler.Core.Domain.Clients;
+using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -47,6 +50,8 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IAssetsService _assetsService;
         private readonly IEthererumPendingActionsRepository _ethererumPendingActionsRepository;
         private readonly IDeduplicator _deduplicator;
+        private readonly IExchangeOperationsServiceClient _exchangeOperationsServiceClient;
+        private readonly IClientCommentsRepository _clientCommentsRepository;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
         private RabbitMqSubscriber<Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent> _subscriberHotWallet;
@@ -66,6 +71,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsService assetsService,
             IEthererumPendingActionsRepository ethererumPendingActionsRepository,
+            IExchangeOperationsServiceClient exchangeOperationsServiceClient,
+            IClientCommentsRepository clientCommentsRepository,
             [NotNull] IDeduplicator deduplicator)
         {
             _log = log;
@@ -85,6 +92,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             _assetsService = assetsService;
             _ethererumPendingActionsRepository = ethererumPendingActionsRepository;
             _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
+            _exchangeOperationsServiceClient = exchangeOperationsServiceClient;
+            _clientCommentsRepository = clientCommentsRepository;
         }
 
         public void Start()
@@ -199,6 +208,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                 case CoinEventType.TransferCompleted:
                 case CoinEventType.CashoutCompleted:
                     return await ProcessOutcomeOperation(queueMessage);
+                case CoinEventType.CashoutFailed:
+                        return await ProcessFailedCashout(queueMessage);
                 default:
                     return true;
             }
@@ -265,6 +276,82 @@ namespace Lykke.Job.TransactionHandler.Queues
                 await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
             }
 
+
+            return true;
+        }
+
+        private async Task<bool> ProcessFailedCashout(CoinEvent queueMessage)
+        {
+            CashOutContextData context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
+
+            if (context != null)
+            {
+                string transactionHandlerUserId = "auto redeem";
+                string clientId = context.ClientId;
+                string hash = queueMessage.TransactionHash;
+                string cashOperationId = context.CashOperationId;
+                string assetId = context.AssetId;
+                var amount = context.Amount;//EthServiceHelpers.ConvertFromContract(queueMessage.Amount,asset.MultiplierPower, asset.Accuracy);
+
+                try
+                {
+                    var asset = await _assetsService.AssetGetAsync(assetId);
+                    await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
+                    var pt = await _paymentTransactionsRepository.TryCreateAsync(PaymentTransaction.Create(hash,
+                                CashInPaymentSystem.Ethereum, clientId, amount,
+                                asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing));
+                    if (pt == null)
+                    {
+                        await
+                            _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(ProcessFailedCashout), hash,
+                                "Transaction already handled");
+                        //return if was handled previously
+                        return false;
+                    }
+
+                    var sign = "+";
+                    var commentText =
+                        $"Balance Update: {sign}{amount} {asset.Name}. Cashout failed: {hash} {queueMessage.OperationId}";
+
+                    var newComment = new ClientComment
+                    {
+                        ClientId = clientId,
+                        Comment = commentText,
+                        CreatedAt = DateTime.UtcNow,
+                        FullName = "Lykke.Job.TransactionHandler",
+                        UserId = transactionHandlerUserId
+                    };
+
+                    var exResult = await _exchangeOperationsServiceClient.ManualCashInAsync(clientId, assetId,
+                            amount, "auto redeem", commentText);
+
+                    if (!exResult.IsOk())
+                    {
+                        await
+                            _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(ProcessFailedCashout), 
+                            (new
+                            {
+                                ExchangeServiceResponse = exResult,
+                                QueueMessage = queueMessage
+                            }).ToJson(),
+                                "ME operation failed");
+
+                        return false;
+                    }
+
+                    await _clientCommentsRepository.AddClientCommentAsync(newComment);
+                    await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
+                }
+                catch (Exception e)
+                {
+                    await _log.WriteErrorAsync(nameof(EthereumEventsQueue), nameof(ProcessFailedCashout), queueMessage.ToJson(), e);
+                    throw e;
+                }
+            }
+            else
+            {
+                await _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(ProcessFailedCashout), queueMessage.ToJson());
+            }
 
             return true;
         }
@@ -393,7 +480,8 @@ namespace Lykke.Job.TransactionHandler.Queues
         CashoutStarted,
         CashoutCompleted,
         TransferStarted,
-        TransferCompleted
+        TransferCompleted,
+        CashoutFailed
     }
 
     public class CoinEvent : ICoinEvent

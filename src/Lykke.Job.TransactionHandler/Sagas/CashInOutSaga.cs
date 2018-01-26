@@ -54,12 +54,11 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
             var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transactionId);
             var isForwardWithdawal = context.AddData?.ForwardWithdrawal != null;
+            var isSwiftCashout = context.AddData?.SwiftData != null;
             var cashOperationId = context.CashOperationId;
 
-            if (isForwardWithdawal)
-            {
+            if (isForwardWithdawal || isSwiftCashout)
                 return;
-            }
 
             if (asset.Blockchain == Blockchain.Ethereum)
             {
