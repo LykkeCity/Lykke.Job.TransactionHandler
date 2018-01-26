@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Common;
@@ -67,9 +68,9 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
             await Task.WhenAll(tasks);
         }
 
-        public async Task WriteFeeInfo(LimitQueueItem feeDataSource)
+        public async Task WriteFeeInfo(IEnumerable<LimitQueueItem.LimitOrderWithTrades> feeDataSource)
         {
-            foreach (var order in feeDataSource.Orders)
+            foreach (var order in feeDataSource)
             {
                 var tasks = order.Trades.Select(x =>
                 {

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 
 namespace Lykke.Job.TransactionHandler.Core.Services.Fee
@@ -8,6 +9,6 @@ namespace Lykke.Job.TransactionHandler.Core.Services.Fee
         Task WriteFeeInfo(CashInOutQueueMessage feeDataSource);
         Task WriteFeeInfo(TransferQueueMessage feeDataSource);
         Task WriteFeeInfo(TradeQueueItem feeDataSource);
-        Task WriteFeeInfo(LimitQueueItem feeDataSource);
+        Task WriteFeeInfo(IEnumerable<LimitQueueItem.LimitOrderWithTrades> feeDataSource);
     }
 }
