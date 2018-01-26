@@ -170,6 +170,8 @@ namespace Lykke.Job.TransactionHandler.Projections
             var activeLimitOrdersCount = evt.ActiveLimitOrders.Count();
 
             await _clientCacheRepository.UpdateLimitOrdersCount(evt.ClientId, activeLimitOrdersCount);
+
+            _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt, Formatting.Indented), $"Client {evt.ClientId}. Limit orders cache updated: {activeLimitOrdersCount} active orders");
         }
 
         private async Task RegisterOperation(CashInOutOperation operation)

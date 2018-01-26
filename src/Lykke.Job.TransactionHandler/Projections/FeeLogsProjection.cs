@@ -21,23 +21,25 @@ namespace Lykke.Job.TransactionHandler.Projections
         }
 
         public async Task Handle(LimitOrderExecutedEvent evt)
-        {
-            _log.WriteInfo(nameof(FeeLogsProjection), JsonConvert.SerializeObject(evt, Formatting.Indented), "LimitOrderExecutedEvent");
-
+        {           
             if (evt.LimitOrder.Trades == null || evt.LimitOrder.Trades.Count == 0)
                 return;
 
-            var feeLogTasks = evt.LimitOrder.Trades.Select(ti =>
-                _feeLogRepository.CreateAsync(new OrderFeeLog
+            var feeLogs = evt.LimitOrder.Trades.Select(ti =>
+                new OrderFeeLog
                 {
                     OrderId = evt.LimitOrder.Order.Id,
                     OrderStatus = evt.LimitOrder.Order.Status,
                     FeeTransfer = ti.FeeTransfer?.ToJson(),
                     FeeInstruction = ti.FeeInstruction?.ToJson(),
                     Type = "limit"
-                }));
+                });
+
+            var feeLogTasks = feeLogs.Select(fl => _feeLogRepository.CreateAsync(fl));
 
             await Task.WhenAll(feeLogTasks);
+
+            _log.WriteInfo(nameof(FeeLogsProjection), JsonConvert.SerializeObject(feeLogs, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Fee logs updated");
         }
     }
 }

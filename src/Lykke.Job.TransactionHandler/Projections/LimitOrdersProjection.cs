@@ -18,10 +18,10 @@ namespace Lykke.Job.TransactionHandler.Projections
         }
 
         public async Task Handle(LimitOrderExecutedEvent evt)
-        {
-            _log.WriteInfo(nameof(LimitOrdersProjection), JsonConvert.SerializeObject(evt, Formatting.Indented), "LimitOrderExecutedEvent");
-
+        {            
             await _limitOrdersRepository.CreateOrUpdateAsync(evt.LimitOrder.Order);
+
+            _log.WriteInfo(nameof(LimitOrdersProjection), JsonConvert.SerializeObject(evt.LimitOrder.Order, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id} updated.");
         }
     }
 }

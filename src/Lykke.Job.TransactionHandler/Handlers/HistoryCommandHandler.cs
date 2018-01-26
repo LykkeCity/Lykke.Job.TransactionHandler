@@ -25,7 +25,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(CreateOrUpdateLimitOrderCommand command, IEventPublisher eventPublisher)
         {           
-            _log.WriteInfo(nameof(CreateOrUpdateLimitOrderCommand), JsonConvert.SerializeObject(command, Formatting.Indented), "CreateOrUpdateLimitOrderCommand");
+            _log.WriteInfo(nameof(HistoryCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), "CreateOrUpdateLimitOrderCommand");
 
             await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder);
 

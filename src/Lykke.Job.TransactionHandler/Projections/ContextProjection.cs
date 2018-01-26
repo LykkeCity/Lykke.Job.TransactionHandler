@@ -8,6 +8,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Handlers;
+using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
@@ -47,6 +48,8 @@ namespace Lykke.Job.TransactionHandler.Projections
 
             await _bitcoinTransactionService.CreateOrUpdateAsync(evt.LimitOrder.Order.Id);
             await _bitcoinTransactionService.SetTransactionContext(evt.LimitOrder.Order.Id, contextData);
+
+            _log.WriteInfo(nameof(ContextProjection), JsonConvert.SerializeObject(contextData), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
         }        
     }
 }

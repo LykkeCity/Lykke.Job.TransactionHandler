@@ -52,7 +52,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(ProcessLimitOrderCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(ProcessLimitOrderCommand), command.ToJson(), "");
+            _log.WriteInfo(nameof(LimitOrderCommandHandler), command.ToJson(), "ProcessLimitOrderCommand");
 
             var clientId = command.LimitOrder.Order.ClientId;
             

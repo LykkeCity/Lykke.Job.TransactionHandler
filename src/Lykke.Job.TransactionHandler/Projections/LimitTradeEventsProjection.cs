@@ -32,8 +32,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             if (evt.IsTrustedClient)
                 return;
             
-            _log.WriteInfo(nameof(LimitTradeEventsProjection), JsonConvert.SerializeObject(evt, Formatting.Indented), "LimitOrderExecutedEvent");
-
             var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), evt.LimitOrder.Order.Status);
 
             switch (status)
@@ -53,7 +51,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 case OrderStatus.ReservedVolumeGreaterThanBalance:
                 case OrderStatus.UnknownAsset:
                 case OrderStatus.LeadToNegativeSpread:
-                    _log.WriteInfo(nameof(ProcessLimitOrderCommand), evt.LimitOrder.ToJson(), "order rejected");
+                    _log.WriteInfo(nameof(ProcessLimitOrderCommand), evt.LimitOrder.ToJson(), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(OrderStatus));
@@ -67,8 +65,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
             var date = status == OrderStatus.InOrderBook ? limitOrderWithTrades.Order.CreatedAt : DateTime.UtcNow;
 
-
-            await _limitTradeEventsRepositoryClient.CreateAsync(new LimitTradeEventInsertRequest
+            var insertRequest = new LimitTradeEventInsertRequest
             {
                 Volume = order.Volume,
                 Type = type,
@@ -79,7 +76,11 @@ namespace Lykke.Job.TransactionHandler.Projections
                 Price = order.Price,
                 AssetPair = order.AssetPairId,
                 DateTime = date
-            });
+            };
+
+            await _limitTradeEventsRepositoryClient.CreateAsync(insertRequest);
+
+            _log.WriteInfo(nameof(LimitTradeEventsProjection), JsonConvert.SerializeObject(insertRequest, Formatting.Indented), $"Client {order.ClientId}. Limit trade {order.Id}. State has changed -> {status}");
         }
     }
 }

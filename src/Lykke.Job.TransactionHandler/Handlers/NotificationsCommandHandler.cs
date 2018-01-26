@@ -42,7 +42,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(LimitTradeNotifySendCommand command)
         {   
-            _log.WriteInfo(nameof(NotificationsCommandHandler), command.ToJson(), "");
+            _log.WriteInfo(nameof(NotificationsCommandHandler), command.ToJson(), "LimitTradeNotifySendCommand");
 
             var order = command.LimitOrder.Order;
             var aggregated = command.Aggregated ?? new List<AggregatedTransfer>();
