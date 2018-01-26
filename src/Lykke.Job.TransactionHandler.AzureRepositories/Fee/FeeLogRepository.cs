@@ -6,26 +6,28 @@ using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Fee
 {
-    public class FeeLogEntity : TableEntity, IOrderFeeLog
+    public class FeeLogEntryEntity : TableEntity, IFeeLogEntry
     {
         public string Id => RowKey;
-        public string FeeInstruction { get; set; }
-        public string FeeTransfer { get; set; }
-        public string OrderId { get; set; }
-        public string Type { get; set; }
-        public string OrderStatus { get; set; }
+        public string Instructions { get; set; }
+        public string Transfers { get; set; }
+        public string Data { get; set; }
+        public string Settings { get; set; }
+        public FeeOperationType Type { get; set; }
+        public string OperationId { get; set; }
 
-        public static FeeLogEntity CreateNew(IOrderFeeLog item)
+        public static FeeLogEntryEntity Create(IFeeLogEntry item)
         {
-            return new FeeLogEntity
+            return new FeeLogEntryEntity
             {
                 PartitionKey = GeneratePartitionKey(),
                 RowKey = GenerateRowKey(),
-                FeeTransfer = item.FeeTransfer,
-                FeeInstruction = item.FeeInstruction,
-                OrderId = item.OrderId,
+                OperationId = item.OperationId,
                 Type = item.Type,
-                OrderStatus = item.OrderStatus
+                Data = item.Data,
+                Instructions = item.Instructions,
+                Settings = item.Settings,
+                Transfers = item.Transfers
             };
         }
 
@@ -42,16 +44,16 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Fee
 
     public class FeeLogRepository : IFeeLogRepository
     {
-        private readonly INoSQLTableStorage<FeeLogEntity> _tableStorage;
+        private readonly INoSQLTableStorage<FeeLogEntryEntity> _tableStorage;
 
-        public FeeLogRepository(INoSQLTableStorage<FeeLogEntity> tableStorage)
+        public FeeLogRepository(INoSQLTableStorage<FeeLogEntryEntity> tableStorage)
         {
             _tableStorage = tableStorage;
         }
 
-        public async Task CreateAsync(IOrderFeeLog item)
+        public async Task CreateAsync(IFeeLogEntry item)
         {
-            await _tableStorage.InsertAsync(FeeLogEntity.CreateNew(item));
+            await _tableStorage.InsertAsync(FeeLogEntryEntity.Create(item));
         }
     }
 }

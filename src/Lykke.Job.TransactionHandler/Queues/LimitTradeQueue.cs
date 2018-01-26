@@ -5,20 +5,20 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
-using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
-using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Resources;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.RabbitMqBroker;
@@ -63,8 +63,8 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly ILimitTradeEventsRepositoryClient _limitTradeEventsRepositoryClient;
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
-        private readonly IFeeLogRepository _feeLogRepository;
         private readonly IDeduplicator _deduplicator;
+        private readonly IFeeLogService _feeLogService;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<LimitQueueItem> _subscriber;
@@ -89,8 +89,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IClientCacheRepository clientCacheRepository,
             IBitcoinTransactionService bitcoinTransactionService,
             IAssetsServiceWithCache assetsServiceWithCache,
-            IFeeLogRepository feeLogRepository,
-            [NotNull] IDeduplicator deduplicator)
+            [NotNull] IDeduplicator deduplicator,
+            [NotNull] IFeeLogService feeLogService)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -111,8 +111,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             _clientCacheRepository = clientCacheRepository;
             _bitcoinTransactionService = bitcoinTransactionService;
             _assetsServiceWithCache = assetsServiceWithCache;
-            _feeLogRepository = feeLogRepository;
             _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
+            _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
         }
 
         public void Start()
@@ -157,6 +157,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return;
             }
 
+            await _feeLogService.WriteFeeInfo(tradeItem);
+
             var trusted = new Dictionary<string, bool>();
             foreach (var limitOrderWithTrades in tradeItem.Orders)
             {
@@ -178,17 +180,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                         prevOrderState = await _limitOrdersRepository.GetOrderAsync(meOrder.Id);
 
                     await _limitOrdersRepository.CreateOrUpdateAsync(meOrder);
-
-                    var feeLogTasks = limitOrderWithTrades.Trades.Select(ti =>
-                        _feeLogRepository.CreateAsync(new OrderFeeLog
-                        {
-                            OrderId = limitOrderWithTrades.Order.Id,
-                            OrderStatus = limitOrderWithTrades.Order.Status,
-                            FeeTransfer = ti.FeeTransfer?.ToJson(),
-                            FeeInstruction = ti.FeeInstruction?.ToJson(),
-                            Type = "limit"
-                        }));
-                    await Task.WhenAll(feeLogTasks);
 
                     var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), meOrder.Status);
 

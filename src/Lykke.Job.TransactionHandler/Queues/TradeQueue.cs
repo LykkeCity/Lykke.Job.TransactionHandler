@@ -5,17 +5,17 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
-using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
-using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
@@ -52,8 +52,8 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IClientAccountClient _clientAccountClient;
-        private readonly IFeeLogRepository _feeLogRepository;
         private readonly IDeduplicator _deduplicator;
+        private readonly IFeeLogService _feeLogService;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TradeQueueItem> _subscriber;
@@ -75,8 +75,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBitcoinTransactionService bitcoinTransactionService,
             IClientAccountClient clientAccountClient,
             IAssetsServiceWithCache assetsServiceWithCache,
-            IFeeLogRepository feeLogRepository, 
-            [NotNull] IDeduplicator deduplicator)
+            [NotNull] IDeduplicator deduplicator,
+            IFeeLogService feeLogService)
         {
             _rabbitConfig = config;
             _walletCredentialsRepository = walletCredentialsRepository;
@@ -94,8 +94,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             _clientAccountClient = clientAccountClient;
             _assetsServiceWithCache = assetsServiceWithCache;
             _log = log;
-            _feeLogRepository = feeLogRepository;
             _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
+            _feeLogService = feeLogService ?? throw new ArgumentException(nameof(feeLogService));
         }
 
         public void Start()
@@ -142,21 +142,13 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             await _marketOrdersRepository.CreateAsync(queueMessage.Order);
 
-            var feeLogTasks = queueMessage.Trades.Select(ti => _feeLogRepository.CreateAsync(new OrderFeeLog
-            {
-                OrderId = queueMessage.Order.Id,
-                OrderStatus = queueMessage.Order.Status,
-                FeeInstruction = ti.FeeInstruction?.ToJson(),
-                FeeTransfer = ti.FeeTransfer?.ToJson(),
-                Type = "market"
-            }));
-            await Task.WhenAll(feeLogTasks);
-
             if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
             {
                 await _log.WriteInfoAsync(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.Order.ToJson(), "Message processing being aborted, due to order status is not matched. Order was saved");
                 return;
             }
+
+            await _feeLogService.WriteFeeInfo(queueMessage);
 
             var walletCredsMarket = await _walletCredentialsRepository.GetAsync(queueMessage.Trades[0].MarketClientId);
             var walletCredsLimit = await _walletCredentialsRepository.GetAsync(queueMessage.Trades[0].LimitClientId);

@@ -1,4 +1,4 @@
-﻿using Lykke.Job.TransactionHandler.Queues.Models;
+﻿using Lykke.Job.TransactionHandler.Core.Contracts;
 using ProtoBuf;
 
 namespace Lykke.Job.TransactionHandler.Commands

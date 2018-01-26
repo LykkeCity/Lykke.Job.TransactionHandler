@@ -1,10 +1,10 @@
-﻿using JetBrains.Annotations;
+﻿using System;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
-using System;
 using Newtonsoft.Json.Converters;
 using ProtoBuf;
 
-namespace Lykke.Job.TransactionHandler.Queues.Models
+namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
     [JsonConverter(typeof(StringEnumConverter))]
     public enum FeeType

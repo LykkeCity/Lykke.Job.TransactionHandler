@@ -12,7 +12,6 @@ using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using System.Linq;
-using Lykke.Job.TransactionHandler.Queues.Models;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
@@ -10,7 +11,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
-using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
@@ -20,8 +20,8 @@ using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.Operations.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
-using Lykke.Job.TransactionHandler.Core.Domain.Logs;
 using Lykke.Job.TransactionHandler.Core.Services;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -42,9 +42,9 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IOperationsClient _operationsClient;
         private readonly AppSettings.EthereumSettings _settings;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-        private readonly ITransferLogRepository _transferLogRepository;
         private readonly IDeduplicator _deduplicator;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
+        private readonly IFeeLogService _feeLogService;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
 
         public TransferQueue(AppSettings.RabbitMqSettings config, ILog log,
@@ -57,8 +57,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings,
             IOperationsClient operationsClient, IAssetsServiceWithCache assetsServiceWithCache,
-            ITransferLogRepository transferLogRepository,
-            [NotNull] IDeduplicator deduplicator)
+            [NotNull] IDeduplicator deduplicator,
+            IFeeLogService feeLogService)
         {
             _rabbitConfig = config;
             _log = log;
@@ -74,8 +74,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             _settings = settings;
             _operationsClient = operationsClient;
             _assetsServiceWithCache = assetsServiceWithCache;
-            _transferLogRepository = transferLogRepository;
             _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
+            _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
         }
 
         public void Start()
@@ -120,8 +120,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return;
             }
 
-            var logTask = _transferLogRepository.CreateAsync(queueMessage.Id, queueMessage.Date, queueMessage.FromClientId, queueMessage.ToClientid, queueMessage.AssetId, queueMessage.Amount, queueMessage.FeeSettings?.ToJson(), queueMessage.FeeData?.ToJson());
-            
+            await _feeLogService.WriteFeeInfo(queueMessage);
+
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
             var feeAmount = (queueMessage.FeeData?.Amount.ParseAnyDouble() ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
 
@@ -179,8 +179,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                             IsSettled = false,
                             State = transferState
                         });
-
-            await logTask;
 
             //Craete or Update transfer context
             var transaction = await _bitCoinTransactionsRepository.FindByTransactionIdAsync(queueMessage.Id);

@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using ProtoBuf;
-using JetBrains.Annotations;
-using System.Collections.Generic;
 
-namespace Lykke.Job.TransactionHandler.Queues.Models
+namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
     [ProtoContract]
     public class CashInOutQueueMessage

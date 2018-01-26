@@ -1,11 +1,11 @@
 ﻿using Common;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using FeeType = Lykke.Service.OperationsRepository.AutorestClient.Models.FeeType;
 
 namespace Lykke.Job.TransactionHandler.Utils

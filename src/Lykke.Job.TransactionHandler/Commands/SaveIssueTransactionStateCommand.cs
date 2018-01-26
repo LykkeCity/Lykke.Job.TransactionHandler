@@ -1,5 +1,5 @@
-﻿using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
-using Lykke.Job.TransactionHandler.Queues.Models;
+﻿using Lykke.Job.TransactionHandler.Core.Contracts;
+using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using ProtoBuf;
 
 namespace Lykke.Job.TransactionHandler.Commands

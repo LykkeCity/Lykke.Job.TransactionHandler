@@ -9,14 +9,14 @@ using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Queues;
-using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
-using Lykke.Job.TransactionHandler.Core.Domain.Logs;
 using System.Linq;
+using Lykke.Job.TransactionHandler.Core.Contracts;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
 
 namespace Lykke.Job.TransactionHandler.Sagas
 {
@@ -31,11 +31,10 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private readonly IBitcoinTransactionService _bitcoinTransactionService;
         private readonly ICqrsEngine _cqrsEngine;
         private readonly IBitcoinCashinRepository _bitcoinCashinTypeRepository;
-        private readonly ICashInOutLogRepository _cashInOutLogRepository;
+        private readonly IFeeLogService _feeLogService;
 
         public CashInOutMessageProcessor(
             [NotNull] ILog log,
-            [NotNull] ICashInOutLogRepository cashInOutLogRepository,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] IBitCoinTransactionsRepository bitcoinTransactionsRepository,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
@@ -43,7 +42,8 @@ namespace Lykke.Job.TransactionHandler.Sagas
             [NotNull] IClientAccountClient clientAccountClient,
             [NotNull] IBitcoinTransactionService bitcoinTransactionService,
             [NotNull] ICqrsEngine cqrsEngine,
-            [NotNull] IBitcoinCashinRepository bitcoinCashinRepository)
+            [NotNull] IBitcoinCashinRepository bitcoinCashinRepository,
+            [NotNull] IFeeLogService feeLogService)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
@@ -54,12 +54,12 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
             _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
             _bitcoinCashinTypeRepository = bitcoinCashinRepository ?? throw new ArgumentNullException(nameof(bitcoinCashinRepository));
-            _cashInOutLogRepository = cashInOutLogRepository ?? throw new ArgumentNullException(nameof(cashInOutLogRepository));
+            _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
         }
 
         public async Task ProcessMessage(CashInOutQueueMessage message)
         {
-            await _cashInOutLogRepository.CreateAsync(message.Id, message.ClientId, message.Date, message.Amount, message.AssetId, message.FeeInstructions?.ToJson(), message.FeeTransfers?.ToJson());
+            await _feeLogService.WriteFeeInfo(message);
 
             ChaosKitty.Meow();
 

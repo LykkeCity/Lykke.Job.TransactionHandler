@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
-using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
