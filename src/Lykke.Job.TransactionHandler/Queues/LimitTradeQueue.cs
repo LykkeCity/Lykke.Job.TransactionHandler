@@ -157,7 +157,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return;
             }
 
-            await _feeLogService.WriteFeeInfo(tradeItem);
+            await _feeLogService.WriteFeeInfo(tradeItem.Orders);
 
             var trusted = new Dictionary<string, bool>();
             foreach (var limitOrderWithTrades in tradeItem.Orders)

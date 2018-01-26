@@ -10,5 +10,6 @@ namespace Lykke.Job.TransactionHandler.Core.Services.Fee
         Task WriteFeeInfo(TransferQueueMessage feeDataSource);
         Task WriteFeeInfo(TradeQueueItem feeDataSource);
         Task WriteFeeInfo(IEnumerable<LimitQueueItem.LimitOrderWithTrades> feeDataSource);
+        Task WriteFeeInfo(LimitQueueItem.LimitOrderWithTrades feeDataSource);
     }
 }

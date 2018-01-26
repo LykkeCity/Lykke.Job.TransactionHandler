@@ -72,23 +72,28 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
         {
             foreach (var order in feeDataSource)
             {
-                var tasks = order.Trades.Select(x =>
-                {
-                    var newItem = new FeeLogEntry
-                    {
-                        OperationId = order.Order.Id,
-                        Instructions = x.FeeInstruction?.ToJson(),
-                        Transfers = x.FeeTransfer?.ToJson(),
-                        Settings = string.Empty,
-                        Data = string.Empty,
-                        Type = FeeOperationType.LimitTrade
-                    };
-
-                    return _feelogRepository.CreateAsync(newItem);
-                });
-
-                await Task.WhenAll(tasks);
+                await WriteFeeInfo(order);
             }
+        }
+
+        public async Task WriteFeeInfo(LimitQueueItem.LimitOrderWithTrades feeDataSource)
+        {
+            var tasks = feeDataSource.Trades.Select(x =>
+            {
+                var newItem = new FeeLogEntry
+                {
+                    OperationId = feeDataSource.Order.Id,
+                    Instructions = x.FeeInstruction?.ToJson(),
+                    Transfers = x.FeeTransfer?.ToJson(),
+                    Settings = string.Empty,
+                    Data = string.Empty,
+                    Type = FeeOperationType.LimitTrade
+                };
+
+                return _feelogRepository.CreateAsync(newItem);
+            });
+
+            await Task.WhenAll(tasks);
         }
     }
 }
