@@ -195,7 +195,9 @@ namespace Lykke.Job.TransactionHandler.Sagas
             
             var feeAmount = (message.Fees?.FirstOrDefault()?.Transfer?.Volume ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
 
-            var amount = message.Amount.ParseAnyDouble() - feeAmount;
+            var amount = message.Amount.ParseAnyDouble();
+
+            amount = amount > 0 ? amount - feeAmount : amount + feeAmount;
 
             var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transaction.TransactionId);
 

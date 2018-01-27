@@ -127,7 +127,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             
             var feeAmount = (queueMessage.Fees?.FirstOrDefault()?.Transfer?.Volume ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
 
-            var amount = queueMessage.Amount.ParseAnyDouble() - feeAmount;
+            var amount = queueMessage.Amount.ParseAnyDouble();
+
+            amount = amount > 0 ? amount - feeAmount : amount + feeAmount;
+
             //Get eth request if it is ETH transfer
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
 
