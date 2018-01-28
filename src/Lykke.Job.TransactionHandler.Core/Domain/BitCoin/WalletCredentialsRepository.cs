@@ -61,27 +61,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         public string SolarCoinWalletAddress { get; set; }
         public string ChronoBankContract { get; set; }
         public string QuantaContract { get; set; }
-
-        public static WalletCredentials Create(string clientId, string address, string privateKey,
-            string multisig, string coloredMultiSig, string btcConvertionWalletPrivateKey,
-            string btcConvertionWalletAddress, bool preventTxDetection = false,
-            string encodedPk = "", string pubKey = "")
-        {
-            return new WalletCredentials
-            {
-                ClientId = clientId,
-                Address = address,
-                PublicKey = pubKey,
-                PrivateKey = privateKey,
-                MultiSig = multisig,
-                ColoredMultiSig = coloredMultiSig,
-                PreventTxDetection = preventTxDetection,
-                EncodedPrivateKey = encodedPk,
-                BtcConvertionWalletPrivateKey = btcConvertionWalletPrivateKey,
-                BtcConvertionWalletAddress = btcConvertionWalletAddress
-            };
-        }
-
+        
         public static WalletCredentials Create(IWalletCredentials src)
         {
             return new WalletCredentials
@@ -104,44 +84,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
     }
 
     public interface IWalletCredentialsRepository
-    {
-        /// <summary>
-        /// Сохранить сгенеренные данные по бит коину
-        /// </summary>
-        /// <param name="walletCredentials"></param>
-        /// <returns></returns>
-        Task SaveAsync(IWalletCredentials walletCredentials);
-
-        Task MergeAsync(IWalletCredentials walletCredentials);
-
-        Task<IWalletCredentials> GetAsync(string clientId);
-
-        Task<IWalletCredentials> GetByEthConversionWalletAsync(string ethWallet);
-
-        Task<IWalletCredentials> GetBySolarCoinWalletAsync(string address);
-
-        Task<IWalletCredentials> GetByChronoBankContractAsync(string contract);
-
-        Task<IWalletCredentials> GetByQuantaContractAsync(string contract);
-
-        Task<string> GetClientIdByMultisig(string multisig);
-
-        Task SetPreventTxDetection(string clientId, bool value);
-
-        Task SetEncodedPrivateKey(string clientId, string encodedPrivateKey);
-
-        Task SetEthConversionWallet(string clientId, string contract);
-
-        Task SetEthFieldsWallet(string clientId, string contract, string address, string pubKey);
-
-        Task SetSolarCoinWallet(string clientId, string address);
-
-        Task SetChronoBankContract(string clientId, string contract);
-
-        Task SetQuantaContract(string clientId, string contract);
-
-        Task<IWalletCredentials> ScanAndFind(Func<IWalletCredentials, bool> item);
-
-        Task ScanAllAsync(Func<IEnumerable<IWalletCredentials>, Task> chunk);
+    {        
+        Task<IWalletCredentials> GetAsync(string clientId);        
     }
 }

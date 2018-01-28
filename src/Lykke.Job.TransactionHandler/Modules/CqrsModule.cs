@@ -8,9 +8,12 @@ using Inceptum.Messaging;
 using Inceptum.Messaging.RabbitMq;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
+using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Events;
+using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Projections;
+using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Utils;
@@ -66,6 +69,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<CashInOutMessageProcessor>();
             builder.RegisterType<CashInOutSaga>();
             builder.RegisterType<ForwardWithdawalSaga>();
+            builder.RegisterType<HistorySaga>();
+            builder.RegisterType<NotificationsSaga>();
 
             builder.RegisterType<ForwardWithdrawalCommandHandler>();
             builder.RegisterType<BitcoinCommandHandler>()
@@ -79,24 +84,38 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<OffchainCommandHandler>();
             builder.RegisterType<OperationsCommandHandler>();
             builder.RegisterType<TransactionsCommandHandler>();
+            builder.RegisterType<HistoryCommandHandler>();
+            builder.RegisterType<LimitOrderCommandHandler>();
+            builder.RegisterType<NotificationsCommandHandler>();
 
-            builder.RegisterType<OperationHistoryProjection>();
-            builder.RegisterType<NotificationsProjection>();
+            builder.RegisterType<ClientTradesProjection>();
+            builder.RegisterType<ContextProjection>();
+            builder.RegisterType<FeeLogsProjection>();
+            builder.RegisterType<LimitOrdersProjection>();
+            builder.RegisterType<LimitTradeEventsProjection>();
+            builder.RegisterType<NotificationsProjection>();   
+            builder.RegisterType<OperationHistoryProjection>();                     
 
             builder.Register(ctx =>
             {
                 var defaultPipeline = "commands";
                 var defaultRoute = "self";
-                var historyProjection = ctx.Resolve<OperationHistoryProjection>();
-                var notificationsProjection = ctx.Resolve<NotificationsProjection>();
+                
                 return new CqrsEngine(_log,
                     ctx.Resolve<IDependencyResolver>(),
                     messagingEngine,
                     new DefaultEndpointProvider(),
                     true,
-                    Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "protobuf", environment: _settings.TransactionHandlerJob.Environment)),
+                    Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "messagepack", environment: _settings.TransactionHandlerJob.Environment, exclusiveQueuePostfix: _settings.TransactionHandlerJob.QueuePostfix)),
 
-                Register.BoundedContext("tx-handler"),
+                Register.BoundedContext("tx-handler")
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(ProcessLimitOrderCommand))
+                        .On(defaultPipeline)
+                        .WithLoopback()
+                    .PublishingEvents(typeof(LimitOrderExecutedEvent))
+                        .With("events")
+                    .WithCommandsHandler<LimitOrderCommandHandler>(),
 
                 Register.BoundedContext("forward-withdrawal")
                     .FailedCommandRetryDelay(defaultRetryDelay)
@@ -152,19 +171,45 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .With(defaultPipeline)
                     .WithCommandsHandler<TransactionsCommandHandler>(),
 
-                Register.BoundedContext("history")
-                    .ListeningEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent),
-                            typeof(CashoutTransactionStateSavedEvent))
+                Register.BoundedContext("operations-history")
+                    .ListeningEvents(typeof(IssueTransactionStateSavedEvent), typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
                         .From("transactions").On(defaultRoute)
-                    .WithProjection(historyProjection, "transactions")
+                        .WithProjection(typeof(OperationHistoryProjection), "transactions")
                     .ListeningEvents(typeof(ForwardWithdawalLinkedEvent))
                         .From("forward-withdrawal").On(defaultRoute)
-                    .WithProjection(historyProjection, "forward-withdrawal"),
-
+                        .WithProjection(typeof(OperationHistoryProjection), "forward-withdrawal")                                        
+                    .ListeningEvents(typeof(LimitOrderSavedEvent))
+                        .From("operations-history").On("client-cache")
+                        .WithProjection(typeof(OperationHistoryProjection), "operations-history")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("limit-orders")
+                        .WithProjection(typeof(LimitOrdersProjection), "tx-handler")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("limit-trade-events")
+                        .WithProjection(typeof(LimitTradeEventsProjection), "tx-handler")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("fee")
+                        .WithProjection(typeof(FeeLogsProjection), "tx-handler")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("operations-context")
+                        .WithProjection(typeof(ContextProjection), "tx-handler")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("client-trades")
+                        .WithProjection(typeof(ClientTradesProjection), "tx-handler")
+                    .ListeningCommands(typeof(CreateOrUpdateLimitOrderCommand))
+                        .On(defaultPipeline)
+                        .WithCommandsHandler<HistoryCommandHandler>()                    
+                    .PublishingEvents(typeof(LimitOrderSavedEvent))
+                        .With("events"),
+                
                 Register.BoundedContext("notifications")
                     .ListeningEvents(typeof(SolarCashOutCompletedEvent))
                         .From("solarcoin").On(defaultRoute)
-                    .WithProjection(notificationsProjection, "solarcoin"),
+                    .WithProjection(typeof(NotificationsProjection), "solarcoin"),                    
+
+                Register.BoundedContext("push")                        
+                        .ListeningCommands(typeof(LimitTradeNotifySendCommand)).On(defaultPipeline)
+                        .WithCommandsHandler<NotificationsCommandHandler>(),
 
                 Register.Saga<CashInOutSaga>("cash-out-saga")
                     .ListeningEvents(typeof(DestroyTransactionStateSavedEvent), typeof(CashoutTransactionStateSavedEvent))
@@ -184,6 +229,18 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
                         .To("forward-withdrawal").With(defaultPipeline),
 
+                Register.Saga<HistorySaga>("history-saga")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On("events")                    
+                    .PublishingCommands(typeof(CreateOrUpdateLimitOrderCommand))
+                        .To("operations-history").With(defaultPipeline),    
+                
+                Register.Saga<NotificationsSaga>("notifications-saga")
+                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
+                        .From("tx-handler").On(defaultRoute)
+                    .PublishingCommands(typeof(LimitTradeNotifySendCommand))
+                        .To("push").With(defaultPipeline),
+
                 Register.DefaultRouting
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
                         .To("offchain").With(defaultPipeline)
@@ -192,7 +249,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingCommands(typeof(RegisterCashInOutOperationCommand))
                         .To("operations").With(defaultPipeline)
                     .PublishingCommands(typeof(SaveIssueTransactionStateCommand), typeof(SaveDestroyTransactionStateCommand), typeof(SaveCashoutTransactionStateCommand))
-                        .To("transactions").With(defaultPipeline)
+                        .To("transactions").With(defaultPipeline)                    
                 );
             })
             .As<ICqrsEngine>().SingleInstance();
