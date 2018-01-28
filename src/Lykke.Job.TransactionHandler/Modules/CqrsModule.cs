@@ -42,7 +42,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 ChaosKitty.StateOfChaos = _settings.TransactionHandlerJob.ChaosKitty.StateOfChaos;
             }
 
-            InitSerializer();
+            Inceptum.Messaging.Serialization.MessagePackSerializerFactory.Defaults.FormatterResolver = MessagePack.Resolvers.ContractlessStandardResolver.Instance;
 
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
@@ -253,17 +253,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                 );
             })
             .As<ICqrsEngine>().SingleInstance();
-        }
-
-        private void InitSerializer()
-        {
-            SerializerBuilder.Build<Service.Assets.Client.Models.Asset>();
-            SerializerBuilder.Build<Core.Domain.BitCoin.CashOutCommand>();
-            SerializerBuilder.Build<Core.Domain.BitCoin.CashOutContextData>();
-            SerializerBuilder.Build<Core.Domain.BitCoin.DestroyCommand>();
-            SerializerBuilder.Build<Core.Domain.BitCoin.UncolorContextData>();
-            SerializerBuilder.Build<Core.Domain.BitCoin.IssueCommand>();
-            SerializerBuilder.Build<Core.Domain.BitCoin.IssueContextData>();
         }
     }
 }
