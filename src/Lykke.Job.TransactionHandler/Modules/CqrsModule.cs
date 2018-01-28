@@ -106,7 +106,11 @@ namespace Lykke.Job.TransactionHandler.Modules
                     messagingEngine,
                     new DefaultEndpointProvider(),
                     true,
-                    Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver("RabbitMq", "messagepack", environment: _settings.TransactionHandlerJob.Environment, exclusiveQueuePostfix: _settings.TransactionHandlerJob.QueuePostfix)),
+                    Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver(
+                        "RabbitMq", 
+                        "messagepack", 
+                        environment: "lykke", 
+                        exclusiveQueuePostfix: _settings.TransactionHandlerJob.QueuePostfix)),
 
                 Register.BoundedContext("tx-handler")
                     .FailedCommandRetryDelay(defaultRetryDelay)
@@ -221,7 +225,9 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
                         .To("ethereum").With(defaultPipeline)
                     .PublishingCommands(typeof(SolarCashOutCommand))
-                        .To("solarcoin").With(defaultPipeline),
+                        .To("solarcoin").With(defaultPipeline)
+                    .PublishingCommands(typeof(BlockchainCashoutProcessor.Contract.Commands.StartCashoutCommand))
+                        .To(BlockchainCashoutProcessor.Contract.BlockchainCashoutProcessorBoundedContext.Name).With(defaultPipeline),
 
                 Register.Saga<ForwardWithdawalSaga>("forward-withdrawal-saga")
                     .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))

@@ -60,7 +60,19 @@ namespace Lykke.Job.TransactionHandler.Sagas
             if (isForwardWithdawal || isSwiftCashout)
                 return;
 
-            if (asset.Blockchain == Blockchain.Ethereum)
+            if (!string.IsNullOrWhiteSpace(asset.BlockchainIntegrationLayerId))
+            {
+                // Processes cashout using generic blockchain integration layer
+
+                sender.SendCommand(new BlockchainCashoutProcessor.Contract.Commands.StartCashoutCommand
+                {
+                    OperationId = Guid.Parse(transactionId),
+                    AssetId = message.AssetId,
+                    Amount = (decimal)Math.Abs(amount),
+                    ToAddress = context.Address
+                }, BlockchainCashoutProcessor.Contract.BlockchainCashoutProcessorBoundedContext.Name);
+            }
+            else if (asset.Blockchain == Blockchain.Ethereum)
             {
                 sender.SendCommand(new Commands.ProcessEthereumCashoutCommand
                 {
