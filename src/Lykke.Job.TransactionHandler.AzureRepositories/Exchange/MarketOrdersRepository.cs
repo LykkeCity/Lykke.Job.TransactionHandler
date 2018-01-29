@@ -92,13 +92,12 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
             _tableStorage = tableStorage;
         }
 
-        public async Task CreateAsync(IMarketOrder marketOrder)
+        public async Task<bool> TryCreateAsync(IMarketOrder marketOrder)
         {
             var byOrderEntity = MarketOrderEntity.ByOrderId.Create(marketOrder);
             var byClientEntity = MarketOrderEntity.ByClientId.Create(marketOrder);
 
-            await _tableStorage.InsertAsync(byOrderEntity);
-            await _tableStorage.InsertAsync(byClientEntity);
+            return await _tableStorage.TryInsertAsync(byOrderEntity) && await _tableStorage.TryInsertAsync(byClientEntity);
         }
     }
 }

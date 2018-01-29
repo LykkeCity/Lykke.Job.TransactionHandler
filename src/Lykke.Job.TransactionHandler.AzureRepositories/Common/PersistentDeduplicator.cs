@@ -17,17 +17,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Common
 
         public async Task<bool> EnsureNotDuplicateAsync(object value)
         {
-            try
-            {
-                await _blobRepository.Insert(value);
-                return true;
-            }
-            catch (Microsoft.WindowsAzure.Storage.StorageException exception)
-            {
-                if (exception.RequestInformation.HttpStatusCode != AzureHelper.ConflictStatusCode)
-                    throw;
-            }
-            return false;
+            return await _blobRepository.TryInsert(value);
         }
     }
 }

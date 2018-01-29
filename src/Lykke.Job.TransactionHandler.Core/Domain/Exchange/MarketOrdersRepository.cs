@@ -12,6 +12,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
 
     public interface IMarketOrdersRepository
     {
-        Task CreateAsync(IMarketOrder marketOrder);
+        Task<bool> TryCreateAsync(IMarketOrder marketOrder);
     }
 }

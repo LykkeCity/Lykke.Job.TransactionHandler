@@ -4,7 +4,6 @@ using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
-using Lykke.Job.TransactionHandler.AzureRepositories;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Commands;
@@ -40,8 +39,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(TradeCommandHandler), nameof(CreateTradeCommand), command.ToJson());
 
-            ChaosKitty.Meow();
-
             var queueMessage = command.QueueMessage;
 
             var clientId = queueMessage.Order.ClientId;
@@ -57,7 +54,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var context = await _transactionService.GetTransactionContext<SwapOffchainContextData>(queueMessage.Order.Id) ?? new SwapOffchainContextData();
 
             await _contextFactory.FillTradeContext(context, queueMessage.Order, queueMessage.Trades, clientId);
+
+            ChaosKitty.Meow();
+
             await _transactionService.SetTransactionContext(queueMessage.Order.Id, context);
+
+            ChaosKitty.Meow();
 
             eventPublisher.PublishEvent(new TradeCreatedEvent
             {
@@ -75,17 +77,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(TradeCommandHandler), nameof(CreateTransactionCommand), command.ToJson());
 
-            ChaosKitty.Meow();
+            await _transactionsRepository.TryCreateAsync(command.OrderId, BitCoinCommands.SwapOffchain, "", null, "");
 
-            try
-            {
-                await _transactionsRepository.CreateAsync(command.OrderId, BitCoinCommands.SwapOffchain, "", null, "");
-            }
-            catch (Microsoft.WindowsAzure.Storage.StorageException exception)
-            {
-                if (exception.RequestInformation.HttpStatusCode != AzureHelper.ConflictStatusCode)
-                    throw;
-            }
+            ChaosKitty.Meow();
 
             return CommandHandlingResult.Ok();
         }

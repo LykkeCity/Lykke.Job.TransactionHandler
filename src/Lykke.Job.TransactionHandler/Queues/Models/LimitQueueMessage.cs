@@ -1,13 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Newtonsoft.Json;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Handlers;
 using MessagePack;
-using ProtoBuf;
 
 namespace Lykke.Job.TransactionHandler.Queues.Models
 {

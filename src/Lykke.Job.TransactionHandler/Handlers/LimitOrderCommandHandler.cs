@@ -7,23 +7,13 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
-using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
-using Lykke.Job.TransactionHandler.Core.Domain.Fee;
-using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
-using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
-using Lykke.Service.OperationsRepository.AutorestClient;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
-using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using MessagePack;
-using ProtoBuf;
 using OrderStatus = Lykke.Service.OperationsRepository.AutorestClient.Models.OrderStatus;
 
 namespace Lykke.Job.TransactionHandler.Handlers

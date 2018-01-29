@@ -7,10 +7,8 @@ using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
-using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
@@ -21,7 +19,7 @@ using Newtonsoft.Json;
 namespace Lykke.Job.TransactionHandler.Projections
 {
     public class OperationHistoryProjection
-    {        
+    {
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly ILog _log;
         private readonly ITradeOperationsRepositoryClient _clientTradesRepository;
@@ -56,8 +54,6 @@ namespace Lykke.Job.TransactionHandler.Projections
         public async Task Handle(TransferOperationStateSavedEvent evt)
         {
             await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
-
-            ChaosKitty.Meow();
 
             var message = evt.QueueMessage;
             var transactionId = message.Id;
@@ -125,25 +121,25 @@ namespace Lykke.Job.TransactionHandler.Projections
                     nameof(RegisterOperation), operation.ToJson(),
                     $"Unexpected response from Operations Service: {response.ToJson()}");
             }
+
+            ChaosKitty.Meow();
         }
 
         public async Task Handle(TradeCreatedEvent evt)
         {
             await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             if (evt.ClientTrades != null)
             {
                 await _clientTradesRepository.SaveAsync(evt.ClientTrades);
             }
+
+            ChaosKitty.Meow();
         }
 
         public async Task Handle(ManualTransactionStateSavedEvent evt)
         {
             await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(ManualTransactionStateSavedEvent), evt.ToJson(), "");
-
-            ChaosKitty.Meow();
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
@@ -173,8 +169,6 @@ namespace Lykke.Job.TransactionHandler.Projections
         {
             await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(IssueTransactionStateSavedEvent), evt.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             var message = evt.Message;
             var multisig = evt.Command.Multisig;
             var amount = evt.Command.Amount;
@@ -199,8 +193,6 @@ namespace Lykke.Job.TransactionHandler.Projections
         public async Task Handle(CashoutTransactionStateSavedEvent evt)
         {
             await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
-
-            ChaosKitty.Meow();
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
@@ -231,8 +223,6 @@ namespace Lykke.Job.TransactionHandler.Projections
         public async Task Handle(ForwardWithdawalLinkedEvent evt)
         {
             await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(ForwardWithdawalLinkedEvent), evt.ToJson(), "");
-
-            ChaosKitty.Meow();
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
@@ -265,10 +255,12 @@ namespace Lykke.Job.TransactionHandler.Projections
         {
             if (evt.IsTrustedClient)
                 return;
-            
+
             var activeLimitOrdersCount = evt.ActiveLimitOrders.Count();
 
             await _clientCacheRepository.UpdateLimitOrdersCount(evt.ClientId, activeLimitOrdersCount);
+
+            ChaosKitty.Meow();
 
             _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt, Formatting.Indented), $"Client {evt.ClientId}. Limit orders cache updated: {activeLimitOrdersCount} active orders");
         }
@@ -282,6 +274,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                     nameof(RegisterOperation), operation.ToJson(),
                     $"Unexpected response from Operations Service: {operationId}");
             }
-        }        
+
+            ChaosKitty.Meow();
+        }
     }
 }

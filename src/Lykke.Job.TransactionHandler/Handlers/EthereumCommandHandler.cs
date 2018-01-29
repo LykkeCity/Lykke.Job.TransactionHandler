@@ -139,6 +139,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var response = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
                 addressTo, txRequest.Volume);
 
+            ChaosKitty.Meow();
+
             if (response.HasError && response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists)
             {
                 var errorMessage = response.Error.ToJson();
@@ -147,6 +149,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
 
             await _operationsClient.Complete(transferId);
+
+            ChaosKitty.Meow();
 
             return CommandHandlingResult.Ok();
         }

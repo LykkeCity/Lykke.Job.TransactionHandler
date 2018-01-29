@@ -4,7 +4,6 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Handlers;
 using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Projections

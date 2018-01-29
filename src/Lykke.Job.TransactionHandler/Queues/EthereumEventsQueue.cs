@@ -26,7 +26,6 @@ using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {

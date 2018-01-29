@@ -69,11 +69,11 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
             _tableStorage = tableStorage;
         }
 
-        public async Task CreateAsync(string transactionId, string commandType,
+        public async Task<bool> TryCreateAsync(string transactionId, string commandType,
             string requestData, string contextData, string response, string blockchainHash = null)
         {
             var newEntity = BitCoinTransactionEntity.ByTransactionId.CreateNew(transactionId, commandType, requestData, contextData, response, blockchainHash);
-            await _tableStorage.InsertAsync(newEntity);
+            return await _tableStorage.TryInsertAsync(newEntity);
         }
 
         public async Task CreateOrUpdateAsync(string transactionId, string commandType)

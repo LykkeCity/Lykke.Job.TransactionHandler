@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
-using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using MessagePack;
-using ProtoBuf;
 
 namespace Lykke.Job.TransactionHandler.Commands.LimitTrades
 {

@@ -4,6 +4,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Common
 {
     public interface IBlobRepository
     {
-        Task<string> Insert(object value);
+        Task<bool> TryInsert(object value);
     }
 }

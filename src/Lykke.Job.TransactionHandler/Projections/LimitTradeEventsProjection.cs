@@ -4,8 +4,6 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Handlers;
-using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;

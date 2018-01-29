@@ -127,7 +127,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var requestData = command.ToJson();
 
             await _transactionsRepository.UpdateAsync(transactionId, requestData, null, "");
+            ChaosKitty.Meow();
+
             await _transactionService.SetTransactionContext(transactionId, context);
+
+            ChaosKitty.Meow();
         }
     }
 }
