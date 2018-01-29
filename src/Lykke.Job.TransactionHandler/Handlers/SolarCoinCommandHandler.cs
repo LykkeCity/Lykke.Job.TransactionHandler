@@ -28,11 +28,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(SolarCoinCommandHandler), nameof(Commands.SolarCashOutCommand), command.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             var slrAddress = new SolarCoinAddress(command.Address);
             
             await _solarCoinCommandProducer.ProduceCashOutCommand(command.TransactionId, slrAddress, command.Amount);
+
+            ChaosKitty.Meow();
 
             eventPublisher.PublishEvent(new SolarCashOutCompletedEvent
             {

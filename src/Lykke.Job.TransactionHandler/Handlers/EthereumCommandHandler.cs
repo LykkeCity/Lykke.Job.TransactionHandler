@@ -52,8 +52,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(Commands.ProcessEthereumCashoutCommand), command.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
             string errorMessage = null;
 
@@ -86,6 +84,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     errorMessage = response.Error.ToJson();
             }
 
+            ChaosKitty.Meow();
+
             if (errorMessage != null)
             {
                 await _ethClientEventLogs.WriteEvent(command.ClientId, Event.Error, new { Request = command.TransactionId, Error = errorMessage }.ToJson());
@@ -99,8 +99,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         public async Task<CommandHandlingResult> Handle(EthTransferTrustedWalletCommand command)
         {
             await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(EthTransferTrustedWalletCommand), command.ToJson());
-
-            ChaosKitty.Meow();
 
             var transferType = command.TransferType;
             var txRequest = command.TxRequest;

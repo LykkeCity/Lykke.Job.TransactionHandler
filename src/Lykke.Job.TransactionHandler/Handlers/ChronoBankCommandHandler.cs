@@ -26,9 +26,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(SolarCoinCommandHandler), nameof(Commands.ChronoBankCashOutCommand), command.ToJson(), "");
 
-            ChaosKitty.Meow();
-            
             await _chronoBankCommandProducer.ProduceCashOutCommand(command.TransactionId, command.Address, command.Amount);
+
+            ChaosKitty.Meow();
 
             return CommandHandlingResult.Ok();
         }

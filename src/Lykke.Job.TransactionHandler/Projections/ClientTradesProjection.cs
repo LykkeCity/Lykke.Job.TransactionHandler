@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
+using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Newtonsoft.Json;
@@ -47,6 +48,8 @@ namespace Lykke.Job.TransactionHandler.Projections
             {
                 _log.WriteInfo(nameof(ClientTradesProjection), JsonConvert.SerializeObject(evt, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order: {evt.LimitOrder.Order.Id}. Trades are empty");
             }
+
+            ChaosKitty.Meow();
         }
     }
 }

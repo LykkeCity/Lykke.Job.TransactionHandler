@@ -30,8 +30,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(BitcoinCommandHandler), nameof(Commands.BitcoinCashOutCommand), command.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             var response = await _bitcoinApiClient.CashoutAsync(new CashoutModel
             {
                 Amount = (decimal)command.Amount,
@@ -45,6 +43,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 return CommandHandlingResult.Fail(_retryTimeout);
             }
 
+            ChaosKitty.Meow();
+
             return CommandHandlingResult.Ok();
         }
 
@@ -52,14 +52,14 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(BitcoinCommandHandler), nameof(Commands.SegwitTransferCommand), command.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             var response = await _bitcoinApiClient.SegwitTransfer(Guid.Parse(command.Id), command.Address);
             if (response.HasError && response.Error.ErrorCode != ErrorCode.DuplicateTransactionId)
             {
                 await _log.WriteErrorAsync(nameof(BitcoinCommandHandler), nameof(Commands.SegwitTransferCommand), command.ToJson(), new Exception(response.ToJson()));
                 return CommandHandlingResult.Fail(_retryTimeout);
             }
+
+            ChaosKitty.Meow();
 
             return CommandHandlingResult.Ok();
         }

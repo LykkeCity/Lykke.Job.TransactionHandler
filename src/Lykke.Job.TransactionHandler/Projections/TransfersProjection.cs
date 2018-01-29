@@ -26,11 +26,11 @@ namespace Lykke.Job.TransactionHandler.Projections
         {
             await _log.WriteInfoAsync(nameof(TransfersProjection), nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             var message = evt.QueueMessage;
             await _transferLogRepository.CreateAsync(message.Id, message.Date, message.FromClientId, message.ToClientid,
                 message.AssetId, message.Amount, message.FeeSettings?.ToJson(), message.FeeData?.ToJson());
+
+            ChaosKitty.Meow();
         }
     }
 }

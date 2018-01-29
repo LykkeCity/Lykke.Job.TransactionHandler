@@ -39,7 +39,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            IClientCacheRepository clientCacheRepository)
+            [NotNull] IClientCacheRepository clientCacheRepository)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _clientTradesRepository = clientTradesRepository ?? throw new ArgumentNullException(nameof(clientTradesRepository));
@@ -49,6 +49,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
+            _clientCacheRepository = clientCacheRepository ?? throw new ArgumentNullException(nameof(clientCacheRepository));
         }
 
         public async Task Handle(TransferOperationStateSavedEvent evt)

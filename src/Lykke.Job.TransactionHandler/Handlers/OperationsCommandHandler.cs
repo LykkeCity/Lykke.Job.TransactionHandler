@@ -39,8 +39,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveTransferOperationStateCommand), operationStateCommand.ToJson());
 
-            ChaosKitty.Meow();
-
             var message = operationStateCommand.QueueMessage;
             var transactionId = message.Id;
 
@@ -121,12 +119,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         private async Task SaveState(BaseCommand command, BaseContextData context)
         {
-            ChaosKitty.Meow();
-
             var transactionId = command.TransactionId.ToString();
             var requestData = command.ToJson();
 
             await _transactionsRepository.UpdateAsync(transactionId, requestData, null, "");
+
             ChaosKitty.Meow();
 
             await _transactionService.SetTransactionContext(transactionId, context);

@@ -31,12 +31,12 @@ namespace Lykke.Job.TransactionHandler.Projections
         {
             await _log.WriteInfoAsync(nameof(EmailProjection), nameof(SolarCashOutCompletedEvent), evt.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             var slrAddress = new SolarCoinAddress(evt.Address);
             var clientAcc = await _clientAccountClient.GetByIdAsync(evt.ClientId);
 
             await _srvEmailsFacade.SendSolarCashOutCompletedEmail(clientAcc.PartnerId, clientAcc.Email, slrAddress.Value, evt.Amount);
+
+            ChaosKitty.Meow();
         }
 
     }
