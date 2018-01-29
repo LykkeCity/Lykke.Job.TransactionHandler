@@ -2,25 +2,25 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Handlers;
+using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Utils;
 using Newtonsoft.Json;
+using AggregatedTransfer = Lykke.Job.TransactionHandler.Handlers.AggregatedTransfer;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
     public class ContextProjection
     {
         private readonly ILog _log;
-        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly ITransactionService _transactionService;
 
-        public ContextProjection(ILog log, IBitcoinTransactionService bitcoinTransactionService)
+        public ContextProjection(ILog log, ITransactionService transactionService)
         {
             _log = log;
-            _bitcoinTransactionService = bitcoinTransactionService;
+            _transactionService = transactionService;
         }
 
         public async Task Handle(LimitOrderExecutedEvent evt)
@@ -28,7 +28,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             if (evt.IsTrustedClient)
                 return;
             
-            var contextData = await _bitcoinTransactionService.GetTransactionContext<SwapOffchainContextData>(evt.LimitOrder.Order.Id) ?? new SwapOffchainContextData();
+            var contextData = await _transactionService.GetTransactionContext<SwapOffchainContextData>(evt.LimitOrder.Order.Id) ?? new SwapOffchainContextData();
 
             var aggregated = evt.Aggregated ?? new List<AggregatedTransfer>();
 
@@ -46,8 +46,13 @@ namespace Lykke.Job.TransactionHandler.Projections
                 });
             }
 
-            await _bitcoinTransactionService.CreateOrUpdateAsync(evt.LimitOrder.Order.Id);
-            await _bitcoinTransactionService.SetTransactionContext(evt.LimitOrder.Order.Id, contextData);
+            await _transactionService.CreateOrUpdateAsync(evt.LimitOrder.Order.Id);
+
+            ChaosKitty.Meow();
+
+            await _transactionService.SetTransactionContext(evt.LimitOrder.Order.Id, contextData);
+            
+            ChaosKitty.Meow();
 
             _log.WriteInfo(nameof(ContextProjection), JsonConvert.SerializeObject(contextData), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
         }        

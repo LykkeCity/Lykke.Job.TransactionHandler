@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using System.Threading.Tasks;
 using Common;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Services.Http;
 
 namespace Lykke.Job.TransactionHandler.Services.Notifications

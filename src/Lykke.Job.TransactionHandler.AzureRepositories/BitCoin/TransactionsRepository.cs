@@ -60,20 +60,20 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
         }
     }
 
-    public class BitCoinTransactionsRepository : IBitCoinTransactionsRepository
+    public class TransactionsRepository : ITransactionsRepository
     {
         private readonly INoSQLTableStorage<BitCoinTransactionEntity> _tableStorage;
 
-        public BitCoinTransactionsRepository(INoSQLTableStorage<BitCoinTransactionEntity> tableStorage)
+        public TransactionsRepository(INoSQLTableStorage<BitCoinTransactionEntity> tableStorage)
         {
             _tableStorage = tableStorage;
         }
 
-        public async Task CreateAsync(string transactionId, string commandType,
+        public async Task<bool> TryCreateAsync(string transactionId, string commandType,
             string requestData, string contextData, string response, string blockchainHash = null)
         {
             var newEntity = BitCoinTransactionEntity.ByTransactionId.CreateNew(transactionId, commandType, requestData, contextData, response, blockchainHash);
-            await _tableStorage.InsertAsync(newEntity);
+            return await _tableStorage.TryInsertAsync(newEntity);
         }
 
         public async Task CreateOrUpdateAsync(string transactionId, string commandType)
@@ -114,14 +114,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
                 entity.ResponseData = response ?? entity.ResponseData;
                 return entity;
             });
-        }
-
-        public Task DeleteAsync(string transactionId)
-        {
-            var partitionKey = BitCoinTransactionEntity.ByTransactionId.GeneratePartitionKey();
-            var rowKey = BitCoinTransactionEntity.ByTransactionId.GenerateRowKey(transactionId);
-
-            return _tableStorage.DeleteAsync(partitionKey, rowKey);
         }
     }
 }

@@ -11,13 +11,13 @@ using Lykke.Service.ClientAccount.Client;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
-    public class NotificationsProjection
+    public class EmailProjection
     {
         private readonly ILog _log;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly ISrvEmailsFacade _srvEmailsFacade;
 
-        public NotificationsProjection(
+        public EmailProjection(
             [NotNull] ILog log,
             [NotNull] IClientAccountClient clientAccountClient,
             [NotNull] ISrvEmailsFacade srvEmailsFacade)
@@ -29,14 +29,14 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(SolarCashOutCompletedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(NotificationsProjection), nameof(SolarCashOutCompletedEvent), evt.ToJson(), "");
-
-            ChaosKitty.Meow();
+            await _log.WriteInfoAsync(nameof(EmailProjection), nameof(SolarCashOutCompletedEvent), evt.ToJson(), "");
 
             var slrAddress = new SolarCoinAddress(evt.Address);
             var clientAcc = await _clientAccountClient.GetByIdAsync(evt.ClientId);
 
             await _srvEmailsFacade.SendSolarCashOutCompletedEmail(clientAcc.PartnerId, clientAcc.Email, slrAddress.Value, evt.Amount);
+
+            ChaosKitty.Meow();
         }
 
     }

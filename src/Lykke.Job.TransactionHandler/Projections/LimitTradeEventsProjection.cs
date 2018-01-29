@@ -4,9 +4,8 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Handlers;
-using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
@@ -56,6 +55,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 default:
                     throw new ArgumentOutOfRangeException(nameof(OrderStatus));
             }
+
+            ChaosKitty.Meow();
         }
 
         private async Task CreateEvent(LimitQueueItem.LimitOrderWithTrades limitOrderWithTrades, OrderStatus status)

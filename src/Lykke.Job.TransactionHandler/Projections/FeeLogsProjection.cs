@@ -4,7 +4,7 @@ using Common;
 using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Handlers;
+using Lykke.Job.TransactionHandler.Utils;
 using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Projections
@@ -21,7 +21,7 @@ namespace Lykke.Job.TransactionHandler.Projections
         }
 
         public async Task Handle(LimitOrderExecutedEvent evt)
-        {           
+        {
             if (evt.LimitOrder.Trades == null || evt.LimitOrder.Trades.Count == 0)
                 return;
 
@@ -40,6 +40,8 @@ namespace Lykke.Job.TransactionHandler.Projections
             await Task.WhenAll(feeLogTasks);
 
             _log.WriteInfo(nameof(FeeLogsProjection), JsonConvert.SerializeObject(feeLogs, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Fee logs updated");
+
+            ChaosKitty.Meow();
         }
     }
 }

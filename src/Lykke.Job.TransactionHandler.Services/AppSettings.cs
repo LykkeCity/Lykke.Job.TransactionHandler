@@ -45,10 +45,8 @@ namespace Lykke.Job.TransactionHandler.Services
         {
             public string LogsConnString { get; set; }
             public string BitCoinQueueConnectionString { get; set; }
-            public string DictsConnString { get; set; }
             public string ClientPersonalInfoConnString { get; set; }
             public string BalancesInfoConnString { get; set; }
-            public string HTradesConnString { get; set; }
             public string ChronoBankSrvConnString { get; set; }
             public string LwEthLogsConnString { get; set; }
             public string HMarketOrdersConnString { get; set; }
@@ -83,10 +81,9 @@ namespace Lykke.Job.TransactionHandler.Services
 
             public IPEndPoint GetClientIpEndPoint(bool useInternal = false)
             {
-                string host = useInternal ? InternalHost : Host;
+                var host = useInternal ? InternalHost : Host;
 
-                IPAddress ipAddress;
-                if (IPAddress.TryParse(host, out ipAddress))
+                if (IPAddress.TryParse(host, out var ipAddress))
                     return new IPEndPoint(ipAddress, Port);
 
                 var addresses = Dns.GetHostAddressesAsync(host).Result;

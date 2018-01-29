@@ -2,9 +2,6 @@
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Microsoft.WindowsAzure.Storage.Table;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Clients
@@ -50,11 +47,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Clients
         public ClientCommentsRepository(INoSQLTableStorage<ClientCommentEntity> table)
         {
             _table = table;
-        }
-
-        public async Task<IEnumerable<IClientComment>> GetClientCommentsAsync(string clientId)
-        {
-            return (await _table.GetDataAsync(ClientCommentEntity.GeneratePartitionKey(clientId))).OrderBy(x => x.CreatedAt);
         }
 
         public Task AddClientCommentAsync(IClientComment data)

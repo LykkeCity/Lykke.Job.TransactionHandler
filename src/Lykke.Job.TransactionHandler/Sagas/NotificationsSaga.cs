@@ -2,7 +2,6 @@
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Utils;
 
 namespace Lykke.Job.TransactionHandler.Sagas

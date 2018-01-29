@@ -1,27 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
+using Lykke.Job.TransactionHandler.Sagas.Services;
+using Lykke.Service.Assets.Client.Models;
+using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
-namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
+namespace Lykke.Job.TransactionHandler.Queues.Models
 {
-    public class GenerateWalletContextData : BaseContextData
-    {
-        public string ClientId { get; set; }
-
-        public static GenerateWalletContextData Create(string clientId)
-        {
-            return new GenerateWalletContextData
-            {
-                ClientId = clientId
-            };
-        }
-    }
-
-    public class CashInOutContextData : BaseContextData
-    {
-        public string ClientId { get; set; }
-        public string CashOperationId { get; set; }
-    }
-
     public class IssueContextData : BaseContextData
     {
         public string ClientId { get; set; }
@@ -39,21 +25,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         public double Amount { get; set; }
         public string CashOperationId { get; set; }
         public AdditionalData AddData { get; set; }
-
-        public static CashOutContextData Create(string clientId, string assetId, string address, double amount,
-            string cashOpId, AdditionalData additionalData = null)
-        {
-            return new CashOutContextData
-            {
-                ClientId = clientId,
-                AssetId = assetId,
-                Amount = amount,
-                Address = address,
-                CashOperationId = cashOpId,
-                AddData = additionalData,
-                SignsClientIds = new[] { clientId }
-            };
-        }
 
         #region Additional data
 
@@ -77,25 +48,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
 
     }
 
-    public class TradeContextData : BaseContextData
-    {
-        public string MarketOrderId { get; set; }
-        public DateTime DateTime { get; set; }
-
-        public SwapContextData[] Swaps { get; set; }
-    }
-
-    public class SwapContextData : BaseContextData
-    {
-        public class TradeModel
-        {
-            public string ClientId { get; set; }
-            public string TradeId { get; set; }
-        }
-
-        public TradeModel[] Trades { get; set; }
-    }
-
     public class SwapOffchainContextData : BaseContextData
     {
         public class Operation
@@ -108,19 +60,21 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         }
 
         public List<Operation> Operations { get; set; } = new List<Operation>();
+        public AggregatedTransfer SellTransfer { get; set; }
+        public AggregatedTransfer BuyTransfer { get; set; }
+        public ClientTrade[] ClientTrades { get; set; }
+        public bool IsTrustedClient { get; set; }
+        public TradeQueueItem.MarketOrder Order { get; set; }
+        public List<TradeQueueItem.TradeInfo> Trades { get; set; }
+        [JsonConverter(typeof(StringEnumConverter))]
+        public OperationStatus Status { get; set; }
     }
 
-    public class DirectSwapContextData : BaseContextData
+    public class AggregatedTransfer
     {
-        public class PartyModel
-        {
-            public string ClientId { get; set; }
-            public string AssetId { get; set; }
-            public double Amount { get; set; }
-        }
-
-        public PartyModel FirstParty { get; set; }
-        public PartyModel SecondParty { get; set; }
+        public string TransferId { get; set; }
+        public decimal Amount { get; set; }
+        public Asset Asset { get; set; }
     }
 
     public enum TransferType
@@ -143,15 +97,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
             public string ClientId { get; set; }
             public string OperationId { get; set; }
             public AdditionalActions Actions { get; set; }
-
-            public static TransferModel Create(string clientId, string operationId)
-            {
-                return new TransferModel
-                {
-                    ClientId = clientId,
-                    OperationId = operationId
-                };
-            }
         }
 
         public TransferModel[] Transfers { get; set; }
@@ -266,68 +211,4 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         #endregion
     }
 
-    public class RefundContextData : BaseContextData
-    {
-        public string ClientId { get; set; }
-        public string SrcBlockchainHash { get; set; }
-        public string OperationType { get; set; }
-        public double? Amount { get; set; }
-        public string AssetId { get; set; }
-    }
-
-    public class UncolorContextData : BaseContextData
-    {
-        public string ClientId { get; set; }
-        public string AssetId { get; set; }
-        public double Amount { get; set; }
-        public string AddressFrom { get; set; }
-        public string AddressTo { get; set; }
-
-        public string CashOperationId { get; set; }
-    }
-
-    public class BaseContextData
-    {
-        public string[] SignsClientIds { get; set; }
-    }
-
-    public class TransferToMarginContextData : BaseContextData
-    {
-        public string ClientId { get; set; }
-        public string MarginAccountId { get; set; }
-        public string AssetId { get; set; }
-        public double Amount { get; set; }
-
-        public static TransferToMarginContextData Create(string clientId, string marginAccountId, string assetId, double amount)
-        {
-            return new TransferToMarginContextData
-            {
-                ClientId = clientId,
-                AssetId = assetId,
-                Amount = amount,
-                MarginAccountId = marginAccountId,
-                SignsClientIds = new[] { clientId }
-            };
-        }
-    }
-
-    public class RecieveFromMarginContextData : BaseContextData
-    {
-        public string ClientId { get; set; }
-        public string MarginAccountId { get; set; }
-        public string AssetId { get; set; }
-        public double Amount { get; set; }
-
-        public static RecieveFromMarginContextData Create(string clientId, string marginAccountId, string assetId, double amount)
-        {
-            return new RecieveFromMarginContextData
-            {
-                ClientId = clientId,
-                AssetId = assetId,
-                Amount = amount,
-                MarginAccountId = marginAccountId,
-                SignsClientIds = new[] { clientId }
-            };
-        }
-    }
 }

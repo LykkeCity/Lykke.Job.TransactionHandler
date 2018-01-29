@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -22,122 +19,8 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
                 return clientId;
             }
 
-            public static WalletCredentialsEntity CreateNew(IWalletCredentials src)
-            {
-                var entity = Create(src);
-                entity.PartitionKey = GeneratePartitionKey();
-                entity.RowKey = GenerateRowKey(src.ClientId);
-                return entity;
-            }
         }
 
-        public static class ByColoredMultisig
-        {
-            public static string GeneratePartitionKey()
-            {
-                return "WalletColoredMultisig";
-            }
-
-            public static string GenerateRowKey(string coloredMultisig)
-            {
-                return coloredMultisig;
-            }
-
-            public static WalletCredentialsEntity CreateNew(IWalletCredentials src)
-            {
-                var entity = Create(src);
-                entity.PartitionKey = GeneratePartitionKey();
-                entity.RowKey = GenerateRowKey(src.ColoredMultiSig);
-                return entity;
-            }
-        }
-
-        public static class ByMultisig
-        {
-            public static string GeneratePartitionKey()
-            {
-                return "WalletMultisig";
-            }
-
-            public static string GenerateRowKey(string multisig)
-            {
-                return multisig;
-            }
-
-            public static WalletCredentialsEntity CreateNew(IWalletCredentials src)
-            {
-                var entity = Create(src);
-                entity.PartitionKey = GeneratePartitionKey();
-                entity.RowKey = GenerateRowKey(src.MultiSig);
-                return entity;
-            }
-        }
-
-        public static class ByEthContract
-        {
-            public static string GeneratePartitionKey()
-            {
-                return "EthConversionWallet";
-            }
-
-            public static string GenerateRowKey(string ethWallet)
-            {
-                return ethWallet;
-            }
-
-            public static WalletCredentialsEntity CreateNew(IWalletCredentials src)
-            {
-                var entity = Create(src);
-                entity.PartitionKey = GeneratePartitionKey();
-                entity.RowKey = GenerateRowKey(src.EthConversionWalletAddress);
-                return entity;
-            }
-        }
-
-        public static class BySolarCoinWallet
-        {
-            public static string GeneratePartitionKey()
-            {
-                return "SolarCoinWallet";
-            }
-
-            public static string GenerateRowKey(string address)
-            {
-                return address;
-            }
-
-            public static WalletCredentialsEntity CreateNew(IWalletCredentials src)
-            {
-                var entity = Create(src);
-                entity.PartitionKey = GeneratePartitionKey();
-                entity.RowKey = GenerateRowKey(src.SolarCoinWalletAddress);
-                return entity;
-            }
-        }
-        
-        public static WalletCredentialsEntity Create(IWalletCredentials src)
-        {
-            return new WalletCredentialsEntity
-            {
-                ClientId = src.ClientId,
-                PrivateKey = src.PrivateKey,
-                Address = src.Address,
-                MultiSig = src.MultiSig,
-                ColoredMultiSig = src.ColoredMultiSig,
-                PreventTxDetection = src.PreventTxDetection,
-                EncodedPrivateKey = src.EncodedPrivateKey,
-                PublicKey = src.PublicKey,
-                BtcConvertionWalletPrivateKey = src.BtcConvertionWalletPrivateKey,
-                BtcConvertionWalletAddress = src.BtcConvertionWalletAddress,
-                EthConversionWalletAddress = src.EthConversionWalletAddress,
-                EthAddress = src.EthAddress,
-                EthPublicKey = src.EthPublicKey,
-                SolarCoinWalletAddress = src.SolarCoinWalletAddress,
-                ChronoBankContract = src.ChronoBankContract,
-                QuantaContract = src.QuantaContract
-            };
-        }
-        
         public string ClientId { get; set; }
         public string Address { get; set; }
         public string PublicKey { get; set; }
@@ -164,7 +47,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
         {
             _tableStorage = tableStorage;
         }
-        
+
         public async Task<IWalletCredentials> GetAsync(string clientId)
         {
             var partitionKey = WalletCredentialsEntity.ByClientId.GeneratePartitionKey();
@@ -176,7 +59,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
                 return null;
 
             return string.IsNullOrEmpty(entity.MultiSig) ? null : entity;
-        }        
+        }
     }
-
 }

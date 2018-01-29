@@ -10,7 +10,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
         public AutofacDependencyResolver(IComponentContext kernel)
         {
-            _context = kernel ?? throw new ArgumentNullException("kernel");
+            _context = kernel ?? throw new ArgumentNullException(nameof(kernel));
         }
 
         public object GetService(Type type)

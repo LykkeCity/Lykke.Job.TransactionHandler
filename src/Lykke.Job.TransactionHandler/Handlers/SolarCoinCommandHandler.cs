@@ -4,6 +4,7 @@ using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
+using Lykke.Job.TransactionHandler.Core.Domain.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Utils;
@@ -13,25 +14,25 @@ namespace Lykke.Job.TransactionHandler.Handlers
     public class SolarCoinCommandHandler
     {
         private readonly ILog _log;
-        private readonly ISrvSolarCoinHelper _srvSolarCoinHelper;
+        private readonly ISrvSolarCoinCommandProducer _solarCoinCommandProducer;
 
         public SolarCoinCommandHandler(
             [NotNull] ILog log,
-            [NotNull] ISrvSolarCoinHelper srvSolarCoinHelper)
+            [NotNull] ISrvSolarCoinCommandProducer solarCoinCommandProducer)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            _srvSolarCoinHelper = srvSolarCoinHelper ?? throw new ArgumentNullException(nameof(srvSolarCoinHelper));
+            _solarCoinCommandProducer = solarCoinCommandProducer ?? throw new ArgumentNullException(nameof(solarCoinCommandProducer));
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SolarCashOutCommand command, IEventPublisher eventPublisher)
         {
             await _log.WriteInfoAsync(nameof(SolarCoinCommandHandler), nameof(Commands.SolarCashOutCommand), command.ToJson(), "");
 
-            ChaosKitty.Meow();
-
             var slrAddress = new SolarCoinAddress(command.Address);
+            
+            await _solarCoinCommandProducer.ProduceCashOutCommand(command.TransactionId, slrAddress, command.Amount);
 
-            await _srvSolarCoinHelper.SendCashOutRequest(command.TransactionId, slrAddress, command.Amount);
+            ChaosKitty.Meow();
 
             eventPublisher.PublishEvent(new SolarCashOutCompletedEvent
             {

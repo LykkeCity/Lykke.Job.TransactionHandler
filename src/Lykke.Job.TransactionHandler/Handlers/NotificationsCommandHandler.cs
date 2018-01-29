@@ -10,7 +10,6 @@ using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Resources;
-using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
@@ -26,19 +25,19 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly IAppNotifications _appNotifications;
 
         public NotificationsCommandHandler(
-            ILog log,
+            [NotNull] ILog log,
             IAssetsServiceWithCache assetsServiceWithCache, 
             IClientSettingsRepository clientSettingsRepository, 
             IClientAccountClient clientAccountClient,
             IAppNotifications appNotifications)
         {
-            _log = log;
+            _log = log ?? throw new ArgumentNullException(nameof(log));
             _assetsServiceWithCache = assetsServiceWithCache;
             _clientSettingsRepository = clientSettingsRepository;
             _clientAccountClient = clientAccountClient;
             _appNotifications = appNotifications;
         }
-
+        
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(LimitTradeNotifySendCommand command)
         {   

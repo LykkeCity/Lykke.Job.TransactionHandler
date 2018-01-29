@@ -1,34 +1,16 @@
 ﻿using System;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Services.SolarCoin
 {
-    public interface ISrvSolarCoinHelper
-    {
-        Task SendCashOutRequest(string id, SolarCoinAddress addressTo, double amount);
-    }
-
     public class SolarCoinAddress
     {
-        private string _address;
+        private readonly string _address;
         private static readonly Regex Base58Regex = new Regex(@"^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$");
 
-        public string Value
-        {
-            get { return _address; }
-            set
-            {
-                SetAddress(value);
-            }
-        }
+        public string Value => _address;
 
         public SolarCoinAddress(string address)
-        {
-            SetAddress(address);
-        }
-
-        private void SetAddress(string address)
         {
             if (!IsValid(address))
                 throw new ArgumentException("Address is invalid");
@@ -36,7 +18,7 @@ namespace Lykke.Job.TransactionHandler.Core.Services.SolarCoin
             _address = address;
         }
 
-        public static bool IsValid(string address)
+        private static bool IsValid(string address)
         {
             return !string.IsNullOrEmpty(address) && address[0] == '8' && address.Length < 40 && Base58Regex.IsMatch(address);
         }

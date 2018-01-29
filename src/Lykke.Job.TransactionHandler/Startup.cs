@@ -35,8 +35,11 @@ namespace Lykke.Job.TransactionHandler
 
         private readonly IEnumerable<Type> _subscribers = new List<Type>
         {
-            typeof(CashInOutQueue), typeof(EthereumEventsQueue), typeof(LimitTradeQueue),
-            typeof(TradeQueue), typeof(TransferQueue)
+            typeof(CashInOutQueue),
+            typeof(EthereumEventsQueue),
+            typeof(LimitTradeQueue),
+            typeof(TradeQueue),
+            typeof(TransferQueue)
         };
 
         public Startup(IHostingEnvironment env)
@@ -71,6 +74,7 @@ namespace Lykke.Job.TransactionHandler
 
                 builder.RegisterModule(new JobModule(appSettings.CurrentValue, appSettings.Nested(x => x.TransactionHandlerJob.Db), Log));
                 builder.RegisterModule(new CqrsModule(appSettings, Log));
+                builder.RegisterModule(new MatchingEngineModule(appSettings.Nested(x => x.MatchingEngineClient)));
 
                 if (string.IsNullOrWhiteSpace(appSettings.CurrentValue.TransactionHandlerJob.Db.BitCoinQueueConnectionString))
                 {

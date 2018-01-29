@@ -7,6 +7,7 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
+using Lykke.Job.TransactionHandler.Utils;
 using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Handlers
@@ -28,6 +29,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _log.WriteInfo(nameof(HistoryCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), "CreateOrUpdateLimitOrderCommand");
 
             await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder);
+
+            ChaosKitty.Meow();
 
             IEnumerable<ILimitOrder> activeLimitOrders = null;
 

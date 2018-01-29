@@ -1,12 +1,11 @@
 ﻿using Lykke.Job.TransactionHandler.Queues.Models;
-using ProtoBuf;
+using MessagePack;
 
 namespace Lykke.Job.TransactionHandler.Commands
 {
-    [ProtoContract]
-    public class RegisterCashInOutOperationCommand
+    [MessagePackObject(keyAsPropertyName: true)]
+    public class SaveManualOperationStateCommand
     {
-        [ProtoMember(1)]
         public CashInOutQueueMessage Message { get; set; }
     }
 }

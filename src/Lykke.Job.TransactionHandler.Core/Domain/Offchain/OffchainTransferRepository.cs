@@ -39,7 +39,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
         string AdditionalDataJson { get; set; }
         string BlockchainHash { get; set; }
     }
-    
+
     public class OffchainTransferAdditionalData
     {
         public List<string> ChildTransfers { get; set; } = new List<string>();
@@ -68,10 +68,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
         Task<IOffchainTransfer> GetTransfer(string id);
 
         Task CompleteTransfer(string transferId, bool? onchain = null);
-
-        Task UpdateTransfer(string transferId, string toString, bool closing = false, bool? onchain = null);
-
-        Task<IEnumerable<IOffchainTransfer>> GetTransfersByDate(OffchainTransferType type, DateTimeOffset from, DateTimeOffset to);
 
         Task AddChildTransfer(string transferId, IOffchainTransfer child);
 

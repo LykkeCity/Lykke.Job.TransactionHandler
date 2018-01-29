@@ -27,14 +27,20 @@ namespace Lykke.Job.TransactionHandler.Queues
 {
     public class TransferQueue : IQueueSubscriber
     {
+#if DEBUG
+        private const string QueueName = "transactions.transfer-dev";
+        private const bool QueueDurable = false;
+#else
         private const string QueueName = "transactions.transfer";
+        private const bool QueueDurable = true;
+#endif
 
         private readonly ILog _log;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IBitCoinTransactionsRepository _bitCoinTransactionsRepository;
+        private readonly ITransactionsRepository _bitCoinTransactionsRepository;
         private readonly ITransferOperationsRepositoryClient _transferEventsRepositoryClient;
         private readonly IOffchainRequestService _offchainRequestService;
-        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly ITransactionService _bitcoinTransactionService;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly ISrvEthereumHelper _srvEthereumHelper;
@@ -50,9 +56,9 @@ namespace Lykke.Job.TransactionHandler.Queues
         public TransferQueue(AppSettings.RabbitMqSettings config, ILog log,
             ITransferOperationsRepositoryClient transferEventsRepositoryClient,
             IWalletCredentialsRepository walletCredentialsRepository,
-            IBitCoinTransactionsRepository bitCoinTransactionsRepository,
+            ITransactionsRepository bitCoinTransactionsRepository,
             IOffchainRequestService offchainRequestService,
-            IBitcoinTransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient,
+            ITransactionService bitcoinTransactionService, IClientAccountClient clientAccountClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ISrvEthereumHelper srvEthereumHelper,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings,
@@ -87,7 +93,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 ExchangeName = _rabbitConfig.ExchangeTransfer,
                 DeadLetterExchangeName = $"{_rabbitConfig.ExchangeTransfer}.dlx",
                 RoutingKey = "",
-                IsDurable = true
+                IsDurable = QueueDurable
             };
 
             try
@@ -112,7 +118,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        public async Task ProcessMessage(TransferQueueMessage queueMessage)
+        private async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
             if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
             {
@@ -121,7 +127,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
 
             var logTask = _transferLogRepository.CreateAsync(queueMessage.Id, queueMessage.Date, queueMessage.FromClientId, queueMessage.ToClientid, queueMessage.AssetId, queueMessage.Amount, queueMessage.FeeSettings?.ToJson(), queueMessage.FeeData?.ToJson());
-            
+
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
             var feeAmount = (queueMessage.FeeData?.Amount.ParseAnyDouble() ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
 
@@ -190,18 +196,15 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return;
             }
 
-            var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId);
-            if (contextData == null)
-            {
-                contextData = TransferContextData
-                    .Create(queueMessage.FromClientId, new TransferContextData.TransferModel
-                    {
-                        ClientId = queueMessage.ToClientid
-                    }, new TransferContextData.TransferModel
-                    {
-                        ClientId = queueMessage.FromClientId
-                    });
-            }
+            var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId) ??
+                              TransferContextData
+                                  .Create(queueMessage.FromClientId, new TransferContextData.TransferModel
+                                  {
+                                      ClientId = queueMessage.ToClientid
+                                  }, new TransferContextData.TransferModel
+                                  {
+                                      ClientId = queueMessage.FromClientId
+                                  });
 
             contextData.Transfers[0].OperationId = destTransfer.Id;
             contextData.Transfers[1].OperationId = sourceTransfer.Id;

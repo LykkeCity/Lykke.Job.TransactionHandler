@@ -1,17 +1,14 @@
-﻿using ProtoBuf;
+﻿using MessagePack;
 
 namespace Lykke.Job.TransactionHandler.Events
 {
-    [ProtoContract]
+    [MessagePackObject(keyAsPropertyName: true)]
     public class SolarCashOutCompletedEvent
     {
-        [ProtoMember(1)]
         public double Amount { get; set; }
 
-        [ProtoMember(2)]
         public string Address { get; set; }
 
-        [ProtoMember(3)]
         public string ClientId { get; set; }
     }
 }

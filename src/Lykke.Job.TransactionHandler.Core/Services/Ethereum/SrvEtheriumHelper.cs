@@ -12,20 +12,7 @@ namespace Lykke.Job.TransactionHandler.Core.Services.Ethereum
         Task<EthereumResponse<OperationResponse>> SendCashOutAsync(Guid id, string sign, Asset asset, string fromAddress,
             string toAddress, decimal amount);
 
-        Task<EthereumResponse<OperationResponse>> SendTransferWithChangeAsync(decimal change, string signFrom, Guid id, Asset asset, string fromAddress,
-            string toAddress, decimal amount);
-
         Task<EthereumResponse<bool>> HotWalletCashoutAsync(string opId, string fromAddress,
              string toAddress, decimal amount, Asset asset);
     }
-
-    #region Response Models
-
-    public class EthereumTransaction
-    {
-        public string Hash { get; set; }
-        public Guid OperationId { get; set; }
-    }
-
-    #endregion
 }
