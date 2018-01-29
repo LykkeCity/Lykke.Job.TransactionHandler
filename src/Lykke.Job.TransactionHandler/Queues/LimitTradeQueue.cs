@@ -78,7 +78,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     LimitOrder = limitOrderWithTrades
                 };
 
-                _cqrsEngine.SendCommand(command, "tx-handler", "tx-handler");
+                _cqrsEngine.SendCommand(command, BoundedContexts.Self, BoundedContexts.Self);
             }
         }
 

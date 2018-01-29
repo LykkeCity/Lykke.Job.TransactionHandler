@@ -6,7 +6,6 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Queues.Models;
@@ -28,7 +27,6 @@ namespace Lykke.Job.TransactionHandler.Projections
         private readonly Core.Services.BitCoin.ITransactionService _transactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
 
         public OperationHistoryProjection(
             [NotNull] ILog log,
@@ -38,7 +36,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] Core.Services.BitCoin.ITransactionService transactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
-            [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             [NotNull] IClientCacheRepository clientCacheRepository)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
@@ -48,71 +45,9 @@ namespace Lykke.Job.TransactionHandler.Projections
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
-            _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
             _clientCacheRepository = clientCacheRepository ?? throw new ArgumentNullException(nameof(clientCacheRepository));
         }
-
-        public async Task Handle(TransferOperationStateSavedEvent evt)
-        {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
-
-            var message = evt.QueueMessage;
-            var transactionId = message.Id;
-            var amount = evt.Amount;
-
-            var context = await _transactionService.GetTransactionContext<TransferContextData>(transactionId);
-
-            //Get eth request if it is ETH transfer
-            var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transactionId));
-
-            //Get client wallets
-            var destWallet = await _walletCredentialsRepository.GetAsync(message.ToClientid);
-            var sourceWallet = await _walletCredentialsRepository.GetAsync(message.FromClientId);
-
-            //Register transfer events
-            var transferState = ethTxRequest == null
-                ? TransactionStates.SettledOffchain
-                : ethTxRequest.OperationType == OperationType.TransferBetweenTrusted
-                    ? TransactionStates.SettledNoChain
-                    : TransactionStates.SettledOnchain;
-
-            await RegisterOperation(
-                new TransferEvent
-                {
-                    Id = context.Transfers.Single(x => x.ClientId == message.ToClientid).OperationId,
-                    ClientId = message.ToClientid,
-                    DateTime = DateTime.UtcNow,
-                    FromId = null,
-                    AssetId = message.AssetId,
-                    Amount = amount,
-                    TransactionId = transactionId,
-                    IsHidden = false,
-                    AddressFrom = destWallet?.Address,
-                    AddressTo = destWallet?.MultiSig,
-                    Multisig = destWallet?.MultiSig,
-                    IsSettled = false,
-                    State = transferState
-                });
-
-            await RegisterOperation(
-                new TransferEvent
-                {
-                    Id = context.Transfers.Single(x => x.ClientId == message.FromClientId).OperationId,
-                    ClientId = message.FromClientId,
-                    DateTime = DateTime.UtcNow,
-                    FromId = null,
-                    AssetId = message.AssetId,
-                    Amount = -amount,
-                    TransactionId = transactionId,
-                    IsHidden = false,
-                    AddressFrom = sourceWallet?.Address,
-                    AddressTo = sourceWallet?.MultiSig,
-                    Multisig = sourceWallet?.MultiSig,
-                    IsSettled = false,
-                    State = transferState
-                });
-        }
-
+        
         private async Task RegisterOperation(TransferEvent operation)
         {
             var response = await _transferEventsRepositoryClient.RegisterAsync(operation);
