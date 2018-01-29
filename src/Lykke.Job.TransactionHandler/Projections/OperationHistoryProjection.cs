@@ -12,6 +12,8 @@ using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using System.Linq;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
+using Lykke.Job.TransactionHandler.Services;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
@@ -22,19 +24,23 @@ namespace Lykke.Job.TransactionHandler.Projections
         private readonly Core.Services.BitCoin.IBitcoinTransactionService _bitcoinTransactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
+        private readonly IFeeCalculationService _feeCalculationService;
 
         public OperationHistoryProjection(
             [NotNull] ILog log,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] Core.Services.BitCoin.IBitcoinTransactionService bitcoinTransactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
-            [NotNull] IWalletCredentialsRepository walletCredentialsRepository)
+            [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
+            [NotNull] IFeeCalculationService feeCalculationService)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
             _bitcoinTransactionService = bitcoinTransactionService ?? throw new ArgumentNullException(nameof(bitcoinTransactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
+            _feeCalculationService =
+                feeCalculationService ?? throw new ArgumentNullException(nameof(feeCalculationService));
         }
 
         public async Task Handle(IssueTransactionStateSavedEvent evt)
@@ -102,7 +108,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
-            var amount = evt.Command.Amount;
+            var amountNoFee = await _feeCalculationService.GetAmountNoFee(message);
             var transactionId = evt.Command.TransactionId.ToString();
             var context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transactionId);
             var isForwardWithdawal = context.AddData?.ForwardWithdrawal != null;
@@ -113,7 +119,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 ClientId = message.ClientId,
                 Multisig = walletCredentials.MultiSig,
                 AssetId = message.AssetId,
-                Amount = -Math.Abs(amount),
+                Amount = -Math.Abs(amountNoFee),
                 DateTime = DateTime.UtcNow,
                 AddressFrom = walletCredentials.MultiSig,
                 AddressTo = context.Address,

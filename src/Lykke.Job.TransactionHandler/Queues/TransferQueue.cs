@@ -47,6 +47,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private readonly IFeeLogService _feeLogService;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
+        private readonly IFeeCalculationService _feeCalculationService;
 
         public TransferQueue(AppSettings.RabbitMqSettings config, ILog log,
             ITransferOperationsRepositoryClient transferEventsRepositoryClient,
@@ -59,7 +60,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             IBcnClientCredentialsRepository bcnClientCredentialsRepository, AppSettings.EthereumSettings settings,
             IOperationsClient operationsClient, IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IDeduplicator deduplicator,
-            IFeeLogService feeLogService)
+            IFeeLogService feeLogService,
+            IFeeCalculationService feeCalculationService)
         {
             _rabbitConfig = config;
             _log = log;
@@ -77,6 +79,8 @@ namespace Lykke.Job.TransactionHandler.Queues
             _assetsServiceWithCache = assetsServiceWithCache;
             _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
             _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
+            _feeCalculationService =
+                feeCalculationService ?? throw new ArgumentNullException(nameof(feeCalculationService));
         }
 
         public void Start()
@@ -125,11 +129,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
             
-            var feeAmount = (queueMessage.Fees?.FirstOrDefault()?.Transfer?.Volume ?? 0.0).TruncateDecimalPlaces(asset.Accuracy, true);
-
-            var amount = queueMessage.Amount.ParseAnyDouble();
-
-            amount = amount > 0 ? amount - feeAmount : amount + feeAmount;
+            var amountNoFee = await _feeCalculationService.GetAmountNoFee(queueMessage);
 
             //Get eth request if it is ETH transfer
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
@@ -155,7 +155,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                             DateTime = DateTime.UtcNow,
                             FromId = null,
                             AssetId = queueMessage.AssetId,
-                            Amount = amount,
+                            Amount = amountNoFee,
                             TransactionId = queueMessage.Id,
                             IsHidden = false,
                             AddressFrom = toWallet?.Address,
@@ -175,7 +175,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                             DateTime = DateTime.UtcNow,
                             FromId = null,
                             AssetId = queueMessage.AssetId,
-                            Amount = -amount,
+                            Amount = -amountNoFee,
                             TransactionId = queueMessage.Id,
                             IsHidden = false,
                             AddressFrom = fromWallet?.Address,
@@ -212,7 +212,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             var contextJson = contextData.ToJson();
             var cmd = new TransferCommand
             {
-                Amount = amount,
+                Amount = amountNoFee,
                 AssetId = queueMessage.AssetId,
                 Context = contextJson,
                 SourceAddress = fromWallet?.MultiSig,
@@ -231,7 +231,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 try
                 {
                     await _offchainRequestService.CreateOffchainRequestAndNotify(transaction.TransactionId,
-                        queueMessage.ToClientid, queueMessage.AssetId, (decimal)amount, null,
+                        queueMessage.ToClientid, queueMessage.AssetId, (decimal)amountNoFee, null,
                         OffchainTransferType.CashinToClient);
                 }
                 catch (Exception)

@@ -217,6 +217,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<PersistentDeduplicator>().As<IDeduplicator>().SingleInstance();
 
             builder.RegisterType<FeeLogService>().As<IFeeLogService>().SingleInstance();
+
+            builder.RegisterType<FeeCalculationService>().As<IFeeCalculationService>().SingleInstance();
         }
 
         private void BindRepositories(ContainerBuilder builder)
