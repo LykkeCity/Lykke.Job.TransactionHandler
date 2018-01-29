@@ -15,16 +15,16 @@ namespace Lykke.Job.TransactionHandler.Handlers
     {
         private readonly ILog _log;
         private readonly ILimitOrdersRepository _limitOrdersRepository;
-        
+
         public HistoryCommandHandler(ILog log, ILimitOrdersRepository limitOrdersRepository)
         {
             _log = log;
-            _limitOrdersRepository = limitOrdersRepository;            
+            _limitOrdersRepository = limitOrdersRepository;
         }
 
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(CreateOrUpdateLimitOrderCommand command, IEventPublisher eventPublisher)
-        {           
+        {
             _log.WriteInfo(nameof(HistoryCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), "CreateOrUpdateLimitOrderCommand");
 
             await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder);
@@ -41,10 +41,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 Id = command.LimitOrder.Id,
                 ClientId = command.LimitOrder.ClientId,
                 IsTrustedClient = command.IsTrustedClient,
-                ActiveLimitOrders = activeLimitOrders
+                ActiveLimitOrders = activeLimitOrders?.Select(x => x.Id)
             });
 
             return CommandHandlingResult.Ok();
-        }        
+        }
     }
 }
