@@ -14,6 +14,6 @@ namespace Lykke.Job.TransactionHandler.Events.LimitOrders
         public bool HasPrevOrderState { get; set; }       
         public double? PrevRemainingVolume { get; set; }        
         public ClientTrade[] Trades { get; set; }        
-        public List<AggregatedTransfer> Aggregated { get; set; }
+        public List<Handlers.AggregatedTransfer> Aggregated { get; set; }
     }
 }

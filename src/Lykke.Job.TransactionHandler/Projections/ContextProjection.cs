@@ -7,17 +7,18 @@ using Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Handlers;
+using Lykke.Job.TransactionHandler.Queues.Models;
 using Newtonsoft.Json;
+using AggregatedTransfer = Lykke.Job.TransactionHandler.Handlers.AggregatedTransfer;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
     public class ContextProjection
     {
         private readonly ILog _log;
-        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly ITransactionService _bitcoinTransactionService;
 
-        public ContextProjection(ILog log, IBitcoinTransactionService bitcoinTransactionService)
+        public ContextProjection(ILog log, ITransactionService bitcoinTransactionService)
         {
             _log = log;
             _bitcoinTransactionService = bitcoinTransactionService;

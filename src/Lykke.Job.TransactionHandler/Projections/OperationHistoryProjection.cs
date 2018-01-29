@@ -6,6 +6,7 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
+using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
