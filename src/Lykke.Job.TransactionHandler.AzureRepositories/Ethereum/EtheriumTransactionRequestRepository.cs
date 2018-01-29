@@ -94,25 +94,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum
             return entity;
         }
 
-        public async Task InsertAsync(IEthereumTransactionRequest request, bool insertOrder = true)
-        {
-            var entityById = EthereumTransactionReqEntity.ById.Create(request);
-            await _tableStorage.InsertAsync(entityById);
-
-            if (insertOrder && !string.IsNullOrEmpty(request.OrderId))
-            {
-                var entitByOrder = EthereumTransactionReqEntity.ByOrderId.Create(request);
-                await _tableStorage.InsertAsync(entitByOrder);
-            }
-        }
-
-        public async Task<IEthereumTransactionRequest> GetByOrderAsync(string orderId)
-        {
-            var entity = await _tableStorage.GetDataAsync(EthereumTransactionReqEntity.ByOrderId.GeneratePartition(),
-                EthereumTransactionReqEntity.ByOrderId.GenerateRowKey(orderId));
-            return entity;
-        }
-
         public async Task UpdateAsync(IEthereumTransactionRequest request)
         {
             var byId = EthereumTransactionReqEntity.ById.Create(request);

@@ -47,20 +47,17 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             var amount = message.Amount.ParseAnyDouble() - feeAmount;
 
-            var context = await _transactionService.GetTransactionContext<TransferContextData>(transactionId);
-            if (context == null)
-            {
-                context = TransferContextData.Create(
-                    message.FromClientId,
-                    new TransferContextData.TransferModel
-                    {
-                        ClientId = message.ToClientid
-                    },
-                    new TransferContextData.TransferModel
-                    {
-                        ClientId = message.FromClientId
-                    });
-            }
+            var context = await _transactionService.GetTransactionContext<TransferContextData>(transactionId) ??
+                          TransferContextData.Create(
+                              message.FromClientId,
+                              new TransferContextData.TransferModel
+                              {
+                                  ClientId = message.ToClientid
+                              },
+                              new TransferContextData.TransferModel
+                              {
+                                  ClientId = message.FromClientId
+                              });
 
             context.Transfers[0].OperationId = Guid.NewGuid().ToString();
             context.Transfers[1].OperationId = Guid.NewGuid().ToString();

@@ -14,7 +14,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Blockchain
 
     public interface IBcnClientCredentialsRepository
     {
-        Task<IBcnCredentialsRecord> GetAsync(string clientId, string assetId);
         Task<IBcnCredentialsRecord> GetByAssetAddressAsync(string assetAddress);
         Task<string> GetClientAddress(string clientId);
     }

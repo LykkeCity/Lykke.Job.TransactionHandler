@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 
@@ -33,36 +32,6 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
         {
             await CreateOffchainRequest(transactionId, clientId, assetId, amount, orderId, type);
             await _notificationsService.OffchainNotifyUser(clientId);
-        }
-
-        public Task CreateOffchainRequestAndLock(string transactionId, string clientId, string assetId, decimal amount, string orderId,
-            OffchainTransferType type)
-        {
-            return CreateAndAggregate(transactionId, clientId, assetId, amount, orderId, type, DateTime.UtcNow);
-        }
-
-        public async Task CreateOffchainRequestAndUnlock(string transactionId, string clientId, string assetId, decimal amount,
-            string orderId, OffchainTransferType type)
-        {
-            await CreateAndAggregate(transactionId, clientId, assetId, amount, orderId, type, null);
-            await _notificationsService.OffchainNotifyUser(clientId);
-        }
-
-        private async Task CreateAndAggregate(string transactionId, string clientId, string assetId, decimal amount,
-            string orderId, OffchainTransferType type, DateTime? lockTime)
-        {
-            var newTransfer = await _offchainTransferRepository.CreateTransfer(transactionId, clientId, assetId, amount, type, null, orderId);
-
-            var request = await _offchainRequestRepository.CreateRequestAndLock(transactionId, clientId, assetId, RequestType.RequestTransfer, type, lockTime);
-
-            var oldTransferId = request.TransferId;
-
-            //aggregate transfers
-            if (oldTransferId != newTransfer.Id)
-            {
-                await _offchainTransferRepository.AddChildTransfer(oldTransferId, newTransfer);
-                await _offchainTransferRepository.SetTransferIsChild(newTransfer.Id, oldTransferId);
-            }
         }
     }
 }

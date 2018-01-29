@@ -34,8 +34,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
                 Sign = sign
             });
 
-            var error = response as ApiException;
-            if (error != null)
+            if (response is ApiException error)
             {
                 return new EthereumResponse<OperationResponse>
                 {
@@ -43,8 +42,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
                 };
             }
 
-            var res = response as OperationIdResponse;
-            if (res != null)
+            if (response is OperationIdResponse res)
             {
                 return new EthereumResponse<OperationResponse> { Result = new OperationResponse { OperationId = res.OperationId } };
             }
@@ -64,8 +62,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
                 Sign = sign
             });
 
-            var error = response as ApiException;
-            if (error != null)
+            if (response is ApiException error)
             {
                 return new EthereumResponse<OperationResponse>
                 {
@@ -73,40 +70,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
                 };
             }
 
-            var res = response as OperationIdResponse;
-            if (res != null)
-            {
-                return new EthereumResponse<OperationResponse> { Result = new OperationResponse { OperationId = res.OperationId } };
-            }
-
-            throw new Exception("Unknown response");
-        }
-
-        public async Task<EthereumResponse<OperationResponse>> SendTransferWithChangeAsync(decimal change, string signFrom, Guid id, Asset asset, string fromAddress,
-            string toAddress, decimal amount)
-        {
-            var response = await _ethereumApi.ApiExchangeTransferWithChangePostAsync(new TransferWithChangeModel
-            {
-                Change = EthServiceHelpers.ConvertToContract(change, asset.MultiplierPower, asset.Accuracy),
-                Amount = EthServiceHelpers.ConvertToContract(amount, asset.MultiplierPower, asset.Accuracy),
-                SignFrom = signFrom,
-                CoinAdapterAddress = asset.AssetAddress,
-                ToAddress = toAddress,
-                FromAddress = fromAddress,
-                Id = id
-            });
-
-            var error = response as ApiException;
-            if (error != null)
-            {
-                return new EthereumResponse<OperationResponse>
-                {
-                    Error = new ErrorResponse { Code = error.Error.Code, Message = error.Error.Message }
-                };
-            }
-
-            var res = response as OperationIdResponse;
-            if (res != null)
+            if (response is OperationIdResponse res)
             {
                 return new EthereumResponse<OperationResponse> { Result = new OperationResponse { OperationId = res.OperationId } };
             }

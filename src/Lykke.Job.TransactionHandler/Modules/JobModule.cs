@@ -82,8 +82,6 @@ namespace Lykke.Job.TransactionHandler.Modules
         // NOTE: you can remove it if you don't need to use IServiceCollection extensions to register service specific dependencies
         private readonly IServiceCollection _services;
 
-
-
         public JobModule(AppSettings settings, IReloadingManager<AppSettings.DbSettings> dbSettingsManagerManager, ILog log)
         {
             _settings = settings;
@@ -243,10 +241,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterInstance<IEmailCommandProducer>(
                 new EmailCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "emailsqueue")));
-
-            builder.RegisterInstance<IOrdersRepository>(
-                new OrderRepository(
-                    AzureTableStorage<Order>.Create(_dbSettingsManager.ConnectionString(x => x.OffchainConnString), "OffchainOrders", _log)));
 
             builder.RegisterInstance<IOffchainRequestRepository>(
                 new OffchainRequestRepository(

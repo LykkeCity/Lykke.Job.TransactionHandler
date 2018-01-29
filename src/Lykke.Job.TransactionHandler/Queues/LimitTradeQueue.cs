@@ -69,7 +69,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        public async Task ProcessMessage(LimitQueueItem tradeItem)
+        private async Task ProcessMessage(LimitQueueItem tradeItem)
         {
             foreach (var limitOrderWithTrades in tradeItem.Orders)
             {

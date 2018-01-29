@@ -34,27 +34,9 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
         public string Sign { get; set; }
     }
 
-    public class EthereumTransactionRequest : IEthereumTransactionRequest
-    {
-        public Guid Id { get; set; }
-        public string ClientId { get; set; }
-        public string Hash { get; set; }
-        public string AssetId { get; set; }
-        public decimal Volume { get; set; }
-        public string AddressTo { get; set; }
-
-        public Transaction SignedTransfer { get; set; }
-        public string OrderId { get; set; }
-
-        public OperationType OperationType { get; set; }
-        public string[] OperationIds { get; set; }
-    }
-
     public interface IEthereumTransactionRequestRepository
     {
         Task<IEthereumTransactionRequest> GetAsync(Guid id);
-        Task<IEthereumTransactionRequest> GetByOrderAsync(string orderId);
-        Task InsertAsync(IEthereumTransactionRequest request, bool insertOrder = true);
         Task UpdateAsync(IEthereumTransactionRequest request);
     }
 }

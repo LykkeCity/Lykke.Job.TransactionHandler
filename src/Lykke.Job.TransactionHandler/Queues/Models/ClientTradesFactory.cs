@@ -22,7 +22,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
             result.AddRange(CreateTradeRecordsForClientWithVolumes(trade, orderId, trade.MarketClientId, marketVolume, limitVolume));
 
-            var assets = await _assetsServiceWithCache.GetAllAssetsAsync();
+            var assets = await _assetsServiceWithCache.GetAllAssetsAsync(true);
 
             foreach (var clientTrade in result)
             {

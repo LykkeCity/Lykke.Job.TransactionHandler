@@ -118,7 +118,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        public async Task ProcessMessage(TransferQueueMessage queueMessage)
+        private async Task ProcessMessage(TransferQueueMessage queueMessage)
         {
             if (!await _deduplicator.EnsureNotDuplicateAsync(queueMessage))
             {
@@ -196,18 +196,15 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return;
             }
 
-            var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId);
-            if (contextData == null)
-            {
-                contextData = TransferContextData
-                    .Create(queueMessage.FromClientId, new TransferContextData.TransferModel
-                    {
-                        ClientId = queueMessage.ToClientid
-                    }, new TransferContextData.TransferModel
-                    {
-                        ClientId = queueMessage.FromClientId
-                    });
-            }
+            var contextData = await _bitcoinTransactionService.GetTransactionContext<TransferContextData>(transaction.TransactionId) ??
+                              TransferContextData
+                                  .Create(queueMessage.FromClientId, new TransferContextData.TransferModel
+                                  {
+                                      ClientId = queueMessage.ToClientid
+                                  }, new TransferContextData.TransferModel
+                                  {
+                                      ClientId = queueMessage.FromClientId
+                                  });
 
             contextData.Transfers[0].OperationId = destTransfer.Id;
             contextData.Transfers[1].OperationId = sourceTransfer.Id;
