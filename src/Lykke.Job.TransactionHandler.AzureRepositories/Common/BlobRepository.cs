@@ -22,13 +22,11 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Common
             _tableStorage = tableStorage;
         }
 
-        public async Task<string> Insert(object value)
+        public async Task<bool> TryInsert(object value)
         {
             var entity = CreateEntity(value);
 
-            await _tableStorage.InsertAsync(entity);
-
-            return entity.RowKey;
+            return await _tableStorage.TryInsertAsync(entity);
         }
 
         private static BlobEntity CreateEntity(object value)

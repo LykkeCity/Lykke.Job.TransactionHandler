@@ -24,7 +24,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Quanta
             }.ToJson());
         }
 
-        public class QuantaCashOutCommand
+        private class QuantaCashOutCommand
         {
             public string Id { get; set; }
             public string Address { get; set; }

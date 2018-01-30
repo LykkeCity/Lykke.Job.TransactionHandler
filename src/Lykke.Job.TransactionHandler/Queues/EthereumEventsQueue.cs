@@ -21,11 +21,11 @@ using Lykke.Service.ClientAccount.Client;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
+using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -46,7 +46,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly ITransferOperationsRepositoryClient _transferEventsRepositoryClient;
-        private readonly IBitcoinTransactionService _bitcoinTransactionService;
+        private readonly ITransactionService _transactionService;
         private readonly IAssetsService _assetsService;
         private readonly IEthererumPendingActionsRepository _ethererumPendingActionsRepository;
         private readonly IDeduplicator _deduplicator;
@@ -68,7 +68,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ITransferOperationsRepositoryClient transferEventsRepositoryClient,
             IAssetsServiceWithCache assetsServiceWithCache,
-            IBitcoinTransactionService bitcoinTransactionService,
+            ITransactionService transactionService,
             IAssetsService assetsService,
             IEthererumPendingActionsRepository ethererumPendingActionsRepository,
             IExchangeOperationsServiceClient exchangeOperationsServiceClient,
@@ -88,7 +88,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _assetsServiceWithCache = assetsServiceWithCache;
             _rabbitConfig = config;
             _transferEventsRepositoryClient = transferEventsRepositoryClient;
-            _bitcoinTransactionService = bitcoinTransactionService;
+            _transactionService = transactionService;
             _assetsService = assetsService;
             _ethererumPendingActionsRepository = ethererumPendingActionsRepository;
             _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
@@ -232,7 +232,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private async Task<bool> ProcessHotWalletCashout(Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent queueMessage)
         {
             string transactionId = queueMessage.OperationId;
-            CashOutContextData context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(transactionId);
+            CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
             string clientId = context.ClientId;
             string hash = queueMessage.TransactionHash;
             string cashOperationId = context.CashOperationId;
@@ -245,7 +245,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private async Task<bool> ProcessOutcomeOperation(CoinEvent queueMessage)
         {
             var transferTx = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.OperationId));
-            CashOutContextData context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
+            CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
 
 
             if (transferTx != null)
@@ -282,7 +282,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task<bool> ProcessFailedCashout(CoinEvent queueMessage)
         {
-            CashOutContextData context = await _bitcoinTransactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
+            CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
 
             if (context != null)
             {

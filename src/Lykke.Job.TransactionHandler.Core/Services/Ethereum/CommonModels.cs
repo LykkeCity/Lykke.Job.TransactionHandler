@@ -22,8 +22,7 @@
             get
             {
                 ErrorCode code;
-                int value;
-                if (!int.TryParse(Code, out value))
+                if (!int.TryParse(Code, out var value))
                     code = ErrorCode.Exception;
                 else
                     code = (ErrorCode)value;

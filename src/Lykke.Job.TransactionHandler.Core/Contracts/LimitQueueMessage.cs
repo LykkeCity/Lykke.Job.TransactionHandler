@@ -2,14 +2,17 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
+using MessagePack;
 using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
+    [MessagePackObject(keyAsPropertyName: true)]
     public class LimitQueueItem
     {
         [JsonProperty("orders")] public List<LimitOrderWithTrades> Orders { get; set; }
 
+        [MessagePackObject(keyAsPropertyName: true)]
         public class LimitOrderWithTrades
         {
             [JsonProperty("order")] public LimitOrder Order { get; set; }
@@ -17,6 +20,7 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
             [JsonProperty("trades")] public List<LimitTradeInfo> Trades { get; set; }
         }
 
+        [MessagePackObject(keyAsPropertyName: true)]
         public class LimitOrder : ILimitOrder
         {
             [JsonProperty("externalId")] public string Id { get; set; }
@@ -42,6 +46,7 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
             public bool Straight { get; set; } = true;
         }
 
+        [MessagePackObject(keyAsPropertyName: true)]
         public class LimitTradeInfo
         {
             [JsonProperty("clientId")] public string ClientId { get; set; }

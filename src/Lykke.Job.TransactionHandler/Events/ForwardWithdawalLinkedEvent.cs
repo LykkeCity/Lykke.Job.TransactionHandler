@@ -1,12 +1,11 @@
-﻿using Lykke.Job.TransactionHandler.Core.Contracts;
-using ProtoBuf;
+﻿using MessagePack;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 
 namespace Lykke.Job.TransactionHandler.Events
 {
-    [ProtoContract]
+    [MessagePackObject(keyAsPropertyName: true)]
     public class ForwardWithdawalLinkedEvent
     {
-        [ProtoMember(1)]
         public CashInOutQueueMessage Message { get; set; }
     }
 }

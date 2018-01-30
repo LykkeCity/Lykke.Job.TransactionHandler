@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using AutoMapper;
@@ -7,10 +6,8 @@ using AzureStorage.Blob;
 using AzureStorage.Queue;
 using AzureStorage.Tables;
 using AzureStorage.Tables.Templates.Index;
-using Common;
 using Common.Log;
 using Lykke.Bitcoin.Api.Client;
-using Lykke.Job.TransactionHandler.AzureRepositories.Assets;
 using Lykke.Job.TransactionHandler.AzureRepositories.BitCoin;
 using Lykke.Job.TransactionHandler.AzureRepositories.Blockchain;
 using Lykke.Job.TransactionHandler.AzureRepositories.CashOperations;
@@ -25,13 +22,11 @@ using Lykke.Job.TransactionHandler.AzureRepositories.Offchain;
 using Lykke.Job.TransactionHandler.AzureRepositories.PaymentSystems;
 using Lykke.Job.TransactionHandler.AzureRepositories.Quanta;
 using Lykke.Job.TransactionHandler.AzureRepositories.SolarCoin;
-using Lykke.Job.TransactionHandler.Core.Domain.Assets;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Domain.MarginTrading;
@@ -43,18 +38,15 @@ using Lykke.Job.TransactionHandler.Core.Domain.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email.Sender;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 using Lykke.Job.TransactionHandler.Core.Services.Quanta;
-using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Services.ChronoBank;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
 using Lykke.Job.TransactionHandler.AzureRepositories.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
@@ -64,8 +56,6 @@ using Lykke.Job.TransactionHandler.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.Job.TransactionHandler.Services.Offchain;
 using Lykke.Job.TransactionHandler.Services.Quanta;
-using Lykke.Job.TransactionHandler.Services.SolarCoin;
-using Lykke.MatchingEngine.Connector.Services;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
@@ -76,6 +66,7 @@ using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
 using Lykke.Service.EthereumCore.Client;
 using Lykke.Service.OperationsRepository.Client;
+using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Common;
 using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Services.Fee;
@@ -90,8 +81,6 @@ namespace Lykke.Job.TransactionHandler.Modules
         private readonly ILog _log;
         // NOTE: you can remove it if you don't need to use IServiceCollection extensions to register service specific dependencies
         private readonly IServiceCollection _services;
-
-
 
         public JobModule(AppSettings settings, IReloadingManager<AppSettings.DbSettings> dbSettingsManagerManager, ILog log)
         {
@@ -120,6 +109,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             // NOTE: You can implement your own poison queue notifier. See https://github.com/LykkeCity/JobTriggers/blob/master/readme.md
             // builder.Register<PoisionQueueNotifierImplementation>().As<IPoisionQueueNotifier>();
 
+            builder.RegisterInstance(_settings.Ethereum).SingleInstance();
+
             _services.RegisterAssetsClient(AssetServiceSettings.Create(new Uri(_settings.Assets.ServiceUrl), _jobSettings.AssetsCache.ExpirationPeriod));
 
             Mapper.Initialize(cfg =>
@@ -134,10 +125,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             Mapper.Configuration.AssertConfigurationIsValid();
 
             BindRabbitMq(builder);
-            BindMatchingEngineChannel(builder);
             BindRepositories(builder);
             BindServices(builder);
-            BindCachedDicts(builder);
             BindClients(builder);
 
             builder.Populate(_services);
@@ -151,24 +140,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterLykkeServiceClient(_settings.ClientAccountClient.ServiceUrl);
             builder.RegisterOperationsClient(_settings.TransactionHandlerJob.Services.OperationsUrl);
-        }
-
-        public static void BindCachedDicts(ContainerBuilder builder)
-        {
-            builder.Register(x =>
-            {
-                var ctx = x.Resolve<IComponentContext>();
-                return new CachedDataDictionary<string, IAssetSetting>(
-                    async () => (await ctx.Resolve<IAssetSettingRepository>().GetAssetSettings()).ToDictionary(itm => itm.Asset));
-            }).SingleInstance();
-        }
-
-        private void BindMatchingEngineChannel(ContainerBuilder container)
-        {
-            var socketLog = new SocketLogDynamic(i => { },
-                str => Console.WriteLine(DateTime.UtcNow.ToIsoDateTime() + ": " + str));
-
-            container.BindMeClient(_settings.MatchingEngineClient.IpEndpoint.GetClientIpEndPoint(), socketLog);
         }
 
         private void BindServices(ContainerBuilder builder)
@@ -187,8 +158,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                 _settings.AppNotifications.HubConnString,
                 _settings.AppNotifications.HubName));
 
-            builder.RegisterType<ChronoBankService>().As<IChronoBankService>().SingleInstance();
-            builder.RegisterType<SrvSolarCoinHelper>().As<ISrvSolarCoinHelper>().SingleInstance();
             builder.RegisterType<QuantaService>().As<IQuantaService>().SingleInstance();
 
             builder.Register<IEthereumApi>(x =>
@@ -208,7 +177,8 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<EmailSender>().As<IEmailSender>().SingleInstance();
             builder.RegisterType<SrvEmailsFacade>().As<ISrvEmailsFacade>().SingleInstance();
 
-            builder.RegisterType<BitcoinTransactionService>().As<IBitcoinTransactionService>().SingleInstance();
+            builder.RegisterType<TransactionService>().As<ITransactionService>().SingleInstance();
+            builder.RegisterType<NotificationsService>().As<INotificationsService>().SingleInstance();
 
             builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
 
@@ -223,12 +193,8 @@ namespace Lykke.Job.TransactionHandler.Modules
 
         private void BindRepositories(ContainerBuilder builder)
         {
-            builder.RegisterInstance<IAssetSettingRepository>(
-                new AssetSettingRepository(
-                    AzureTableStorage<AssetSettingEntity>.Create(_dbSettingsManager.ConnectionString(x => x.DictsConnString), "AssetSettings", _log)));
-
-            builder.RegisterInstance<IBitCoinTransactionsRepository>(
-                new BitCoinTransactionsRepository(
+            builder.RegisterInstance<ITransactionsRepository>(
+                new TransactionsRepository(
                     AzureTableStorage<BitCoinTransactionEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "BitCoinTransactions", _log)));
 
             builder.RegisterInstance<IWalletCredentialsRepository>(
@@ -279,10 +245,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterInstance<IEmailCommandProducer>(
                 new EmailCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "emailsqueue")));
-
-            builder.RegisterInstance<IOffchainOrdersRepository>(
-                new OffchainOrderRepository(
-                    AzureTableStorage<OffchainOrder>.Create(_dbSettingsManager.ConnectionString(x => x.OffchainConnString), "OffchainOrders", _log)));
 
             builder.RegisterInstance<IOffchainRequestRepository>(
                 new OffchainRequestRepository(

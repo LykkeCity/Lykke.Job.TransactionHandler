@@ -2,33 +2,26 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Newtonsoft.Json;
-using ProtoBuf;
+using MessagePack;
 
 namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
-    [ProtoContract]
+    [MessagePackObject(keyAsPropertyName: true)]
     public class CashInOutQueueMessage
     {
-        [ProtoMember(1)]
         public string Id { get; set; }
-
-        [ProtoMember(2)]
+        
         [JsonProperty("dateTime")]
         public DateTime Date { get; set; }
-
-        [ProtoMember(3)]
+        
         public string ClientId { get; set; }
-
-        [ProtoMember(4)]
+        
         [JsonProperty("asset")]
         public string AssetId { get; set; }
-
-        [ProtoMember(5)]
+        
         [JsonProperty("volume")]
         public string Amount { get; set; }
 
-
-        [ProtoMember(6)]
         [JsonProperty("fees")]
         [CanBeNull]
         public List<Fee> Fees { get; set; }

@@ -12,7 +12,13 @@ namespace Lykke.Job.TransactionHandler.Queues
 {
     public class CashInOutQueue : IQueueSubscriber
     {
+#if DEBUG
+        private const string QueueName = "transactions.cashinout-dev";
+        private const bool QueueDurable = false;
+#else
         private const string QueueName = "transactions.cashinout";
+        private const bool QueueDurable = true;
+#endif
 
         private readonly ILog _log;
         private readonly CashInOutMessageProcessor _messageProcessor;
@@ -39,7 +45,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 ExchangeName = _rabbitConfig.ExchangeCashOperation,
                 DeadLetterExchangeName = $"{_rabbitConfig.ExchangeCashOperation}.dlx",
                 RoutingKey = "",
-                IsDurable = true
+                IsDurable = QueueDurable
             };
 
             try

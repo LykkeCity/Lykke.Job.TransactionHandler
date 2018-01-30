@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 
@@ -33,11 +30,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Clients
         public ClientCacheRepository(INoSQLTableStorage<ClientCacheEntity> storage)
         {
             _storage = storage;
-        }
-
-        public async Task<IClientCache> GetCache(string clientId)
-        {
-            return await _storage.GetDataAsync(ClientCacheEntity.GeneratePartitionKey(), clientId) ?? new ClientCacheEntity();
         }
 
         public Task UpdateLimitOrdersCount(string clientId, int count)

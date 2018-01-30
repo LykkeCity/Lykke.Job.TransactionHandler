@@ -27,9 +27,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             await _log.WriteInfoAsync(nameof(ForwardWithdrawalCommandHandler), nameof(Commands.SetLinkedCashInOperationCommand), command.ToJson(), "");
 
-            ChaosKitty.Meow();
+            await _forwardWithdrawalRepository.SetLinkedCashInOperationId(command.Message.ClientId, command.Id, command.Id); // todo: remove this legacy ? LW?
 
-            await _forwardWithdrawalRepository.SetLinkedCashInOperationId(command.Message.ClientId, command.Id, command.Id); // todo: remove this legacy
+            ChaosKitty.Meow();
 
             eventPublisher.PublishEvent(new ForwardWithdawalLinkedEvent { Message = command.Message });
 

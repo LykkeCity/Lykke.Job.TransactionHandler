@@ -6,10 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Lykke.Common" Version="4.2.0" />
-    <PackageReference Include="Lykke.Service.Assets.Client" Version="2.1.0.126" />
-    <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.85" />
-    <PackageReference Include="protobuf-net" Version="2.3.5" />
+    <PackageReference Include="Lykke.Common" Version="4.3.0" />
+    <PackageReference Include="Lykke.Service.Assets.Client" Version="3.2.0" />
+    <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.88" />
+    <PackageReference Include="MessagePack" Version="1.7.3.2" />
   </ItemGroup>
 
 </Project>

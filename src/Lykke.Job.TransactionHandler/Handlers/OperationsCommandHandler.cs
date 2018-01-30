@@ -5,79 +5,71 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
+using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
+using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Utils;
-using Lykke.Service.Assets.Client;
-using Lykke.Service.Assets.Client.Models;
-using Lykke.Service.OperationsRepository.AutorestClient.Models;
-using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
     public class OperationsCommandHandler
     {
         private readonly ILog _log;
-        private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
-        private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-        private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IBitCoinTransactionsRepository _bitcoinTransactionsRepository;
+        private readonly ITransactionsRepository _transactionsRepository;
+        private readonly ITransactionService _transactionService;
 
         public OperationsCommandHandler(
             [NotNull] ILog log,
-            [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
-            [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
-            [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
-            [NotNull] IBitCoinTransactionsRepository bitcoinTransactionsRepository)
+            [NotNull] ITransactionsRepository transactionsRepository,
+            [NotNull] ITransactionService transactionService)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
-            _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
-            _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
-            _bitcoinTransactionsRepository = bitcoinTransactionsRepository ?? throw new ArgumentNullException(nameof(bitcoinTransactionsRepository));
+            _transactionsRepository = transactionsRepository ?? throw new ArgumentNullException(nameof(transactionsRepository));
+            _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
         }
-
-        public async Task<CommandHandlingResult> Handle(Commands.RegisterCashInOutOperationCommand command)
+        
+        public async Task<CommandHandlingResult> Handle(Commands.SaveCashoutOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.RegisterCashInOutOperationCommand), command.ToJson(), "");
+            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveCashoutOperationStateCommand), command.ToJson(), "");
 
-            ChaosKitty.Meow();
+            await SaveState(command.Command, command.Context);
 
-            var message = command.Message;
-            var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
-
-            var transaction = await _bitcoinTransactionsRepository.FindByTransactionIdAsync(message.Id);
-            var context = transaction.GetContextData<CashOutContextData>();
-            var operation = new CashInOutOperation
-            {
-                Id = transaction.TransactionId,
-                ClientId = message.ClientId,
-                Multisig = walletCredentials.MultiSig,
-                AssetId = message.AssetId,
-                Amount = message.Amount.ParseAnyDouble(),
-                DateTime = DateTime.UtcNow,
-                AddressFrom = walletCredentials.MultiSig,
-                AddressTo = context.Address,
-                TransactionId = transaction.TransactionId,
-                Type = CashOperationType.None,
-                BlockChainHash = string.Empty,
-                State = TransactionStates.SettledOffchain
-            };
-
-            operation.AddFeeDataToOperation(message, _log);
-
-            await RegisterOperation(operation);
+            eventPublisher.PublishEvent(new CashoutTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
 
             return CommandHandlingResult.Ok();
         }
 
-        private async Task RegisterOperation(CashInOutOperation operation)
+        public async Task<CommandHandlingResult> Handle(Commands.SaveIssueOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            var operationId = await _cashOperationsRepositoryClient.RegisterAsync(operation);
-            if (operationId != operation.Id)
-            {
-                await _log.WriteWarningAsync(nameof(OperationsCommandHandler),
-                    nameof(RegisterOperation), operation.ToJson(),
-                    $"Unexpected response from Operations Service: {operationId}");
-            }
+            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveIssueOperationStateCommand), command.ToJson(), "");
+
+            await SaveState(command.Command, command.Context);
+
+            eventPublisher.PublishEvent(new IssueTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
+
+            return CommandHandlingResult.Ok();
+        }
+
+        public async Task<CommandHandlingResult> Handle(Commands.SaveManualOperationStateCommand command, IEventPublisher eventPublisher)
+        {
+            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveManualOperationStateCommand), command.ToJson(), "");
+
+            eventPublisher.PublishEvent(new ManualTransactionStateSavedEvent { Message = command.Message });
+
+            return CommandHandlingResult.Ok();
+        }
+
+        private async Task SaveState(BaseCommand command, BaseContextData context)
+        {
+            var transactionId = command.TransactionId.ToString();
+            var requestData = command.ToJson();
+
+            await _transactionsRepository.UpdateAsync(transactionId, requestData, null, "");
+
+            ChaosKitty.Meow();
+
+            await _transactionService.SetTransactionContext(transactionId, context);
+
+            ChaosKitty.Meow();
         }
     }
 }

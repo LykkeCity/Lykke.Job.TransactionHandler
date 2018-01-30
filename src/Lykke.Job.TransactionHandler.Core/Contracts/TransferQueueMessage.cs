@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
+using MessagePack;
 using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
+    [MessagePackObject(keyAsPropertyName: true)]
     public class TransferQueueMessage
     {
         public string Id { get; set; }

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -19,19 +16,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
         public static string GeneratePartitionKey()
         {
             return "BitcoinCashin";
-        }
-
-        public static BitcoinCashinEntity Create(string id, string clientId, string address, string hash, bool isSegwit)
-        {
-            return new BitcoinCashinEntity
-            {
-                Address = address,
-                ClientId = clientId,
-                IsSegwit = isSegwit,
-                TxHash = hash,
-                PartitionKey = GeneratePartitionKey(),
-                RowKey = id
-            };
         }
     }
 

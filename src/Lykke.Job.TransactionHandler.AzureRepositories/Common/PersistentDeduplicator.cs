@@ -8,7 +8,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Common
 {
     public class PersistentDeduplicator : IDeduplicator
     {
-        private const int ConflictStatusCode = 409;
         private readonly IBlobRepository _blobRepository;
 
         public PersistentDeduplicator([NotNull] IBlobRepository blobRepository)
@@ -18,17 +17,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Common
 
         public async Task<bool> EnsureNotDuplicateAsync(object value)
         {
-            try
-            {
-                var key = await _blobRepository.Insert(value);
-                return true;
-            }
-            catch (Microsoft.WindowsAzure.Storage.StorageException exception)
-            {
-                if (exception.RequestInformation.HttpStatusCode != ConflictStatusCode)
-                    throw;
-            }
-            return false;
+            return await _blobRepository.TryInsert(value);
         }
     }
 }

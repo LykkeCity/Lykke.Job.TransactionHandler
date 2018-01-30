@@ -23,7 +23,7 @@ namespace Lykke.Job.TransactionHandler.Core.Services.AppNotifications
         PushTxDialog = 14,
         LimitOrderEvent = 15
     }
-    
+
     public static class EventsAndEntities
     {
         // ReSharper disable once InconsistentNaming
@@ -119,15 +119,7 @@ namespace Lykke.Job.TransactionHandler.Core.Services.AppNotifications
 
         Task SendLimitOrderNotification(string[] notificationsIds, string message, OrderType orderType, OrderStatus status);
 
-        Task SendTextNotificationAsync(string[] notificationsIds, NotificationType type, string message);
-
-        Task SendPushTxDialogAsync(string[] notificationsIds, double amount, string assetId, string addressFrom,
-            string addressTo, string message);
-
         Task SendAssetsCreditedNotification(string[] notificationsIds, double amount, string assetId, string message);
 
-        Task SendRawIosNotification(string notificationId, string payload);
-
-        Task SendRawAndroidNotification(string notificationId, string payload);
     }
 }

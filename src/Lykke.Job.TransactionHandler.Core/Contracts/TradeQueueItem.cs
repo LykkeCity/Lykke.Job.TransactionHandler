@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
+using MessagePack;
 using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
+    [MessagePackObject(keyAsPropertyName: true)]
     public class TradeQueueItem
     {
         [JsonProperty("order")]
@@ -14,6 +16,7 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
         [JsonProperty("trades")]
         public List<TradeInfo> Trades { get; set; }
 
+        [MessagePackObject(keyAsPropertyName: true)]
         public class MarketOrder : IMarketOrder
         {
             [JsonProperty("externalId")]
@@ -62,6 +65,7 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
             }
         }
 
+        [MessagePackObject(keyAsPropertyName: true)]
         public class TradeInfo
         {
             [JsonProperty("price")]

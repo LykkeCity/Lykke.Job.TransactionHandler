@@ -1,15 +1,13 @@
-﻿using Lykke.Job.TransactionHandler.Core.Contracts;
-using ProtoBuf;
+﻿using MessagePack;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 
 namespace Lykke.Job.TransactionHandler.Events
 {
-    [ProtoContract]
+    [MessagePackObject(keyAsPropertyName: true)]
     public class CashoutTransactionStateSavedEvent
     {
-        [ProtoMember(1)]
         public CashInOutQueueMessage Message { get; set; }
 
-        [ProtoMember(2)]
         public Core.Domain.BitCoin.CashOutCommand Command { get; set; }
     }
 }
