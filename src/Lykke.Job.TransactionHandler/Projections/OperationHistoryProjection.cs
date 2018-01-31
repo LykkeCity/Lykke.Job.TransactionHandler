@@ -296,6 +296,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 case OrderStatus.ReservedVolumeGreaterThanBalance:
                 case OrderStatus.UnknownAsset:
                 case OrderStatus.LeadToNegativeSpread:
+                case OrderStatus.TooSmallVolume:
+                case OrderStatus.Runtime:
                     _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
                     break;
                 default:

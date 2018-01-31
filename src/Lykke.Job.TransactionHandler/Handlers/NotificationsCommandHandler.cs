@@ -8,11 +8,11 @@ using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
+using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Resources;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
-using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Handlers
@@ -77,6 +77,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 case OrderStatus.ReservedVolumeGreaterThanBalance:
                 case OrderStatus.UnknownAsset:
                 case OrderStatus.LeadToNegativeSpread:
+                case OrderStatus.TooSmallVolume:
+                case OrderStatus.Runtime:
                     return CommandHandlingResult.Ok();
                 case OrderStatus.Processing:
                     msg = string.Format(TextResources.LimitOrderPartiallyExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
