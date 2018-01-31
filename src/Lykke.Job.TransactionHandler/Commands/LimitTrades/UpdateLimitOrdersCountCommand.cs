@@ -1,12 +1,10 @@
 ﻿using Lykke.Job.TransactionHandler.Core.Contracts;
-using MessagePack;
 
 namespace Lykke.Job.TransactionHandler.Commands.LimitTrades
-{
-    [MessagePackObject(keyAsPropertyName: true)]
-    public class CreateOrUpdateLimitOrderCommand
+{    
+    public class UpdateLimitOrdersCountCommand
     {       
-        public LimitQueueItem.LimitOrder LimitOrder { get; set; }
+        public string ClientId { get; set; }
         
         public bool IsTrustedClient { get; set; }
     }

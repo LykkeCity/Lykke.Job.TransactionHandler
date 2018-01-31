@@ -13,6 +13,7 @@ using Lykke.Job.TransactionHandler.Resources;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -41,7 +42,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(LimitTradeNotifySendCommand command)
         {   
-            _log.WriteInfo(nameof(NotificationsCommandHandler), command.ToJson(), "LimitTradeNotifySendCommand");
+            _log.WriteInfo(nameof(NotificationsCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), "LimitTradeNotifySendCommand");
 
             var order = command.LimitOrder.Order;
             var aggregated = command.Aggregated ?? new List<AggregatedTransfer>();
@@ -93,6 +94,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
 
                 await _appNotifications.SendLimitOrderNotification(new[] { clientAcc.NotificationsId }, msg, type, status);
+
+                _log.WriteInfo(nameof(NotificationsCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), $"Client {clientId}. Order status: {status}. Push message: {msg}");
             }
 
             return CommandHandlingResult.Ok();
