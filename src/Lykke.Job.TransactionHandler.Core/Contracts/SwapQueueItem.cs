@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Lykke.Job.TransactionHandler.Queues.Models
+namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
     public class SwapQueueItem
     {

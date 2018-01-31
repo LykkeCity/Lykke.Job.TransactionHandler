@@ -66,10 +66,10 @@ using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
 using Lykke.Service.EthereumCore.Client;
 using Lykke.Service.OperationsRepository.Client;
-using Lykke.Job.TransactionHandler.Core.Domain.Logs;
-using Lykke.Job.TransactionHandler.AzureRepositories.Logs;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Common;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
+using Lykke.Job.TransactionHandler.Services.Fee;
 
 namespace Lykke.Job.TransactionHandler.Modules
 {
@@ -185,6 +185,10 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
 
             builder.RegisterType<PersistentDeduplicator>().As<IDeduplicator>().SingleInstance();
+
+            builder.RegisterType<FeeLogService>().As<IFeeLogService>().SingleInstance();
+
+            builder.RegisterType<FeeCalculationService>().As<IFeeCalculationService>().SingleInstance();
         }
 
         private void BindRepositories(ContainerBuilder builder)
@@ -269,13 +273,11 @@ namespace Lykke.Job.TransactionHandler.Modules
                   AzureTableStorage<EthererumPendingActionEntity>.Create(
                       _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "EthererumPendingActions", _log)));
 
-            builder.RegisterInstance<IFeeLogRepository>(
-                new FeeLogRepository(AzureTableStorage<FeeLogEntity>.Create(
-                    _dbSettingsManager.ConnectionString(x => x.FeeLogsConnString), "OrdersFeeLog", _log)));
-
-            builder.RegisterInstance<ITransferLogRepository>(
-                new TransferLogRepository(
-                    AzureTableStorage<TransferLogEntity>.Create(_dbSettingsManager.ConnectionString(x => x.LogsConnString), "TransfersFeeLog", _log)));
+            builder.RegisterType<FeeLogRepository>()
+                .WithParameter(TypedParameter.From(AzureTableStorage<FeeLogEntryEntity>.Create(
+                    _dbSettingsManager.ConnectionString(x => x.FeeLogsConnString), "OperationsFeeLog", _log)))
+                .As<IFeeLogRepository>()
+                .SingleInstance();
 
             builder.RegisterInstance<IBlobRepository>(
                 new BlobRepository(

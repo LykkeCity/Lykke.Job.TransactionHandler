@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
-using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;

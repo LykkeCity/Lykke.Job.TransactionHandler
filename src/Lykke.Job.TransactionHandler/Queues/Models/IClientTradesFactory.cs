@@ -1,4 +1,5 @@
 ﻿using System.Threading.Tasks;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 
 namespace Lykke.Job.TransactionHandler.Queues.Models

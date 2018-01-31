@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
-using Newtonsoft.Json;
 using MessagePack;
+using Newtonsoft.Json;
 
-namespace Lykke.Job.TransactionHandler.Queues.Models
+namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
     [MessagePackObject(keyAsPropertyName: true)]
     public class TradeQueueItem
@@ -99,12 +99,8 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             public string LimitAsset { get; set; }
 
             [CanBeNull]
-            [JsonProperty("feeInstruction")]
-            public FeeInstruction FeeInstruction { get; set; }
-
-            [CanBeNull]
-            [JsonProperty("feeTransfer")]
-            public FeeTransfer FeeTransfer { get; set; }
+            [JsonProperty("fees")]
+            public List<Fee> Fees { get; set; }
         }
     }
 }

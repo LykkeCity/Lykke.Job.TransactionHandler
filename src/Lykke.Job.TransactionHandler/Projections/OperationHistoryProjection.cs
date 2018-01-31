@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Domain.Fee;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Queues.Models;
@@ -21,7 +22,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 {
     public class OperationHistoryProjection
     {
-        private readonly IFeeLogRepository _feeLogRepository;
         private readonly ILimitTradeEventsRepositoryClient _limitTradeEventsRepositoryClient;
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly ILog _log;
@@ -31,6 +31,7 @@ namespace Lykke.Job.TransactionHandler.Projections
         private readonly Core.Services.BitCoin.ITransactionService _transactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
+        private readonly IFeeLogService _feeLogService;
 
         public OperationHistoryProjection(
             [NotNull] ILog log,
@@ -41,10 +42,9 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
             [NotNull] IClientCacheRepository clientCacheRepository,
-            IFeeLogRepository feeLogRepository,
-            ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient)
+            [NotNull] IFeeLogService feeLogService,
+            [NotNull] ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient)
         {
-            _feeLogRepository = feeLogRepository;
             _limitTradeEventsRepositoryClient = limitTradeEventsRepositoryClient;
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _clientTradesRepository = clientTradesRepository ?? throw new ArgumentNullException(nameof(clientTradesRepository));
@@ -54,6 +54,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
             _clientCacheRepository = clientCacheRepository ?? throw new ArgumentNullException(nameof(clientCacheRepository));
+            _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
         }
         
         private async Task RegisterOperation(TransferEvent operation)
@@ -106,6 +107,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.SettledOffchain
             };
 
+            operation.AddFeeDataToOperation(message);
+
             await RegisterOperation(operation);
         }
 
@@ -131,6 +134,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.SettledOffchain
             };
 
+            operation.AddFeeDataToOperation(message);
+
             await RegisterOperation(operation);
         }
 
@@ -140,7 +145,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
-            var amount = evt.Command.Amount;
+            var amount = message.Amount.ParseAnyDouble();
             var transactionId = evt.Command.TransactionId.ToString();
             var context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
             var isForwardWithdawal = context.AddData?.ForwardWithdrawal != null;
@@ -160,6 +165,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 BlockChainHash = string.Empty,
                 State = TransactionStates.SettledOffchain
             };
+
+            operation.AddFeeDataToOperation(message);
 
             await RegisterOperation(operation);
         }
@@ -191,6 +198,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 Type = CashOperationType.ForwardCashIn,
                 State = TransactionStates.InProcessOffchain
             };
+
+            operation.AddFeeDataToOperation(message);
 
             await RegisterOperation(operation);
         }
@@ -228,21 +237,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             // Save fee logs
             if (evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
             {
-                var feeLogs = evt.LimitOrder.Trades.Select(ti =>
-                    new OrderFeeLog
-                    {
-                        OrderId = evt.LimitOrder.Order.Id,
-                        OrderStatus = evt.LimitOrder.Order.Status,
-                        FeeTransfer = ti.FeeTransfer?.ToJson(),
-                        FeeInstruction = ti.FeeInstruction?.ToJson(),
-                        Type = "limit"
-                    });
-
-                var feeLogTasks = feeLogs.Select(fl => _feeLogRepository.CreateAsync(fl));
-
-                await Task.WhenAll(feeLogTasks);
-
-                _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(feeLogs, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Fee logs updated");
+                await _feeLogService.WriteFeeInfoAsync(evt.LimitOrder);
             }
             else
             {
