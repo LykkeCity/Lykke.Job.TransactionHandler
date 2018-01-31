@@ -27,8 +27,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public NotificationsCommandHandler(
             [NotNull] ILog log,
-            IAssetsServiceWithCache assetsServiceWithCache, 
-            IClientSettingsRepository clientSettingsRepository, 
+            IAssetsServiceWithCache assetsServiceWithCache,
+            IClientSettingsRepository clientSettingsRepository,
             IClientAccountClient clientAccountClient,
             IAppNotifications appNotifications)
         {
@@ -38,10 +38,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _clientAccountClient = clientAccountClient;
             _appNotifications = appNotifications;
         }
-        
+
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(LimitTradeNotifySendCommand command)
-        {   
+        {
             _log.WriteInfo(nameof(NotificationsCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), "LimitTradeNotifySendCommand");
 
             var order = command.LimitOrder.Order;
@@ -51,14 +51,17 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var clientId = order.ClientId;
             var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
             var typeString = type.ToString().ToLower();
-            var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
+            var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId); 
 
-            var receivedAsset = type == OrderType.Buy ? assetPair.BaseAssetId : assetPair.QuotingAssetId;
+             var receivedAsset = type == OrderType.Buy ? assetPair.BaseAssetId : assetPair.QuotingAssetId;
             var receivedAssetEntity = await _assetsServiceWithCache.TryGetAssetAsync(receivedAsset);
 
             var priceAsset = await _assetsServiceWithCache.TryGetAssetAsync(assetPair.QuotingAssetId);
 
-            var remainingVolume = (decimal)Math.Abs(command.PrevRemainingVolume ?? order.Volume);
+            var prevRemainingVolumeNotEmpty = command.PrevRemainingVolume.HasValue
+                                              && Math.Abs(command.PrevRemainingVolume.Value) > 0.0
+                                              && Math.Abs(command.PrevRemainingVolume.Value) >= assetPair.MinVolume;
+            var remainingVolume = (decimal)Math.Abs(prevRemainingVolumeNotEmpty ? command.PrevRemainingVolume.Value : order.Volume);
             var executedSum = Math.Abs(aggregated.Where(x => x.ClientId == clientId && x.AssetId == receivedAsset)
                                 .Select(x => x.Amount)
                                 .DefaultIfEmpty(0)
