@@ -10,11 +10,14 @@ namespace Lykke.Job.TransactionHandler.Sagas
     {
         public async Task Handle(LimitOrderExecutedEvent evt, ICommandSender commandSender)
         {
+            if (evt.IsTrustedClient)
+                return;
+
             ChaosKitty.Meow();
 
-            var cmd = new CreateOrUpdateLimitOrderCommand
+            var cmd = new UpdateLimitOrdersCountCommand
             {
-                LimitOrder = evt.LimitOrder.Order,
+                ClientId = evt.LimitOrder.Order.ClientId,
                 IsTrustedClient = evt.IsTrustedClient
             };
 
