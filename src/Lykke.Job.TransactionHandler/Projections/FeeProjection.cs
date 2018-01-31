@@ -27,7 +27,7 @@ namespace Lykke.Job.TransactionHandler.Projections
         {
             await _log.WriteInfoAsync(nameof(FeeProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
 
-            await _feeLogService.WriteFeeInfo(evt.QueueMessage);
+            await _feeLogService.WriteFeeInfoAsync(evt.QueueMessage);
 
             ChaosKitty.Meow();
         }

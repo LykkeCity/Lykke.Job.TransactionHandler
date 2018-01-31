@@ -43,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
             var message = evt.Message;
             var transactionId = message.Id;
-            var amountNoFee = await _feeCalculationService.GetAmountNoFee(message);
+            var amountNoFee = await _feeCalculationService.GetAmountNoFeeAsync(message);
             var clientId = message.ClientId;
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
             var context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);

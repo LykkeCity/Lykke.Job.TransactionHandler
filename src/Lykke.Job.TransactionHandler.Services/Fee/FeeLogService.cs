@@ -6,6 +6,7 @@ using Common;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Services.Fee;
+using MoreLinq;
 
 namespace Lykke.Job.TransactionHandler.Services.Fee
 {
@@ -13,12 +14,14 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
     {
         private readonly IFeeLogRepository _feelogRepository;
 
+        private const int BatchPieceSize = 15;
+
         public FeeLogService(IFeeLogRepository feelogRepository)
         {
             _feelogRepository = feelogRepository ?? throw new ArgumentNullException(nameof(feelogRepository));
         }
 
-        public async Task WriteFeeInfo(CashInOutQueueMessage feeDataSource)
+        public async Task WriteFeeInfoAsync(CashInOutQueueMessage feeDataSource)
         {
             var newItem = new FeeLogEntry
             {
@@ -30,7 +33,7 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
             await _feelogRepository.CreateAsync(newItem);
         }
 
-        public async Task WriteFeeInfo(TransferQueueMessage feeDataSource)
+        public async Task WriteFeeInfoAsync(TransferQueueMessage feeDataSource)
         {
             var newItem = new FeeLogEntry
             {
@@ -42,7 +45,7 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
             await _feelogRepository.CreateAsync(newItem);
         }
 
-        public async Task WriteFeeInfo(TradeQueueItem feeDataSource)
+        public async Task WriteFeeInfoAsync(TradeQueueItem feeDataSource)
         {
             var tasks = feeDataSource.Trades.Select(x =>
             {
@@ -59,29 +62,32 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
             await Task.WhenAll(tasks);
         }
 
-        public async Task WriteFeeInfo(IEnumerable<LimitQueueItem.LimitOrderWithTrades> feeDataSource)
+        public async Task WriteFeeInfoAsync(IEnumerable<LimitQueueItem.LimitOrderWithTrades> feeDataSource)
         {
             foreach (var order in feeDataSource)
             {
-                await WriteFeeInfo(order);
+                await WriteFeeInfoAsync(order);
             }
         }
 
-        public async Task WriteFeeInfo(LimitQueueItem.LimitOrderWithTrades feeDataSource)
+        public async Task WriteFeeInfoAsync(LimitQueueItem.LimitOrderWithTrades feeDataSource)
         {
-            var tasks = feeDataSource.Trades.Select(x =>
+            foreach (var batch in feeDataSource.Trades.Batch(BatchPieceSize))
             {
-                var newItem = new FeeLogEntry
+                var tasks = batch.Select(x =>
                 {
-                    OperationId = feeDataSource.Order.Id,
-                    Fee = x.Fees?.ToJson(),
-                    Type = FeeOperationType.LimitTrade
-                };
+                    var newItem = new FeeLogEntry
+                    {
+                        OperationId = feeDataSource.Order.Id,
+                        Fee = x.Fees?.ToJson(),
+                        Type = FeeOperationType.LimitTrade
+                    };
 
-                return _feelogRepository.CreateAsync(newItem);
-            });
+                    return _feelogRepository.CreateAsync(newItem);
+                });
 
-            await Task.WhenAll(tasks);
+                await Task.WhenAll(tasks);
+            }
         }
     }
 }

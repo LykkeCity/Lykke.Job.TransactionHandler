@@ -273,9 +273,11 @@ namespace Lykke.Job.TransactionHandler.Modules
                   AzureTableStorage<EthererumPendingActionEntity>.Create(
                       _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "EthererumPendingActions", _log)));
 
-            builder.RegisterInstance<IFeeLogRepository>(
-                new FeeLogRepository(AzureTableStorage<FeeLogEntryEntity>.Create(
-                    _dbSettingsManager.ConnectionString(x => x.FeeLogsConnString), "OperationsFeeLog", _log)));
+            builder.RegisterType<FeeLogRepository>()
+                .WithParameter(TypedParameter.From(AzureTableStorage<FeeLogEntryEntity>.Create(
+                    _dbSettingsManager.ConnectionString(x => x.FeeLogsConnString), "OperationsFeeLog", _log)))
+                .As<IFeeLogRepository>()
+                .SingleInstance();
 
             builder.RegisterInstance<IBlobRepository>(
                 new BlobRepository(

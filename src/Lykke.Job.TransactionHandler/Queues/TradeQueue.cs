@@ -90,7 +90,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task ProcessMessage(TradeQueueItem queueMessage)
         {
-            await _feeLogService.WriteFeeInfo(queueMessage);
+            await _feeLogService.WriteFeeInfoAsync(queueMessage);
             
             _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
             {

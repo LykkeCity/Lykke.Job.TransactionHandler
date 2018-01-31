@@ -8,7 +8,7 @@ namespace Lykke.Job.TransactionHandler
 {
     public static class ConvertExtensions
     {
-        public static ClientTrade[] ToDomainOffchain(this LimitQueueItem.LimitOrderWithTrades item, string btcTransactionId, string clientId)
+        public static IReadOnlyList<ClientTrade> ToDomainOffchain(this LimitQueueItem.LimitOrderWithTrades item, string btcTransactionId, string clientId)
         {
             var trade = item.Trades[0];
 
@@ -19,10 +19,10 @@ namespace Lykke.Job.TransactionHandler
 
             result.AddRange(CreateTradeRecordForClientWithVolumes(trade, item.Order, btcTransactionId, clientId, limitVolume, oppositeLimitVolume));
 
-            return result.ToArray();
+            return result;
         }
 
-        private static ClientTrade[] CreateTradeRecordForClientWithVolumes(LimitQueueItem.LimitTradeInfo trade, ILimitOrder limitOrder, string btcTransactionId, string clientId, double limitVolume, double oppositeLimitVolume)
+        private static IReadOnlyList<ClientTrade> CreateTradeRecordForClientWithVolumes(LimitQueueItem.LimitTradeInfo trade, ILimitOrder limitOrder, string btcTransactionId, string clientId, double limitVolume, double oppositeLimitVolume)
         {
             clientId = clientId ?? limitOrder.ClientId;
             

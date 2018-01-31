@@ -105,7 +105,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     trade.State = TransactionStates.InProcessOffchain;
             }
 
-            return trades;
+            return trades.ToArray();
         }        
         
         private List<AggregatedTransfer> AggregateSwaps(IEnumerable<LimitQueueItem.LimitTradeInfo> trades)

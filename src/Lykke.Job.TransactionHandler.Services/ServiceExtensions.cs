@@ -7,14 +7,14 @@ namespace Lykke.Job.TransactionHandler.Services
 {
     public static class ServiceExtensions
     {
-        public static async Task<double> GetAmountNoFee(this IFeeCalculationService src, CashInOutQueueMessage message)
+        public static Task<double> GetAmountNoFeeAsync(this IFeeCalculationService src, CashInOutQueueMessage message)
         {
-            return await src.GetAmountNoFee(message.Amount.ParseAnyDouble(), message.AssetId, message.Fees);
+            return src.GetAmountNoFeeAsync(message.Amount.ParseAnyDouble(), message.AssetId, message.Fees);
         }
 
-        public static async Task<double> GetAmountNoFee(this IFeeCalculationService src, TransferQueueMessage message)
+        public static Task<double> GetAmountNoFeeAsync(this IFeeCalculationService src, TransferQueueMessage message)
         {
-            return await src.GetAmountNoFee(message.Amount.ParseAnyDouble(), message.AssetId, message.Fees);
+            return src.GetAmountNoFeeAsync(message.Amount.ParseAnyDouble(), message.AssetId, message.Fees);
         }
     }
 }

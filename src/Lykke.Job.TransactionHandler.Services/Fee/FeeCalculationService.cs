@@ -17,7 +17,7 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
         }
 
-        public async Task<double> GetAmountNoFee(double initialAmount, string assetId, List<Core.Contracts.Fee> fees)
+        public async Task<double> GetAmountNoFeeAsync(double initialAmount, string assetId, List<Core.Contracts.Fee> fees)
         {
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(assetId);
 

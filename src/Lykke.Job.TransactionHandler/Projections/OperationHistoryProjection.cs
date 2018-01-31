@@ -8,7 +8,6 @@ using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
@@ -108,7 +107,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.SettledOffchain
             };
 
-            operation.AddFeeDataToOperation(message, _log);
+            operation.AddFeeDataToOperation(message);
 
             await RegisterOperation(operation);
         }
@@ -135,7 +134,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.SettledOffchain
             };
 
-            operation.AddFeeDataToOperation(message, _log);
+            operation.AddFeeDataToOperation(message);
 
             await RegisterOperation(operation);
         }
@@ -167,7 +166,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.SettledOffchain
             };
 
-            operation.AddFeeDataToOperation(message, _log);
+            operation.AddFeeDataToOperation(message);
 
             await RegisterOperation(operation);
         }
@@ -200,7 +199,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.InProcessOffchain
             };
 
-            operation.AddFeeDataToOperation(message, _log);
+            operation.AddFeeDataToOperation(message);
 
             await RegisterOperation(operation);
         }
@@ -238,7 +237,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             // Save fee logs
             if (evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
             {
-                await _feeLogService.WriteFeeInfo(evt.LimitOrder);
+                await _feeLogService.WriteFeeInfoAsync(evt.LimitOrder);
             }
             else
             {

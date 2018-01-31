@@ -131,11 +131,11 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return;
             }
 
-            await _feeLogService.WriteFeeInfo(queueMessage);
+            await _feeLogService.WriteFeeInfoAsync(queueMessage);
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
 
-            var amountNoFee = await _feeCalculationService.GetAmountNoFee(queueMessage);
+            var amountNoFee = await _feeCalculationService.GetAmountNoFeeAsync(queueMessage);
 
             //Get eth request if it is ETH transfer
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.Id));
