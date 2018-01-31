@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 
 namespace Lykke.Job.TransactionHandler.Core.Services.AppNotifications
 {
