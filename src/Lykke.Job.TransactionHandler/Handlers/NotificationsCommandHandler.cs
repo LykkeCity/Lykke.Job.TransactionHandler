@@ -8,11 +8,12 @@ using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
+using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Resources;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
-using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -26,8 +27,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public NotificationsCommandHandler(
             [NotNull] ILog log,
-            IAssetsServiceWithCache assetsServiceWithCache, 
-            IClientSettingsRepository clientSettingsRepository, 
+            IAssetsServiceWithCache assetsServiceWithCache,
+            IClientSettingsRepository clientSettingsRepository,
             IClientAccountClient clientAccountClient,
             IAppNotifications appNotifications)
         {
@@ -37,11 +38,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _clientAccountClient = clientAccountClient;
             _appNotifications = appNotifications;
         }
-        
+
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(LimitTradeNotifySendCommand command)
-        {   
-            _log.WriteInfo(nameof(NotificationsCommandHandler), command.ToJson(), "LimitTradeNotifySendCommand");
+        {
+            _log.WriteInfo(nameof(NotificationsCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), "LimitTradeNotifySendCommand");
 
             var order = command.LimitOrder.Order;
             var aggregated = command.Aggregated ?? new List<AggregatedTransfer>();
@@ -50,14 +51,17 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var clientId = order.ClientId;
             var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
             var typeString = type.ToString().ToLower();
-            var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
+            var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId); 
 
-            var receivedAsset = type == OrderType.Buy ? assetPair.BaseAssetId : assetPair.QuotingAssetId;
+             var receivedAsset = type == OrderType.Buy ? assetPair.BaseAssetId : assetPair.QuotingAssetId;
             var receivedAssetEntity = await _assetsServiceWithCache.TryGetAssetAsync(receivedAsset);
 
             var priceAsset = await _assetsServiceWithCache.TryGetAssetAsync(assetPair.QuotingAssetId);
 
-            var remainingVolume = (decimal)Math.Abs(command.PrevRemainingVolume ?? order.Volume);
+            var prevRemainingVolumeNotEmpty = command.PrevRemainingVolume.HasValue
+                                              && Math.Abs(command.PrevRemainingVolume.Value) > 0.0
+                                              && Math.Abs(command.PrevRemainingVolume.Value) >= assetPair.MinVolume;
+            var remainingVolume = (decimal)Math.Abs(prevRemainingVolumeNotEmpty ? command.PrevRemainingVolume.Value : order.Volume);
             var executedSum = Math.Abs(aggregated.Where(x => x.ClientId == clientId && x.AssetId == receivedAsset)
                                 .Select(x => x.Amount)
                                 .DefaultIfEmpty(0)
@@ -76,6 +80,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 case OrderStatus.ReservedVolumeGreaterThanBalance:
                 case OrderStatus.UnknownAsset:
                 case OrderStatus.LeadToNegativeSpread:
+                case OrderStatus.TooSmallVolume:
+                case OrderStatus.Runtime:
                     return CommandHandlingResult.Ok();
                 case OrderStatus.Processing:
                     msg = string.Format(TextResources.LimitOrderPartiallyExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
@@ -93,6 +99,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
 
                 await _appNotifications.SendLimitOrderNotification(new[] { clientAcc.NotificationsId }, msg, type, status);
+
+                _log.WriteInfo(nameof(NotificationsCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), $"Client {clientId}. Order status: {status}. Push message: {msg}");
             }
 
             return CommandHandlingResult.Ok();

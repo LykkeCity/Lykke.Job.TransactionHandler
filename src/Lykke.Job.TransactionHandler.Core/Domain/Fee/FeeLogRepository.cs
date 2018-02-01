@@ -2,26 +2,31 @@
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.Fee
 {
-    public interface IOrderFeeLog
+    public interface IFeeLogEntry
     {
-        string OrderId { get; set; }
-        string FeeInstruction { get; set; }
-        string FeeTransfer { get; set; }
-        string Type { get; set; }
-        string OrderStatus { get; set; }
+        string OperationId { get; set; }
+        FeeOperationType Type { get; set; }
+        string Fee { get; set; }
+
     }
 
-    public class OrderFeeLog : IOrderFeeLog
+    public class FeeLogEntry : IFeeLogEntry
     {
-        public string OrderId { get; set; }
-        public string FeeInstruction { get ; set; }
-        public string FeeTransfer { get; set; }
-        public string Type { get; set; }
-        public string OrderStatus { get; set; }
+        public string OperationId { get; set; }
+        public FeeOperationType Type { get; set; }
+        public string Fee { get; set; }
+    }
+
+    public enum FeeOperationType
+    {
+        CashInOut = 0,
+        Trade,
+        Transfer,
+        LimitTrade
     }
 
     public interface IFeeLogRepository
     {
-        Task CreateAsync(IOrderFeeLog item);
+        Task CreateAsync(IFeeLogEntry item);
     }
 }

@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using MessagePack;
 
 namespace Lykke.Job.TransactionHandler.Commands.LimitTrades

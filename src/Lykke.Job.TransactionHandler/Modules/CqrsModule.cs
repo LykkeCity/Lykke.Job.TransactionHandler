@@ -87,12 +87,7 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<HistoryCommandHandler>();
             builder.RegisterType<LimitOrderCommandHandler>();
             builder.RegisterType<NotificationsCommandHandler>();
-
-            builder.RegisterType<ClientTradesProjection>();
-            builder.RegisterType<ContextProjection>();
-            builder.RegisterType<FeeLogsProjection>();
-            builder.RegisterType<LimitOrdersProjection>();
-            builder.RegisterType<LimitTradeEventsProjection>();
+            
             builder.RegisterType<OperationHistoryProjection>();
             builder.RegisterType<EmailProjection>();
             builder.RegisterType<OrdersProjection>();
@@ -135,20 +130,21 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .From(BoundedContexts.Trades).On(defaultRoute)
                     .WithProjection(typeof(FeeProjection), BoundedContexts.Trades),
 
-                Register.Saga<TradeSaga>($"{BoundedContexts.Self}.trade-saga")
+                Register.Saga<TradeSaga>($"{BoundedContexts.TxHandler}.trade-saga")
                     .ListeningEvents(typeof(TradeCreatedEvent))
                         .From(BoundedContexts.Trades).On(defaultRoute)
                     .PublishingCommands(typeof(CreateTransactionCommand))
                         .To(BoundedContexts.Trades).With(defaultPipeline),
 
-                Register.BoundedContext(BoundedContexts.Self)
+                Register.BoundedContext(BoundedContexts.TxHandler)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(ProcessLimitOrderCommand))
                         .On(defaultPipeline)
                         .WithLoopback()
                     .PublishingEvents(typeof(LimitOrderExecutedEvent))
                         .With("events")
-                    .WithCommandsHandler<LimitOrderCommandHandler>(),
+                    .WithCommandsHandler<LimitOrderCommandHandler>()
+                    .ProcessingOptions(defaultPipeline).MultiThreaded(4).QueueCapacity(1024),
 
                 Register.BoundedContext(BoundedContexts.ForwardWithdrawal)
                     .FailedCommandRetryDelay(defaultRetryDelay)
@@ -217,30 +213,14 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.ForwardWithdrawal)
                     .ListeningEvents(typeof(TradeCreatedEvent))
                         .From(BoundedContexts.Trades).On(defaultRoute)
-                    .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.Trades)
-                    .ListeningEvents(typeof(LimitOrderSavedEvent))
-                        .From(BoundedContexts.OperationsHistory).On("client-cache")
-                        .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.OperationsHistory)
+                    .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.Trades)                    
                     .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From(BoundedContexts.Self).On("limit-orders")
-                        .WithProjection(typeof(LimitOrdersProjection), BoundedContexts.Self)
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From(BoundedContexts.Self).On("limit-trade-events")
-                        .WithProjection(typeof(LimitTradeEventsProjection), BoundedContexts.Self)
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From(BoundedContexts.Self).On("fee")
-                        .WithProjection(typeof(FeeLogsProjection), BoundedContexts.Self)
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From(BoundedContexts.Self).On("operations-context")
-                        .WithProjection(typeof(ContextProjection), BoundedContexts.Self)
-                    .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From(BoundedContexts.Self).On("client-trades")
-                        .WithProjection(typeof(ClientTradesProjection), BoundedContexts.Self)
-                    .ListeningCommands(typeof(CreateOrUpdateLimitOrderCommand))
+                        .From(BoundedContexts.TxHandler).On(defaultRoute)
+                        .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.TxHandler)
+                        .ProcessingOptions(defaultRoute).MultiThreaded(4).QueueCapacity(1024)
+                    .ListeningCommands(typeof(UpdateLimitOrdersCountCommand))
                         .On(defaultPipeline)
-                        .WithCommandsHandler<HistoryCommandHandler>()
-                    .PublishingEvents(typeof(LimitOrderSavedEvent))
-                        .With("events"),
+                        .WithCommandsHandler<HistoryCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.Email)
                     .ListeningEvents(typeof(SolarCashOutCompletedEvent))
@@ -251,7 +231,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .ListeningCommands(typeof(LimitTradeNotifySendCommand)).On(defaultPipeline)
                         .WithCommandsHandler<NotificationsCommandHandler>(),
 
-                Register.Saga<CashInOutSaga>($"{BoundedContexts.Self}.cash-out-saga")
+                Register.Saga<CashInOutSaga>($"{BoundedContexts.TxHandler}.cash-out-saga")
                     .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
                         .From(BoundedContexts.Operations).On(defaultRoute)
                     .PublishingCommands(typeof(BitcoinCashOutCommand))
@@ -265,7 +245,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingCommands(typeof(BlockchainCashoutProcessor.Contract.Commands.StartCashoutCommand))
                         .To(BlockchainCashoutProcessor.Contract.BlockchainCashoutProcessorBoundedContext.Name).With(defaultPipeline),
 
-                Register.Saga<ForwardWithdawalSaga>($"{BoundedContexts.Self}.forward-withdrawal-saga")
+                Register.Saga<ForwardWithdawalSaga>($"{BoundedContexts.TxHandler}.forward-withdrawal-saga")
                     .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
                         .From(BoundedContexts.Operations).On(defaultRoute)
                     .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
@@ -273,13 +253,13 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.Saga<HistorySaga>("history-saga")
                     .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From(BoundedContexts.Self).On("events")
-                    .PublishingCommands(typeof(CreateOrUpdateLimitOrderCommand))
+                        .From(BoundedContexts.TxHandler).On("events")
+                    .PublishingCommands(typeof(UpdateLimitOrdersCountCommand))
                         .To(BoundedContexts.OperationsHistory).With(defaultPipeline),
 
                 Register.Saga<NotificationsSaga>("notifications-saga")
                     .ListeningEvents(typeof(LimitOrderExecutedEvent))
-                        .From(BoundedContexts.Self).On(defaultRoute)
+                        .From(BoundedContexts.TxHandler).On(defaultRoute)
                     .PublishingCommands(typeof(LimitTradeNotifySendCommand))
                         .To(BoundedContexts.Push).With(defaultPipeline),
 

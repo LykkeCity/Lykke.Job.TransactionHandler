@@ -2,18 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
-using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
-using MessagePack;
+using Newtonsoft.Json;
 using OrderStatus = Lykke.Service.OperationsRepository.AutorestClient.Models.OrderStatus;
 
 namespace Lykke.Job.TransactionHandler.Handlers
@@ -42,8 +41,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(ProcessLimitOrderCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(LimitOrderCommandHandler), command.ToJson(), "ProcessLimitOrderCommand");
+            _log.WriteInfo(nameof(LimitOrderCommandHandler), JsonConvert.SerializeObject(command.LimitOrder, Formatting.Indented), "ProcessLimitOrderCommand");
 
+            await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
+
+            _log.WriteInfo(nameof(LimitOrderCommandHandler), JsonConvert.SerializeObject(command.LimitOrder.Order, Formatting.Indented), $"Client {command.LimitOrder.Order.ClientId}. Limit order {command.LimitOrder.Order.Id} updated.");
+            
             var clientId = command.LimitOrder.Order.ClientId;
             
             if (!_trusted.ContainsKey(clientId))
@@ -102,7 +105,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     trade.State = TransactionStates.InProcessOffchain;
             }
 
-            return trades;
+            return trades.ToArray();
         }        
         
         private List<AggregatedTransfer> AggregateSwaps(IEnumerable<LimitQueueItem.LimitTradeInfo> trades)
@@ -142,8 +145,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 });
         }        
     }
-
-    [MessagePackObject(keyAsPropertyName: true)]
+    
     public class AggregatedTransfer
     {        
         public string ClientId { get; set; }
@@ -154,8 +156,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         
         public string TransferId { get; set; }
     }
-
-    [MessagePackObject(keyAsPropertyName: true)]
+    
     public class ClientTrade
     {        
         public string Id { get; set; }

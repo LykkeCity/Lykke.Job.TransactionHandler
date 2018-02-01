@@ -1,11 +1,14 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Queues.Models;
@@ -19,6 +22,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 {
     public class OperationHistoryProjection
     {
+        private readonly ILimitTradeEventsRepositoryClient _limitTradeEventsRepositoryClient;
         private readonly IClientCacheRepository _clientCacheRepository;
         private readonly ILog _log;
         private readonly ITradeOperationsRepositoryClient _clientTradesRepository;
@@ -27,6 +31,7 @@ namespace Lykke.Job.TransactionHandler.Projections
         private readonly Core.Services.BitCoin.ITransactionService _transactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
+        private readonly IFeeLogService _feeLogService;
 
         public OperationHistoryProjection(
             [NotNull] ILog log,
@@ -36,8 +41,11 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] Core.Services.BitCoin.ITransactionService transactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
-            [NotNull] IClientCacheRepository clientCacheRepository)
+            [NotNull] IClientCacheRepository clientCacheRepository,
+            [NotNull] IFeeLogService feeLogService,
+            [NotNull] ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient)
         {
+            _limitTradeEventsRepositoryClient = limitTradeEventsRepositoryClient;
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _clientTradesRepository = clientTradesRepository ?? throw new ArgumentNullException(nameof(clientTradesRepository));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
@@ -46,6 +54,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
             _clientCacheRepository = clientCacheRepository ?? throw new ArgumentNullException(nameof(clientCacheRepository));
+            _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
         }
         
         private async Task RegisterOperation(TransferEvent operation)
@@ -98,6 +107,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.SettledOffchain
             };
 
+            operation.AddFeeDataToOperation(message);
+
             await RegisterOperation(operation);
         }
 
@@ -123,6 +134,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.SettledOffchain
             };
 
+            operation.AddFeeDataToOperation(message);
+
             await RegisterOperation(operation);
         }
 
@@ -132,7 +145,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
-            var amount = evt.Command.Amount;
+            var amount = message.Amount.ParseAnyDouble();
             var transactionId = evt.Command.TransactionId.ToString();
             var context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
             var isForwardWithdawal = context.AddData?.ForwardWithdrawal != null;
@@ -152,6 +165,8 @@ namespace Lykke.Job.TransactionHandler.Projections
                 BlockChainHash = string.Empty,
                 State = TransactionStates.SettledOffchain
             };
+
+            operation.AddFeeDataToOperation(message);
 
             await RegisterOperation(operation);
         }
@@ -184,21 +199,130 @@ namespace Lykke.Job.TransactionHandler.Projections
                 State = TransactionStates.InProcessOffchain
             };
 
+            operation.AddFeeDataToOperation(message);
+
             await RegisterOperation(operation);
         }
 
-        public async Task Handle(LimitOrderSavedEvent evt)
+        public async Task Handle(LimitOrderExecutedEvent evt)
         {
+            // Save trades
+            if (evt.Trades != null && evt.Trades.Any())
+            {
+                var clientTrades = evt.Trades
+                    .Select(t => new ClientTrade
+                    {
+                        Id = t.Id,
+                        ClientId = t.ClientId,
+                        AssetId = t.AssetId,
+                        Amount = t.Amount,
+                        DateTime = t.DateTime,
+                        Price = t.Price,
+                        LimitOrderId = t.LimitOrderId,
+                        OppositeLimitOrderId = t.OppositeLimitOrderId,
+                        TransactionId = t.TransactionId,
+                        IsLimitOrderResult = t.IsLimitOrderResult,
+                        State = t.State
+                    }).ToArray();
+
+                await _clientTradesRepository.SaveAsync(clientTrades);
+
+                _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(clientTrades, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit trade {evt.LimitOrder.Order.Id}. Client trades saved");
+            }
+            else
+            {
+                _log.WriteInfo(nameof(OperationHistoryProjection), null, $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Client trades are empty");
+            }
+
+            // Save fee logs
+            if (evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
+            {
+                await _feeLogService.WriteFeeInfoAsync(evt.LimitOrder);
+            }
+            else
+            {
+                _log.WriteInfo(nameof(OperationHistoryProjection), null, $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Fee logs are empty, there are no trades.");
+            }
+
             if (evt.IsTrustedClient)
                 return;
 
-            var activeLimitOrdersCount = evt.ActiveLimitOrders.Count();
+            // Save context
+            var contextData = await _transactionService.GetTransactionContext<SwapOffchainContextData>(evt.LimitOrder.Order.Id) ?? new SwapOffchainContextData();
 
-            await _clientCacheRepository.UpdateLimitOrdersCount(evt.ClientId, activeLimitOrdersCount);
+            var aggregated = evt.Aggregated ?? new List<Handlers.AggregatedTransfer>();
 
-            ChaosKitty.Meow();
+            foreach (var operation in aggregated.Where(x => x.ClientId == evt.LimitOrder.Order.ClientId))
+            {
+                var trade = evt.Trades.FirstOrDefault(x => x.ClientId == operation.ClientId && x.AssetId == operation.AssetId && Math.Abs(x.Amount - (double)operation.Amount) < 0.00000001);
 
-            _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt, Formatting.Indented), $"Client {evt.ClientId}. Limit orders cache updated: {activeLimitOrdersCount} active orders");
+                contextData.Operations.Add(new SwapOffchainContextData.Operation()
+                {
+                    TransactionId = operation.TransferId,
+                    Amount = operation.Amount,
+                    ClientId = operation.ClientId,
+                    AssetId = operation.AssetId,
+                    ClientTradeId = trade?.Id
+                });
+            }
+
+            await _transactionService.CreateOrUpdateAsync(evt.LimitOrder.Order.Id);
+            await _transactionService.SetTransactionContext(evt.LimitOrder.Order.Id, contextData);
+
+            _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(contextData, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
+
+            // Save limit trade events
+            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), evt.LimitOrder.Order.Status);
+
+            switch (status)
+            {
+                case OrderStatus.InOrderBook:
+                case OrderStatus.Cancelled:
+                    await CreateEvent(evt.LimitOrder, status);
+                    break;
+                case OrderStatus.Processing:
+                case OrderStatus.Matched:
+                    if (!evt.HasPrevOrderState)
+                        await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
+                    break;
+                case OrderStatus.Dust:
+                case OrderStatus.NoLiquidity:
+                case OrderStatus.NotEnoughFunds:
+                case OrderStatus.ReservedVolumeGreaterThanBalance:
+                case OrderStatus.UnknownAsset:
+                case OrderStatus.LeadToNegativeSpread:
+                case OrderStatus.TooSmallVolume:
+                case OrderStatus.Runtime:
+                    _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(OrderStatus));
+            }
+        }
+
+        private async Task CreateEvent(LimitQueueItem.LimitOrderWithTrades limitOrderWithTrades, OrderStatus status)
+        {
+            var order = limitOrderWithTrades.Order;
+            var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
+            var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
+            var date = status == OrderStatus.InOrderBook ? limitOrderWithTrades.Order.CreatedAt : DateTime.UtcNow;
+
+            var insertRequest = new LimitTradeEventInsertRequest
+            {
+                Volume = order.Volume,
+                Type = type,
+                OrderId = order.Id,
+                Status = status,
+                AssetId = assetPair?.BaseAssetId,
+                ClientId = order.ClientId,
+                Price = order.Price,
+                AssetPair = order.AssetPairId,
+                DateTime = date
+            };
+
+            await _limitTradeEventsRepositoryClient.CreateAsync(insertRequest);
+
+            _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(insertRequest, Formatting.Indented), $"Client {order.ClientId}. Limit trade {order.Id}. State has changed -> {status}");
         }
 
         private async Task RegisterOperation(CashInOutOperation operation)

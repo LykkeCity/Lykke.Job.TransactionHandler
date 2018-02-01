@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using JetBrains.Annotations;
 using Newtonsoft.Json;
 using MessagePack;
 
-namespace Lykke.Job.TransactionHandler.Queues.Models
+namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
     [MessagePackObject(keyAsPropertyName: true)]
     public class CashInOutQueueMessage
@@ -19,5 +21,9 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
         
         [JsonProperty("volume")]
         public string Amount { get; set; }
+
+        [JsonProperty("fees")]
+        [CanBeNull]
+        public List<Fee> Fees { get; set; }
     }
 }

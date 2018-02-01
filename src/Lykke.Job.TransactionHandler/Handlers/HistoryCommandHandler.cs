@@ -1,14 +1,12 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
+using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
-using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Utils;
-using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -16,36 +14,24 @@ namespace Lykke.Job.TransactionHandler.Handlers
     {
         private readonly ILog _log;
         private readonly ILimitOrdersRepository _limitOrdersRepository;
+        private readonly IClientCacheRepository _clientCacheRepository;
 
-        public HistoryCommandHandler(ILog log, ILimitOrdersRepository limitOrdersRepository)
+        public HistoryCommandHandler(ILog log, ILimitOrdersRepository limitOrdersRepository, IClientCacheRepository clientCacheRepository)
         {
             _log = log;
             _limitOrdersRepository = limitOrdersRepository;
+            _clientCacheRepository = clientCacheRepository;
         }
 
         [UsedImplicitly]
-        public async Task<CommandHandlingResult> Handle(CreateOrUpdateLimitOrderCommand command, IEventPublisher eventPublisher)
+        public async Task<CommandHandlingResult> Handle(UpdateLimitOrdersCountCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(HistoryCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), "CreateOrUpdateLimitOrderCommand");
-
-            await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder);
+            var activeLimitOrdersCount = (await _limitOrdersRepository.GetActiveOrdersAsync(command.ClientId)).Count();
+            await _clientCacheRepository.UpdateLimitOrdersCount(command.ClientId, activeLimitOrdersCount);
 
             ChaosKitty.Meow();
 
-            IEnumerable<ILimitOrder> activeLimitOrders = null;
-
-            if (!command.IsTrustedClient)
-            {
-                activeLimitOrders = await _limitOrdersRepository.GetActiveOrdersAsync(command.LimitOrder.ClientId);
-            }
-
-            eventPublisher.PublishEvent(new LimitOrderSavedEvent
-            {
-                Id = command.LimitOrder.Id,
-                ClientId = command.LimitOrder.ClientId,
-                IsTrustedClient = command.IsTrustedClient,
-                ActiveLimitOrders = activeLimitOrders?.Select(x => x.Id)
-            });
+            _log.WriteInfo(nameof(UpdateLimitOrdersCountCommand), null, $"Client {command.ClientId}. Limit orders cache updated: {activeLimitOrdersCount} active orders");
 
             return CommandHandlingResult.Ok();
         }

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Handlers;
-using Lykke.Job.TransactionHandler.Queues.Models;
 using MessagePack;
 
 namespace Lykke.Job.TransactionHandler.Events.LimitOrders

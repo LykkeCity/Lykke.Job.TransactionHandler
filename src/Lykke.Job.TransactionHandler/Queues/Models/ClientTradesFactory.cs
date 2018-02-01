@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 

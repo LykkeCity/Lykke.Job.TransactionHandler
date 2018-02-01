@@ -1,10 +1,11 @@
-﻿using JetBrains.Annotations;
-using Newtonsoft.Json;
-using System;
-using Newtonsoft.Json.Converters;
+﻿using System;
+using System.Collections.Generic;
+using JetBrains.Annotations;
 using MessagePack;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 
-namespace Lykke.Job.TransactionHandler.Queues.Models
+namespace Lykke.Job.TransactionHandler.Core.Contracts
 {
     [JsonConverter(typeof(StringEnumConverter))]
     public enum FeeType
@@ -27,10 +28,10 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
         [JsonProperty("type")]
         public FeeType Type { get; set; }
 
-        [JsonProperty("sizeType")]
+        [JsonProperty("takerSizeType")]
         public FeeSizeType SizeType { get; set; }
 
-        [JsonProperty("size")]
+        [JsonProperty("takerSize")]
         public double? Size { get; set; }
 
         [JsonProperty("sourceClientId")]
@@ -40,6 +41,9 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
         [JsonProperty("targetClientId")]
         [CanBeNull]
         public string TargetClientId { get; set; }
+
+        [JsonProperty("assetIds")]
+        public List<string> AssetIds { get; set; }
     }
 
     [MessagePackObject(keyAsPropertyName: true)]
@@ -63,5 +67,16 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
         [JsonProperty("asset")]
         public string Asset { get; set; }
+    }
+
+    [MessagePackObject(keyAsPropertyName: true)]
+    public class Fee
+    {
+        [JsonProperty("instruction")]
+        public FeeInstruction Instruction { get; set; }
+
+        [JsonProperty("transfer")]
+        [CanBeNull]
+        public FeeTransfer Transfer { get; set; }
     }
 }
