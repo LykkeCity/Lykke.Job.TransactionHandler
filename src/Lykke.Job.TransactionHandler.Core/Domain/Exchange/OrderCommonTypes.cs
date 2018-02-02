@@ -38,11 +38,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
         /// </summary>
         UnknownAsset,
         /// <summary>
-        /// One of trades or whole order has volume/price*volume less then configured dust
-        /// </summary>
-        /// <remarks>Not used anymore. See 'TooSmallVolume'</remarks>
-        Dust,
-        /// <summary>
         /// Cancelled
         /// </summary>
         Cancelled,
@@ -51,13 +46,13 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
         /// </summary>
         LeadToNegativeSpread,
         /// <summary>
+        /// Invalid fee
+        /// </summary>
+        InvalidFee,
+        /// <summary>
         /// Too small volume
         /// </summary>
-        TooSmallVolume,
-        /// <summary>
-        /// Unexpected status code
-        /// </summary>
-        Runtime
+        TooSmallVolume
     }
 
     public interface IOrderBase
