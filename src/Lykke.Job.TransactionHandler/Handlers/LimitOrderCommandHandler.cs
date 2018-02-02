@@ -11,9 +11,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
-using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Newtonsoft.Json;
-using OrderStatus = Lykke.Service.OperationsRepository.AutorestClient.Models.OrderStatus;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -22,20 +20,20 @@ namespace Lykke.Job.TransactionHandler.Handlers
     {
         private readonly ILog _log;
         private readonly IClientAccountClient _clientAccountClient;
-        private readonly ILimitOrdersRepository _limitOrdersRepository;        
+        private readonly ILimitOrdersRepository _limitOrdersRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         readonly Dictionary<string, bool> _trusted = new Dictionary<string, bool>();
 
         public LimitOrderCommandHandler(
-            ILog log, 
-            IClientAccountClient clientAccountClient, 
-            ILimitOrdersRepository limitOrdersRepository,                         
+            ILog log,
+            IClientAccountClient clientAccountClient,
+            ILimitOrdersRepository limitOrdersRepository,
             IAssetsServiceWithCache assetsServiceWithCache)
         {
             _log = log;
             _clientAccountClient = clientAccountClient;
-            _limitOrdersRepository = limitOrdersRepository;            
-            _assetsServiceWithCache = assetsServiceWithCache;            
+            _limitOrdersRepository = limitOrdersRepository;
+            _assetsServiceWithCache = assetsServiceWithCache;
         }
 
         [UsedImplicitly]
@@ -46,9 +44,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
 
             _log.WriteInfo(nameof(LimitOrderCommandHandler), JsonConvert.SerializeObject(command.LimitOrder.Order, Formatting.Indented), $"Client {command.LimitOrder.Order.ClientId}. Limit order {command.LimitOrder.Order.Id} updated.");
-            
+
             var clientId = command.LimitOrder.Order.ClientId;
-            
+
             if (!_trusted.ContainsKey(clientId))
                 _trusted[clientId] = (await _clientAccountClient.IsTrustedAsync(clientId)).Value;
 
@@ -63,7 +61,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             if (!isTrustedClient)
             {
                 // need previous order state for not trusted clients
-                var prevOrderState = await _limitOrdersRepository.GetOrderAsync(command.LimitOrder.Order.Id);                
+                var prevOrderState = await _limitOrdersRepository.GetOrderAsync(command.LimitOrder.Order.Id);
 
                 limitOrderExecutedEvent.HasPrevOrderState = prevOrderState != null;
                 limitOrderExecutedEvent.PrevRemainingVolume = prevOrderState?.RemainingVolume;
@@ -79,19 +77,19 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             if (status == OrderStatus.Processing || status == OrderStatus.Matched)
             {
-                limitOrderExecutedEvent.Trades = await CreateTrades(command.LimitOrder);                
+                limitOrderExecutedEvent.Trades = await CreateTrades(command.LimitOrder);
             }
 
             eventPublisher.PublishEvent(limitOrderExecutedEvent);
-           
+
             return CommandHandlingResult.Ok();
-        }        
+        }
 
         private async Task<ClientTrade[]> CreateTrades(LimitQueueItem.LimitOrderWithTrades limitOrderWithTrades)
         {
             if (limitOrderWithTrades.Trades == null || limitOrderWithTrades.Trades.Count == 0)
                 return new ClientTrade[0];
-            
+
             var trades = limitOrderWithTrades.ToDomainOffchain(limitOrderWithTrades.Order.Id, limitOrderWithTrades.Trades[0].ClientId);
 
             foreach (var trade in trades)
@@ -100,14 +98,14 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                 // already settled guarantee transaction or trusted asset
                 if (trade.Amount < 0 || tradeAsset.IsTrusted)
-                    trade.State = TransactionStates.SettledOffchain;
+                    trade.State = Service.OperationsRepository.AutorestClient.Models.TransactionStates.SettledOffchain;
                 else
-                    trade.State = TransactionStates.InProcessOffchain;
+                    trade.State = Service.OperationsRepository.AutorestClient.Models.TransactionStates.InProcessOffchain;
             }
 
             return trades.ToArray();
-        }        
-        
+        }
+
         private List<AggregatedTransfer> AggregateSwaps(IEnumerable<LimitQueueItem.LimitTradeInfo> trades)
         {
             var list = new List<AggregatedTransfer>();
@@ -143,32 +141,32 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     AssetId = asset,
                     TransferId = Guid.NewGuid().ToString()
                 });
-        }        
+        }
     }
-    
+
     public class AggregatedTransfer
-    {        
+    {
         public string ClientId { get; set; }
-        
+
         public string AssetId { get; set; }
-        
+
         public decimal Amount { get; set; }
-        
+
         public string TransferId { get; set; }
     }
-    
+
     public class ClientTrade
-    {        
+    {
         public string Id { get; set; }
-        public string ClientId { get; set; }       
-        public string AssetId { get; set; }        
-        public double Amount { get; set; }        
-        public DateTime DateTime { get; set; }        
-        public double Price { get; set; }        
-        public string LimitOrderId { get; set; }        
-        public string OppositeLimitOrderId { get; set; }        
-        public string TransactionId { get; set; }        
-        public bool IsLimitOrderResult { get; set; }        
-        public TransactionStates State { get; set; }
+        public string ClientId { get; set; }
+        public string AssetId { get; set; }
+        public double Amount { get; set; }
+        public DateTime DateTime { get; set; }
+        public double Price { get; set; }
+        public string LimitOrderId { get; set; }
+        public string OppositeLimitOrderId { get; set; }
+        public string TransactionId { get; set; }
+        public bool IsLimitOrderResult { get; set; }
+        public Service.OperationsRepository.AutorestClient.Models.TransactionStates State { get; set; }
     }
 }
