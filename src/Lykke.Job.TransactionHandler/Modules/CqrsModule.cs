@@ -143,8 +143,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .WithLoopback()
                     .PublishingEvents(typeof(LimitOrderExecutedEvent))
                         .With("events")
-                    .WithCommandsHandler<LimitOrderCommandHandler>()
-                    .ProcessingOptions(defaultPipeline).MultiThreaded(4).QueueCapacity(1024),
+                    .WithCommandsHandler<LimitOrderCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.ForwardWithdrawal)
                     .FailedCommandRetryDelay(defaultRetryDelay)
