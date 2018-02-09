@@ -20,17 +20,11 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
             _notificationsService = notificationsService;
         }
 
-        public async Task CreateOffchainRequest(string transactionId, string clientId, string assetId, decimal amount, string orderId, OffchainTransferType type)
-        {
-            await _offchainTransferRepository.CreateTransfer(transactionId, clientId, assetId, amount, type, null, orderId);
-
-            await _offchainRequestRepository.CreateRequest(transactionId, clientId, assetId, RequestType.RequestTransfer, type, null);
-        }
-
         public async Task CreateOffchainRequestAndNotify(string transactionId, string clientId, string assetId, decimal amount,
             string orderId, OffchainTransferType type)
         {
-            await CreateOffchainRequest(transactionId, clientId, assetId, amount, orderId, type);
+            await _offchainTransferRepository.CreateTransfer(transactionId, clientId, assetId, amount, type, null, orderId);
+            await _offchainRequestRepository.CreateRequest(transactionId, clientId, assetId, RequestType.RequestTransfer, type, null);
             await _notificationsService.OffchainNotifyUser(clientId);
         }
     }
