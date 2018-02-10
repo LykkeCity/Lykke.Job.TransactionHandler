@@ -6,6 +6,6 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 {
     public interface IClientTradesFactory
     {
-        Task<ClientTrade[]> Create(string orderId, string clientId, TradeQueueItem.TradeInfo trade, double marketVolume, double limitVolume);
+        Task<ClientTrade[]> Create(string orderId, string clientId, string assetPairId, TradeQueueItem.TradeInfo trade, double marketVolume, double limitVolume);
     }
 } 

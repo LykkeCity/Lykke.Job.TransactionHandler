@@ -1,23 +1,19 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <Version>1.0.1</Version>
   </PropertyGroup>
-
   <ItemGroup>
     <Content Include="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
   <ItemGroup>
     <None Update="Dockerfile">
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Lykke.Common.ApiLibrary" Version="1.3.1" />
     <PackageReference Include="Lykke.Cqrs" Version="2.1.1" />
@@ -25,7 +21,7 @@
     <PackageReference Include="Lykke.Contracts" Version="1.0.43" />
     <PackageReference Include="Lykke.Job.EthereumCore.Contracts" Version="1.0.9" />
     <PackageReference Include="Lykke.JobTriggers" Version="1.2.0" />
-    <PackageReference Include="Lykke.Logs" Version="3.5.2" />
+    <PackageReference Include="Lykke.Logs" Version="3.6.0" />
     <PackageReference Include="Lykke.MatchingEngineConnector" Version="2.0.8" />
     <PackageReference Include="Lykke.MatchingEngineConnector.Abstractions" Version="2.0.8" />
     <PackageReference Include="Lykke.Messaging.RabbitMq" Version="0.1.15" />
@@ -33,12 +29,11 @@
     <PackageReference Include="Lykke.Service.Assets.Client" Version="3.3.1" />
     <PackageReference Include="Lykke.Service.ExchangeOperations.Client" Version="1.1.4" />
     <PackageReference Include="Lykke.Service.ExchangeOperations.Contracts" Version="1.0.6" />
-
+    <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.92" />
+    <PackageReference Include="Lykke.Service.OperationsRepository.Client.Core" Version="1.0.27" />
     <PackageReference Include="Lykke.Service.PersonalData" Version="1.0.32" />
     <PackageReference Include="Lykke.Service.Operations.Client" Version="1.0.12" />
-    <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.91" />
-    <PackageReference Include="Lykke.Service.OperationsRepository.Client.Core" Version="1.0.26" />
-    <PackageReference Include="Lykke.SettingsReader" Version="1.1.4" />
+    <PackageReference Include="Lykke.SettingsReader" Version="2.0.1" />
     <PackageReference Include="Lykke.SlackNotification.AzureQueue" Version="2.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics" Version="2.0.1" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.0.2" />
@@ -50,13 +45,11 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.0.0" />
     <PackageReference Include="RabbitMQ.Client" Version="4.1.3" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Lykke.Job.TransactionHandler.AzureRepositories\Lykke.Job.TransactionHandler.AzureRepositories.csproj" />
     <ProjectReference Include="..\Lykke.Job.TransactionHandler.Core\Lykke.Job.TransactionHandler.Core.csproj" />
     <ProjectReference Include="..\Lykke.Job.TransactionHandler.Services\Lykke.Job.TransactionHandler.Services.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <Compile Update="Resources\TextResources.Designer.cs">
       <DesignTime>True</DesignTime>
@@ -64,7 +57,6 @@
       <DependentUpon>TextResources.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-
   <ItemGroup>
     <EmbeddedResource Update="Resources\TextResources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
