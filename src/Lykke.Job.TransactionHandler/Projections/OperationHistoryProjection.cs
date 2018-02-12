@@ -206,6 +206,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(LimitOrderExecutedEvent evt)
         {
+            var assetPairId = evt.LimitOrder.Order.AssetPairId;
             // Save trades
             if (evt.Trades != null && evt.Trades.Any())
             {
@@ -215,6 +216,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                         Id = t.Id,
                         ClientId = t.ClientId,
                         AssetId = t.AssetId,
+                        AssetPairId = assetPairId,
                         Amount = t.Amount,
                         DateTime = t.DateTime,
                         Price = t.Price,
