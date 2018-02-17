@@ -37,7 +37,7 @@ namespace Lykke.Job.TransactionHandler.Sagas.Services
 
             context.Order = order;
             context.Trades = trades;
-            context.ClientTrades = await _clientTradesFactory.Create(order.Id, clientId, trades[0], marketVolume, limitVolume);
+            context.ClientTrades = await _clientTradesFactory.Create(order.Id, clientId, order?.AssetPairId, trades[0], marketVolume, limitVolume);
             context.IsTrustedClient = (await _clientAccountClient.IsTrustedAsync(clientId)).Value;
             context.Status = OperationStatus.Matched;
 

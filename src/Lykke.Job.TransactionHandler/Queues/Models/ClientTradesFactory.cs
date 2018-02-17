@@ -17,7 +17,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             _assetsServiceWithCache = assetsServiceWithCache;
         }
 
-        public async Task<ClientTrade[]> Create(string orderId, string clientId, TradeQueueItem.TradeInfo trade, double marketVolume, double limitVolume)
+        public async Task<ClientTrade[]> Create(string orderId, string clientId, string assetPairId, TradeQueueItem.TradeInfo trade, double marketVolume, double limitVolume)
         {
             var result = new List<ClientTrade>();
 
@@ -29,6 +29,8 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             {
                 var asset = assets.FirstOrDefault(x => x.Id == clientTrade.AssetId);
 
+                clientTrade.AssetPairId = assetPairId;
+                
                 if (asset == null)
                     throw new ArgumentException("Unknown asset");
 
