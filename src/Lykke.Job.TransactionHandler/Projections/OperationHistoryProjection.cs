@@ -127,7 +127,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 ClientId = message.ClientId,
                 Multisig = multisig,
                 AssetId = message.AssetId,
-                Amount = Math.Abs(amount),
+                Amount = (double) Math.Abs(amount),
                 DateTime = DateTime.UtcNow,
                 AddressTo = multisig,
                 TransactionId = transactionId,

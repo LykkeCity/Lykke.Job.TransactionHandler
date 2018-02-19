@@ -24,7 +24,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
     {
         public string Multisig { get; set; }
         public string AssetId { get; set; }
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
 
         public override CommandType Type => CommandType.Issue;
     }
@@ -34,7 +34,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         public string SourceAddress { get; set; }
         public string DestinationAddress { get; set; }
         public string AssetId { get; set; }
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
 
         public override CommandType Type => CommandType.CashOut;
     }
@@ -44,7 +44,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         public string SourceAddress { get; set; }
         public string DestinationAddress { get; set; }
         public string AssetId { get; set; }
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
 
         public override CommandType Type => CommandType.Transfer;
     }

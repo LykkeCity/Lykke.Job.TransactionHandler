@@ -3,7 +3,7 @@
     public class DirectTransferCompletedData : IEmailMessageData
     {
         public string ClientName { get; set; }
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
         public string AssetId { get; set; }
         public string SrcBlockchainHash { get; set; }
 

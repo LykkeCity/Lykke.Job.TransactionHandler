@@ -3,7 +3,7 @@
     public class SolarCashOutData : IEmailMessageData
     {
         public string AddressTo { get; set; }
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
 
         public string MessageId()
         {

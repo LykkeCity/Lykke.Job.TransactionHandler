@@ -62,7 +62,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 {
                     OperationId = Guid.Parse(transactionId),
                     AssetId = message.AssetId,
-                    Amount = (decimal)Math.Abs(amountNoFee),
+                    Amount = Math.Abs(amountNoFee),
                     ToAddress = context.Address,
                     ClientId = Guid.Parse(clientId)
                 }, BlockchainCashoutProcessor.Contract.BlockchainCashoutProcessorBoundedContext.Name);

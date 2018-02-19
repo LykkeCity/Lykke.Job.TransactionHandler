@@ -5,6 +5,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.SolarCoin
 {
     public interface ISrvSolarCoinCommandProducer
     {
-        Task ProduceCashOutCommand(string id, SolarCoinAddress addressTo, double amount);
+        Task ProduceCashOutCommand(string id, SolarCoinAddress addressTo, decimal amount);
     }
 }

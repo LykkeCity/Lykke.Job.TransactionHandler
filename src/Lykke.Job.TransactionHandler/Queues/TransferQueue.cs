@@ -161,7 +161,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                             DateTime = DateTime.UtcNow,
                             FromId = null,
                             AssetId = queueMessage.AssetId,
-                            Amount = amountNoFee,
+                            Amount = (double) amountNoFee,
                             TransactionId = queueMessage.Id,
                             IsHidden = false,
                             AddressFrom = toWallet?.Address,
@@ -181,7 +181,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                             DateTime = DateTime.UtcNow,
                             FromId = null,
                             AssetId = queueMessage.AssetId,
-                            Amount = -amountNoFee,
+                            Amount = (double) -amountNoFee,
                             TransactionId = queueMessage.Id,
                             IsHidden = false,
                             AddressFrom = fromWallet?.Address,
@@ -234,7 +234,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 try
                 {
                     await _offchainRequestService.CreateOffchainRequestAndNotify(transaction.TransactionId,
-                        queueMessage.ToClientid, queueMessage.AssetId, (decimal)amountNoFee, null,
+                        queueMessage.ToClientid, queueMessage.AssetId, amountNoFee, null,
                         OffchainTransferType.CashinToClient);
                 }
                 catch (Exception)

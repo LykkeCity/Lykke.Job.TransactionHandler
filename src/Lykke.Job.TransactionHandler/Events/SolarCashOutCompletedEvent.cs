@@ -5,7 +5,7 @@ namespace Lykke.Job.TransactionHandler.Events
     [MessagePackObject(keyAsPropertyName: true)]
     public class SolarCashOutCompletedEvent
     {
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
 
         public string Address { get; set; }
 

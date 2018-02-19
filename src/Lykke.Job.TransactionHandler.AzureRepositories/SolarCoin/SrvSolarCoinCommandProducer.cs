@@ -15,7 +15,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.SolarCoin
             _queueExt = queueExt;
         }
 
-        public async Task ProduceCashOutCommand(string id, SolarCoinAddress addressTo, double amount)
+        public async Task ProduceCashOutCommand(string id, SolarCoinAddress addressTo, decimal amount)
         {
             await _queueExt.PutRawMessageAsync(new SolarCashOutCommand
             {
@@ -29,7 +29,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.SolarCoin
         {
             public string Id { get; set; }
             public string Address { get; set; }
-            public double Amount { get; set; }
+            public decimal Amount { get; set; }
         }
     }
 }

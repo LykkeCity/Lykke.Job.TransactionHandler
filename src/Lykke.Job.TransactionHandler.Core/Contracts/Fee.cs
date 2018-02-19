@@ -32,7 +32,7 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
         public FeeSizeType SizeType { get; set; }
 
         [JsonProperty("takerSize")]
-        public double? Size { get; set; }
+        public decimal? Size { get; set; }
 
         [JsonProperty("sourceClientId")]
         [CanBeNull]
@@ -63,7 +63,7 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
         public DateTime Date { get; set; }
 
         [JsonProperty("volume")]
-        public double Volume { get; set; }
+        public decimal Volume { get; set; }
 
         [JsonProperty("asset")]
         public string Asset { get; set; }

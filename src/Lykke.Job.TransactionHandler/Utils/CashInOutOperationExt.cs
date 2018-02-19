@@ -9,7 +9,7 @@ namespace Lykke.Job.TransactionHandler.Utils
     {
         public static void AddFeeDataToOperation(this CashInOutOperation operation, CashInOutQueueMessage message)
         {
-            operation.FeeSize = message?.Fees?.FirstOrDefault()?.Transfer?.Volume ?? 0d;
+            operation.FeeSize = (double) (message?.Fees?.FirstOrDefault()?.Transfer?.Volume ?? 0);
             operation.FeeType = FeeType.Absolute;
         }
     }
