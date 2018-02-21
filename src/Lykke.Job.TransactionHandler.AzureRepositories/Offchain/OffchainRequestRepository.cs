@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
@@ -117,45 +115,12 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
             var id = Guid.NewGuid().ToString();
 
             var byClient = OffchainRequestEntity.ByClient.Create(id, transferId, clientId, assetId, type, transferType, serverLock);
-            await _table.InsertAsync(byClient);
+            await _table.InsertOrReplaceAsync(byClient);
 
             var byRecord = OffchainRequestEntity.ByRecord.Create(id, transferId, clientId, assetId, type, transferType, serverLock);
-            await _table.InsertAsync(byRecord);
+            await _table.InsertOrReplaceAsync(byRecord);
 
             return byRecord;
         }
-
-        public async Task<IEnumerable<IOffchainRequest>> GetRequestsForClient(string clientId)
-        {
-            return await _table.GetDataAsync(OffchainRequestEntity.ByClient.GeneratePartition(clientId));
-        }
-
-
-        public async Task<IOffchainRequest> CreateRequestAndLock(string transferId, string clientId, string assetId,
-            RequestType type, OffchainTransferType transferType, DateTime? lockDate)
-        {
-            var existingRequest = (await GetRequestsForClient(clientId)).FirstOrDefault(x => x.AssetId == assetId
-                                                                                        && x.TransferType == transferType
-                                                                                        && x.StartProcessing == null);
-
-            if (existingRequest == null)
-                return await CreateRequest(transferId, clientId, assetId, type, transferType, lockDate);
-
-            var replaced = await _table.MergeAsync(OffchainRequestEntity.ByRecord.Partition, existingRequest.RequestId, entity =>
-            {
-                if (entity.StartProcessing != null)
-                    return null;
-
-                entity.ServerLock = lockDate;
-                return entity;
-            });
-
-            if (replaced == null)
-                return await CreateRequest(transferId, clientId, assetId, type, transferType, lockDate);
-
-            return replaced;
-        }
-
     }
-
 }
