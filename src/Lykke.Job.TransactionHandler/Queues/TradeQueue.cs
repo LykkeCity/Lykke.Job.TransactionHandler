@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
 using Lykke.Cqrs;
 using JetBrains.Annotations;
@@ -91,6 +92,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private async Task ProcessMessage(TradeQueueItem queueMessage)
         {
             await _feeLogService.WriteFeeInfoAsync(queueMessage);
+            await _log.WriteInfoAsync(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.ToJson());
             
             _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
             {

@@ -132,6 +132,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
 
             await _feeLogService.WriteFeeInfoAsync(queueMessage);
+            await _log.WriteInfoAsync(nameof(TransferQueue), nameof(ProcessMessage), queueMessage.ToJson());
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
 

@@ -60,6 +60,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         public async Task ProcessMessage(CashInOutQueueMessage message)
         {
             await _feeLogService.WriteFeeInfoAsync(message);
+            await _log.WriteInfoAsync(nameof(CashInOutMessageProcessor), nameof(ProcessMessage), message.ToJson());
 
             ChaosKitty.Meow();
 
