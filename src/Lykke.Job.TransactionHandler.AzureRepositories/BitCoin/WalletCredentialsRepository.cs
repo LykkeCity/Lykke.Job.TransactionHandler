@@ -70,8 +70,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
             return await _tableStorage.GetDataAsync(
                 partitionKey,
                 clientIds.Select(WalletCredentialsEntity.ByClientId.GenerateRowKey),
-                100,
-                x => x.MultiSig != null);
+                filter: x => x.MultiSig != null);
         }
     }
 }
