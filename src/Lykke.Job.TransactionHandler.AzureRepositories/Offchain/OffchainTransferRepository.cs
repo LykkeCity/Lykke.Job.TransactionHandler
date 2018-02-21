@@ -64,7 +64,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
         {
             var entity = OffchainTransferEntity.ByCommon.Create(transactionId, clientId, assetId, amount, type, externalTransferId, orderId, channelClosing);
 
-            await _storage.InsertOrMergeAsync(entity);
+            await _storage.InsertOrReplaceAsync(entity);
 
             return entity;
         }

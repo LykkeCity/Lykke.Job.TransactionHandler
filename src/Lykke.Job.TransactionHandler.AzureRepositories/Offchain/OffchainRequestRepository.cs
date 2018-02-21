@@ -115,10 +115,10 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
             var id = Guid.NewGuid().ToString();
 
             var byClient = OffchainRequestEntity.ByClient.Create(id, transferId, clientId, assetId, type, transferType, serverLock);
-            await _table.InsertOrMergeAsync(byClient);
+            await _table.InsertOrReplaceAsync(byClient);
 
             var byRecord = OffchainRequestEntity.ByRecord.Create(id, transferId, clientId, assetId, type, transferType, serverLock);
-            await _table.InsertOrMergeAsync(byRecord);
+            await _table.InsertOrReplaceAsync(byRecord);
 
             return byRecord;
         }

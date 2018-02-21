@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Microsoft.WindowsAzure.Storage.Table;
@@ -59,6 +61,17 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
                 return null;
 
             return string.IsNullOrEmpty(entity.MultiSig) ? null : entity;
+        }
+
+        public async Task<IEnumerable<IWalletCredentials>> GetWalletsAsync(IEnumerable<string> clientIds)
+        {
+            var partitionKey = WalletCredentialsEntity.ByClientId.GeneratePartitionKey();
+
+            return await _tableStorage.GetDataAsync(
+                partitionKey,
+                clientIds.Select(WalletCredentialsEntity.ByClientId.GenerateRowKey),
+                100,
+                x => x.MultiSig != null);
         }
     }
 }

@@ -41,7 +41,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             [NotNull] AppSettings.EthereumSettings settings,
             TimeSpan retryTimeout)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log.CreateComponentScope(nameof(EthereumCommandHandler));
             _srvEthereumHelper = srvEthereumHelper ?? throw new ArgumentNullException(nameof(srvEthereumHelper));
             _ethClientEventLogs = ethClientEventLogs ?? throw new ArgumentNullException(nameof(ethClientEventLogs));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
@@ -54,7 +54,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(ProcessEthereumCashoutCommand command)
         {
-            await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(ProcessEthereumCashoutCommand), command.ToJson(), "");
+            _log.WriteInfo(nameof(ProcessEthereumCashoutCommand), command, "");
 
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
             string errorMessage = null;
@@ -93,7 +93,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             if (errorMessage != null)
             {
                 await _ethClientEventLogs.WriteEvent(command.ClientId, Event.Error, new { Request = command.TransactionId, Error = errorMessage }.ToJson());
-                await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(ProcessEthereumCashoutCommand), command.ToJson(), new Exception(errorMessage));
+                _log.WriteError(nameof(ProcessEthereumCashoutCommand), command, new Exception(errorMessage));
                 return CommandHandlingResult.Fail(_retryTimeout);
             }
 
@@ -102,7 +102,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(TransferEthereumCommand command, IEventPublisher eventPublisher)
         {
-            await _log.WriteInfoAsync(nameof(EthereumCommandHandler), nameof(TransferEthereumCommand), command.ToJson());
+            _log.WriteInfo(nameof(TransferEthereumCommand), command, "");
 
             var txRequest = await _ethereumTransactionRequestRepository.GetAsync(command.TransactionId);
 
@@ -137,7 +137,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 case OperationType.TransferBetweenTrusted:
                     return CommandHandlingResult.Ok();
                 default:
-                    await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(TransferEthereumCommand), "Unknown transfer type", null);
+                    _log.WriteError(nameof(TransferEthereumCommand), "Unknown transfer type", null);
                     return CommandHandlingResult.Fail(_retryTimeout);
             }
 
@@ -150,7 +150,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             if (response.HasError && response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists)
             {
                 var errorMessage = response.Error.ToJson();
-                await _log.WriteErrorAsync(nameof(EthereumCommandHandler), nameof(TransferEthereumCommand), command.ToJson(), new Exception(errorMessage));
+                _log.WriteError(nameof(TransferEthereumCommand), new Exception(errorMessage));
                 return CommandHandlingResult.Fail(_retryTimeout);
             }
 

@@ -7,7 +7,6 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Events;
@@ -24,7 +23,6 @@ namespace Lykke.Job.TransactionHandler.Projections
     public class OperationHistoryProjection
     {
         private readonly ILimitTradeEventsRepositoryClient _limitTradeEventsRepositoryClient;
-        private readonly IClientCacheRepository _clientCacheRepository;
         private readonly ILog _log;
         private readonly ITradeOperationsRepositoryClient _clientTradesRepository;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
@@ -43,7 +41,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] Core.Services.BitCoin.ITransactionService transactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
-            [NotNull] IClientCacheRepository clientCacheRepository,
             [NotNull] IFeeLogService feeLogService,
             [NotNull] ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient,
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository)
@@ -56,7 +53,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
-            _clientCacheRepository = clientCacheRepository ?? throw new ArgumentNullException(nameof(clientCacheRepository));
             _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
         }
@@ -76,8 +72,9 @@ namespace Lykke.Job.TransactionHandler.Projections
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transactionId));
 
             //Get client wallets
-            var destWallet = await _walletCredentialsRepository.GetAsync(message.ToClientid);
-            var sourceWallet = await _walletCredentialsRepository.GetAsync(message.FromClientId);
+            var wallets = (await _walletCredentialsRepository.GetWalletsAsync(new[] { message.ToClientid, message.FromClientId })).ToList();
+            var destWallet = wallets.FirstOrDefault(x => x.ClientId == message.ToClientid);
+            var sourceWallet = wallets.FirstOrDefault(x => x.ClientId == message.FromClientId);
 
             //Register transfer events
             var transferState = ethTxRequest == null
