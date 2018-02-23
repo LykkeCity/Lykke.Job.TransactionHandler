@@ -36,6 +36,23 @@ namespace Lykke.Job.TransactionHandler
 
             withdrawAssetRecord.Amount = -1 * limitVolume;
             withdrawAssetRecord.AssetId = trade.Asset;
+            
+            var transfer = trade.Fees?.FirstOrDefault()?.Transfer;
+
+            if (transfer != null)
+            {
+                if (depositAssetRecord.AssetId == transfer.Asset)
+                {
+                    depositAssetRecord.FeeSize = transfer.Volume;
+                    depositAssetRecord.FeeType = Service.OperationsRepository.AutorestClient.Models.FeeType.Absolute;
+                }
+                else
+                {
+                    withdrawAssetRecord.FeeSize = transfer.Volume;
+                    withdrawAssetRecord.FeeType = Service.OperationsRepository.AutorestClient.Models.FeeType.Absolute;
+                }
+            }
+            
 
             depositAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(depositAssetRecord.DateTime);
             withdrawAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(withdrawAssetRecord.DateTime);

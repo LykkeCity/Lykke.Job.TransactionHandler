@@ -168,5 +168,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         public string TransactionId { get; set; }
         public bool IsLimitOrderResult { get; set; }
         public Service.OperationsRepository.AutorestClient.Models.TransactionStates State { get; set; }
+        public double FeeSize { get; set; }
+        public Service.OperationsRepository.AutorestClient.Models.FeeType FeeType { get; set; }
     }
 }

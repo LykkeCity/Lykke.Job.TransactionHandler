@@ -224,7 +224,9 @@ namespace Lykke.Job.TransactionHandler.Projections
                         OppositeLimitOrderId = t.OppositeLimitOrderId,
                         TransactionId = t.TransactionId,
                         IsLimitOrderResult = t.IsLimitOrderResult,
-                        State = t.State
+                        State = t.State,
+                        FeeSize = t.FeeSize,
+                        FeeType = t.FeeType
                     }).ToArray();
 
                 await _clientTradesRepository.SaveAsync(clientTrades);
