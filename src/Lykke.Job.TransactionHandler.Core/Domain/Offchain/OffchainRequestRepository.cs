@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
@@ -35,9 +34,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
     {
         Task<IOffchainRequest> CreateRequest(string transferId, string clientId, string assetId, RequestType type, OffchainTransferType transferType, DateTime? serverLock);
 
-        Task<IOffchainRequest> CreateRequestAndLock(string transferId, string clientId, string assetId, RequestType type, OffchainTransferType transferType, DateTime? lockDate);
-
-        Task<IEnumerable<IOffchainRequest>> GetRequestsForClient(string clientId);
     }
 
 }

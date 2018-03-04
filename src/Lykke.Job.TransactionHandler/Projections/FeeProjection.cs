@@ -22,10 +22,18 @@ namespace Lykke.Job.TransactionHandler.Projections
             _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
         }
 
-        // todo: remove?
         public async Task Handle(TradeCreatedEvent evt)
         {
             await _log.WriteInfoAsync(nameof(FeeProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
+
+            await _feeLogService.WriteFeeInfoAsync(evt.QueueMessage);
+
+            ChaosKitty.Meow();
+        }
+
+        public async Task Handle(TransferOperationStateSavedEvent evt)
+        {
+            await _log.WriteInfoAsync(nameof(FeeProjection), nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
 
             await _feeLogService.WriteFeeInfoAsync(evt.QueueMessage);
 

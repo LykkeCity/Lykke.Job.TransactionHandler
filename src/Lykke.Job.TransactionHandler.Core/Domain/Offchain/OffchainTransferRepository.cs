@@ -68,9 +68,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
         Task<IOffchainTransfer> GetTransfer(string id);
 
         Task CompleteTransfer(string transferId, bool? onchain = null);
-
-        Task AddChildTransfer(string transferId, IOffchainTransfer child);
-
-        Task SetTransferIsChild(string transferId, string parentId);
+        
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
 {
@@ -37,5 +38,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
     public interface IWalletCredentialsRepository
     {
         Task<IWalletCredentials> GetAsync(string clientId);
+        Task<IEnumerable<IWalletCredentials>> GetWalletsAsync(IEnumerable<string> clientIds);
     }
 }

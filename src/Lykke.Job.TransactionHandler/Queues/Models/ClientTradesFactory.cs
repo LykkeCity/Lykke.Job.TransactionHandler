@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
+using FeeType = Lykke.Service.OperationsRepository.AutorestClient.Models.FeeType;
 
 namespace Lykke.Job.TransactionHandler.Queues.Models
 {
@@ -57,6 +58,22 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
             limitAssetRecord.Amount = limitVolume;
             limitAssetRecord.AssetId = trade.LimitAsset;
+
+            var transfer = trade.Fees?.FirstOrDefault()?.Transfer;
+
+            if (transfer != null)
+            {
+                if (marketAssetRecord.AssetId == transfer.Asset)
+                {
+                    marketAssetRecord.FeeSize = (double) transfer.Volume;
+                    marketAssetRecord.FeeType = FeeType.Absolute;
+                }
+                else
+                {
+                    limitAssetRecord.FeeSize = (double) transfer.Volume;
+                    limitAssetRecord.FeeType = FeeType.Absolute;
+                }
+            }
 
             marketAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(marketAssetRecord.DateTime);
             limitAssetRecord.Id = Core.Domain.CashOperations.Utils.GenerateRecordId(limitAssetRecord.DateTime);

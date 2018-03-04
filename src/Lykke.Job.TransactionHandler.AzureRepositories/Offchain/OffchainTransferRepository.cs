@@ -64,7 +64,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
         {
             var entity = OffchainTransferEntity.ByCommon.Create(transactionId, clientId, assetId, amount, type, externalTransferId, orderId, channelClosing);
 
-            await _storage.InsertAsync(entity);
+            await _storage.InsertOrReplaceAsync(entity);
 
             return entity;
         }
@@ -82,33 +82,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
                     entity.Completed = true;
                     if (onchain != null)
                         entity.Onchain = onchain.Value;
-                    return entity;
-                });
-        }
-
-        public async Task AddChildTransfer(string transferId, IOffchainTransfer child)
-        {
-            await _storage.MergeAsync(OffchainTransferEntity.ByCommon.GeneratePartitionKey(), transferId,
-                entity =>
-                {
-                    var data = entity.GetAdditionalData();
-                    data.ChildTransfers.Add(child.Id);
-                    entity.SetAdditionalData(data);
-
-                    entity.Amount += child.Amount;
-
-                    return entity;
-                });
-        }
-
-        public async Task SetTransferIsChild(string transferId, string parentId)
-        {
-            await _storage.MergeAsync(OffchainTransferEntity.ByCommon.GeneratePartitionKey(), transferId,
-                entity =>
-                {
-                    entity.IsChild = true;
-                    entity.ParentTransferId = parentId;
-
                     return entity;
                 });
         }
