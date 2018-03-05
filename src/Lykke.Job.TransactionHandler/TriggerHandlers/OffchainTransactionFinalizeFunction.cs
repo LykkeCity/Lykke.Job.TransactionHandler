@@ -189,7 +189,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             {
                 var errorLog = MarginTradingPaymentLog.CreateError(transfer.ClientId,
                     sourceTransferContext.Actions.UpdateMarginBalance.AccountId, DateTime.UtcNow,
-                    sourceTransferContext.Actions.UpdateMarginBalance.Amount,
+                    (double) sourceTransferContext.Actions.UpdateMarginBalance.Amount,
                     $"Transfer to margin wallet failed; transfer: {transfer.Id}, ME result: {exchangeOperationResult.ToJson()}");
 
                 await _marginTradingPaymentLog.CreateAsync(errorLog);
@@ -202,18 +202,18 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
             var depositToMarginResult = await marginDataService.DepositToAccount(transfer.ClientId,
                 sourceTransferContext.Actions.UpdateMarginBalance.AccountId,
-                sourceTransferContext.Actions.UpdateMarginBalance.Amount,
+                (double) sourceTransferContext.Actions.UpdateMarginBalance.Amount,
                 MarginPaymentType.Transfer);
 
             if (depositToMarginResult.IsOk)
                 await _marginTradingPaymentLog.CreateAsync(MarginTradingPaymentLog.CreateOk(transfer.ClientId,
                     sourceTransferContext.Actions.UpdateMarginBalance.AccountId, DateTime.UtcNow,
-                    sourceTransferContext.Actions.UpdateMarginBalance.Amount, transfer.ExternalTransferId));
+                    (double) sourceTransferContext.Actions.UpdateMarginBalance.Amount, transfer.ExternalTransferId));
             else
             {
                 var errorLog = MarginTradingPaymentLog.CreateError(transfer.ClientId,
                     sourceTransferContext.Actions.UpdateMarginBalance.AccountId, DateTime.UtcNow,
-                    sourceTransferContext.Actions.UpdateMarginBalance.Amount,
+                    (double) sourceTransferContext.Actions.UpdateMarginBalance.Amount,
                     $"Error deposit to margin account: {depositToMarginResult.ErrorMessage}");
 
                 await _marginTradingPaymentLog.CreateAsync(errorLog);
@@ -281,7 +281,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                     var asset = await _assetsServiceWithCache.TryGetAssetAsync(transfer.Actions.PushNotification.AssetId);
 
                     await _appNotifications.SendAssetsCreditedNotification(new[] { clientAcc.NotificationsId },
-                            transfer.Actions.PushNotification.Amount, transfer.Actions.PushNotification.AssetId,
+                            (double) transfer.Actions.PushNotification.Amount, transfer.Actions.PushNotification.AssetId,
                             string.Format(TextResources.CreditedPushText, transfer.Actions.PushNotification.Amount.GetFixedAsString(asset.Accuracy),
                                 transfer.Actions.PushNotification.AssetId));
                 }

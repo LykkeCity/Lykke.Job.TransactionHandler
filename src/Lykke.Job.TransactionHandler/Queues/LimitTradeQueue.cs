@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
@@ -71,6 +72,8 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task ProcessMessage(LimitQueueItem tradeItem)
         {
+            await _log.WriteInfoAsync(nameof(LimitTradeQueue), nameof(ProcessMessage), tradeItem.ToJson());
+
             foreach (var limitOrderWithTrades in tradeItem.Orders)
             {
                 var command = new ProcessLimitOrderCommand

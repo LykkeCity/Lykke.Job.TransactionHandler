@@ -43,12 +43,12 @@ namespace Lykke.Job.TransactionHandler
             {
                 if (depositAssetRecord.AssetId == transfer.Asset)
                 {
-                    depositAssetRecord.FeeSize = transfer.Volume;
+                    depositAssetRecord.FeeSize = (double) transfer.Volume;
                     depositAssetRecord.FeeType = Service.OperationsRepository.AutorestClient.Models.FeeType.Absolute;
                 }
                 else
                 {
-                    withdrawAssetRecord.FeeSize = transfer.Volume;
+                    withdrawAssetRecord.FeeSize = (double) transfer.Volume;
                     withdrawAssetRecord.FeeType = Service.OperationsRepository.AutorestClient.Models.FeeType.Absolute;
                 }
             }

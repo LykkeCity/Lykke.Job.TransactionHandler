@@ -4,6 +4,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.ChronoBank
 {
     public interface IChronoBankCommandProducer
     {
-        Task ProduceCashOutCommand(string id, string addressTo, double amount);
+        Task ProduceCashOutCommand(string id, string addressTo, decimal amount);
     }
 }

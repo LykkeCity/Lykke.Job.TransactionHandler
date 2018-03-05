@@ -14,7 +14,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.ChronoBank
             _queueExt = queueExt;
         }
 
-        public async Task ProduceCashOutCommand(string id, string addressTo, double amount)
+        public async Task ProduceCashOutCommand(string id, string addressTo, decimal amount)
         {
             await _queueExt.PutRawMessageAsync(new ChronoBankCashOutCommand
             {
@@ -28,7 +28,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.ChronoBank
         {
             public string Id { get; set; }
             public string Address { get; set; }
-            public double Amount { get; set; }
+            public decimal Amount { get; set; }
         }
     }
 }

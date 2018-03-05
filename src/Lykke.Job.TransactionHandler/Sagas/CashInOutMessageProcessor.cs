@@ -60,6 +60,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         public async Task ProcessMessage(CashInOutQueueMessage message)
         {
             await _feeLogService.WriteFeeInfoAsync(message);
+            await _log.WriteInfoAsync(nameof(CashInOutMessageProcessor), nameof(ProcessMessage), message.ToJson());
 
             ChaosKitty.Meow();
 
@@ -138,7 +139,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
 
-            var amount = message.Amount.ParseAnyDouble();
+            var amount = message.Amount.ParseAnyDecimal();
             var transactionId = message.Id;
             var context = await _transactionService.GetTransactionContext<IssueContextData>(transactionId);
             context.CashOperationId = transactionId;
@@ -169,7 +170,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         {
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
             
-            var amount = message.Amount.ParseAnyDouble();
+            var amount = message.Amount.ParseAnyDecimal();
             var transactionId = message.Id;
             var context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
             context.CashOperationId = transactionId;

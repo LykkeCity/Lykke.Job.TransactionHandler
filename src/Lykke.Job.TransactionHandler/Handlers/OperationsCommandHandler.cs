@@ -121,7 +121,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             await SaveState(cmd, context);
 
-            eventPublisher.PublishEvent(new TransferOperationStateSavedEvent { TransactionId = transactionId, QueueMessage = message, AmountNoFee = amountNoFee });
+            eventPublisher.PublishEvent(new TransferOperationStateSavedEvent { TransactionId = transactionId, QueueMessage = message, AmountNoFee = (double) amountNoFee });
 
             return CommandHandlingResult.Ok();
         }

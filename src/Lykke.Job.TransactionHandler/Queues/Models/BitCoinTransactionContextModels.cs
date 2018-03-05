@@ -13,7 +13,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
     {
         public string ClientId { get; set; }
         public string AssetId { get; set; }
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
 
         public string CashOperationId { get; set; }
     }
@@ -23,7 +23,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
         public string ClientId { get; set; }
         public string AssetId { get; set; }
         public string Address { get; set; }
-        public double Amount { get; set; }
+        public decimal Amount { get; set; }
         public string CashOperationId { get; set; }
         public AdditionalData AddData { get; set; }
 
@@ -145,7 +145,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
         public class ConvertedOkEmailAction
         {
-            public ConvertedOkEmailAction(string assetFromId, double price, double amountFrom, double amountLkk)
+            public ConvertedOkEmailAction(string assetFromId, decimal price, decimal amountFrom, decimal amountLkk)
             {
                 AssetFromId = assetFromId;
                 Price = price;
@@ -154,26 +154,26 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             }
 
             public string AssetFromId { get; set; }
-            public double Price { get; set; }
-            public double AmountFrom { get; set; }
-            public double AmountLkk { get; set; }
+            public decimal Price { get; set; }
+            public decimal AmountFrom { get; set; }
+            public decimal AmountLkk { get; set; }
         }
 
         public class EmailAction
         {
-            public EmailAction(string assetId, double amount)
+            public EmailAction(string assetId, decimal amount)
             {
                 AssetId = assetId;
                 Amount = amount;
             }
 
             public string AssetId { get; set; }
-            public double Amount { get; set; }
+            public decimal Amount { get; set; }
         }
 
         public class PushNotification
         {
-            public PushNotification(string assetId, double amount)
+            public PushNotification(string assetId, decimal amount)
             {
                 AssetId = assetId;
                 Amount = amount;
@@ -184,26 +184,26 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             /// </summary>
             public string AssetId { get; set; }
 
-            public double Amount { get; set; }
+            public decimal Amount { get; set; }
         }
 
         public class GenerateTransferAction
         {
             public string DestClientId { get; set; }
             public string SourceClientId { get; set; }
-            public double Amount { get; set; }
+            public decimal Amount { get; set; }
             public string AssetId { get; set; }
-            public double Price { get; set; }
-            public double AmountFrom { get; set; }
+            public decimal Price { get; set; }
+            public decimal AmountFrom { get; set; }
             public string FromAssetId { get; set; }
         }
 
         public class UpdateMarginBalance
         {
             public string AccountId { get; set; }
-            public double Amount { get; set; }
+            public decimal Amount { get; set; }
 
-            public UpdateMarginBalance(string account, double amount)
+            public UpdateMarginBalance(string account, decimal amount)
             {
                 AccountId = account;
                 Amount = amount;

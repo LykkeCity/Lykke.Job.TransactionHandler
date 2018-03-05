@@ -65,12 +65,12 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             {
                 if (marketAssetRecord.AssetId == transfer.Asset)
                 {
-                    marketAssetRecord.FeeSize = transfer.Volume;
+                    marketAssetRecord.FeeSize = (double) transfer.Volume;
                     marketAssetRecord.FeeType = FeeType.Absolute;
                 }
                 else
                 {
-                    limitAssetRecord.FeeSize = transfer.Volume;
+                    limitAssetRecord.FeeSize = (double) transfer.Volume;
                     limitAssetRecord.FeeType = FeeType.Absolute;
                 }
             }

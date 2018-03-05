@@ -223,7 +223,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(token.AssetId);
             var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
 
-            await HandleCashInOperation(asset, (double)amount, bcnCreds.ClientId, bcnCreds.Address,
+            await HandleCashInOperation(asset, amount, bcnCreds.ClientId, bcnCreds.Address,
                 queueMessage.TransactionHash);
 
             return true;
@@ -298,7 +298,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     var asset = await _assetsService.AssetGetAsync(assetId);
                     await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
                     var pt = await _paymentTransactionsRepository.TryCreateAsync(PaymentTransaction.Create(hash,
-                                CashInPaymentSystem.Ethereum, clientId, amount,
+                                CashInPaymentSystem.Ethereum, clientId, (double) amount,
                                 asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing));
                     if (pt == null)
                     {
@@ -323,7 +323,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     };
 
                     var exResult = await _exchangeOperationsServiceClient.ManualCashInAsync(clientId, assetId,
-                            amount, "auto redeem", commentText);
+                            (double) amount, "auto redeem", commentText);
 
                     if (!exResult.IsOk())
                     {
@@ -389,18 +389,18 @@ namespace Lykke.Job.TransactionHandler.Queues
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(bcnCreds.AssetId);
             var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
 
-            await HandleCashInOperation(asset, (double)amount, bcnCreds.ClientId, bcnCreds.Address,
+            await HandleCashInOperation(asset, amount, bcnCreds.ClientId, bcnCreds.Address,
                 queueMessage.TransactionHash, createPendingActions: true);
 
             return true;
         }
 
-        public async Task HandleCashInOperation(Asset asset, double amount, string clientId, string clientAddress, string hash, bool createPendingActions = false)
+        public async Task HandleCashInOperation(Asset asset, decimal amount, string clientId, string clientAddress, string hash, bool createPendingActions = false)
         {
             var id = Guid.NewGuid().ToString("N");
 
             var pt = await _paymentTransactionsRepository.TryCreateAsync(PaymentTransaction.Create(hash,
-                CashInPaymentSystem.Ethereum, clientId, amount,
+                CashInPaymentSystem.Ethereum, clientId, (double) amount,
                 asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing));
             if (pt == null)
             {
@@ -419,7 +419,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 }
             }
 
-            var result = await _matchingEngineClient.CashInOutAsync(id, clientId, asset.Id, amount);
+            var result = await _matchingEngineClient.CashInOutAsync(id, clientId, asset.Id, (double) amount);
 
             if (result == null || result.Status != MeStatusCodes.Ok)
             {
@@ -436,7 +436,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     ClientId = clientId,
                     Multisig = walletCreds.MultiSig,
                     AssetId = asset.Id,
-                    Amount = amount,
+                    Amount = (double) amount,
                     BlockChainHash = hash,
                     DateTime = DateTime.UtcNow,
                     AddressTo = clientAddress,
