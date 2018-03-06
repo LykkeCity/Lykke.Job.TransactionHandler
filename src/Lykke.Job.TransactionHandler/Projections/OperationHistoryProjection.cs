@@ -339,31 +339,26 @@ namespace Lykke.Job.TransactionHandler.Projections
             _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(contextData, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
 
             // Save limit trade events
-            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), evt.LimitOrder.Order.Status);
+            var parseResult = Enum.TryParse(typeof(OrderStatus), evt.LimitOrder.Order.Status, out var orderStatus);
+            var status = parseResult ? (OrderStatus?) orderStatus : null;
+
+            if (status == null)                                
+                return;            
 
             switch (status)
             {
                 case OrderStatus.InOrderBook:
                 case OrderStatus.Cancelled:
-                    await CreateEvent(evt.LimitOrder, status);
+                    await CreateEvent(evt.LimitOrder, status.Value);
                     break;
                 case OrderStatus.Processing:
                 case OrderStatus.Matched:
                     if (!evt.HasPrevOrderState)
                         await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
                     break;
-                case OrderStatus.Dust:
-                case OrderStatus.NoLiquidity:
-                case OrderStatus.NotEnoughFunds:
-                case OrderStatus.ReservedVolumeGreaterThanBalance:
-                case OrderStatus.UnknownAsset:
-                case OrderStatus.LeadToNegativeSpread:
-                case OrderStatus.TooSmallVolume:
-                case OrderStatus.Runtime:
-                    _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
-                    break;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(OrderStatus));
+                    _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
+                    break;                
             }
         }
 

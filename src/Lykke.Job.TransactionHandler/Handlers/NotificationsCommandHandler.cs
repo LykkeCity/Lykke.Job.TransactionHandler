@@ -46,7 +46,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             var order = command.LimitOrder.Order;
             var aggregated = command.Aggregated ?? new List<AggregatedTransfer>();
-            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), order.Status);
+            var parseResult = Enum.TryParse(typeof(OrderStatus), order.Status, out var orderStatus);
+            
+            var status = parseResult ? (OrderStatus?)orderStatus : null;
+
+            if (status == null)
+                return CommandHandlingResult.Ok();
 
             var clientId = order.ClientId;
             var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
@@ -97,7 +102,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
 
-                await _appNotifications.SendLimitOrderNotification(new[] { clientAcc.NotificationsId }, msg, type, status);
+                await _appNotifications.SendLimitOrderNotification(new[] { clientAcc.NotificationsId }, msg, type, status.Value);
 
                 _log.WriteInfo(nameof(NotificationsCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), $"Client {clientId}. Order status: {status}. Push message: {msg}");
             }
