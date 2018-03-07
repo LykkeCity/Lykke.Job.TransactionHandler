@@ -28,10 +28,10 @@ namespace Lykke.Job.TransactionHandler.Core.Contracts
         [JsonProperty("type")]
         public FeeType Type { get; set; }
 
-        [JsonProperty("takerSizeType")]
+        [JsonProperty("sizeType")]
         public FeeSizeType SizeType { get; set; }
 
-        [JsonProperty("takerSize")]
+        [JsonProperty("size")]
         public decimal? Size { get; set; }
 
         [JsonProperty("sourceClientId")]
