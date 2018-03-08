@@ -7,6 +7,7 @@
         public static readonly string Bitcoin = $"{TxHandler}.bitcoin";
         public static readonly string Chronobank = $"{TxHandler}.chronobank";
         public static readonly string Ethereum = $"{TxHandler}.ethereum";
+        public static readonly string EthereumCommands = $"{TxHandler}.ethereum.commands";
         public static readonly string Offchain = $"{TxHandler}.offchain";
         public static readonly string Solarcoin = $"{TxHandler}.solarcoin";
         public static readonly string Operations = "operations";

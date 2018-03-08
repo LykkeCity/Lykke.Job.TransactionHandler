@@ -166,5 +166,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             return CommandHandlingResult.Ok();
         }
+
     }
 }

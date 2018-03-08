@@ -137,6 +137,18 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.PaymentSystems
 
         }
 
+        public async Task<bool> CheckExistsAsync(IPaymentTransaction paymentTransaction)
+        {
+            if (paymentTransaction == null) throw new ArgumentNullException(nameof(paymentTransaction));
+
+            var existingRecord =
+                await
+                    _tableStorage.GetDataAsync(
+                        PaymentTransactionEntity.IndexByClient.GeneratePartitionKey(paymentTransaction.ClientId),
+                        PaymentTransactionEntity.IndexByClient.GenerateRowKey(paymentTransaction.Id));
+
+            return existingRecord != null;
+        }
 
         public async Task<IPaymentTransaction> TryCreateAsync(IPaymentTransaction paymentTransaction)
         {
