@@ -285,6 +285,10 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterInstance<IClientCommentsRepository>(
                 new ClientCommentsRepository(AzureTableStorage<ClientCommentEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "ClientComments", _log)));
+
+            builder.RegisterInstance<IEthereumCashinAggregateRepository>(
+                    EthereumCashinAggregateRepository.Create(
+                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), _log));
         }
 
         private void BindRabbitMq(ContainerBuilder builder)

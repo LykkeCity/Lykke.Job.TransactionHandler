@@ -27,6 +27,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.EthereumCore.Contracts.Events;
 using Lykke.Job.EthereumCore.Contracts.Enums;
 using Lykke.Cqrs;
+using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -180,10 +181,20 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return false;
             }
 
-            _cqrsEngine.SendCommand<CoinEvent>(@event,
+            _cqrsEngine.SendCommand<ProcessCoinEventCommand>(new ProcessCoinEventCommand()
+                {
+                    Additional = @event.Additional,
+                    Amount = @event.Amount,
+                    CoinEventType = @event.CoinEventType,
+                    ContractAddress = @event.ContractAddress,
+                    EventTime = @event.EventTime,
+                    FromAddress = @event.FromAddress,
+                    OperationId = @event.OperationId,
+                    ToAddress = @event.ToAddress,
+                    TransactionHash = @event.TransactionHash,
+                },
                 BoundedContexts.EthereumCommands,
-                BoundedContexts.EthereumCommands
-                );
+                BoundedContexts.EthereumCommands);
 
             return true;
         }
@@ -196,10 +207,19 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return false;
             }
 
-            _cqrsEngine.SendCommand<HotWalletEvent>(@event,
+            _cqrsEngine.SendCommand<ProcessHotWalletEventCommand>(new ProcessHotWalletEventCommand()
+                {
+                    Amount = @event.Amount,
+                    TransactionHash = @event.TransactionHash,
+                    ToAddress = @event.ToAddress,
+                    OperationId = @event.OperationId,
+                    FromAddress = @event.FromAddress,
+                    EventTime = @event.EventTime,
+                    EventType = @event.EventType,
+                    TokenAddress = @event.TokenAddress
+                },
                 BoundedContexts.EthereumCommands,
-                BoundedContexts.EthereumCommands
-                );
+                BoundedContexts.EthereumCommands);
 
             return true;
         }

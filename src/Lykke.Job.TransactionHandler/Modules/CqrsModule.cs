@@ -7,8 +7,10 @@ using Inceptum.Messaging;
 using Inceptum.Messaging.RabbitMq;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
+using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Events;
+using Lykke.Job.TransactionHandler.Events.EthereumCore;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Handlers;
 using Lykke.Job.TransactionHandler.Projections;
@@ -72,6 +74,7 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<NotificationsSaga>();
             builder.RegisterType<TradeSaga>();
             builder.RegisterType<TransferSaga>();
+            builder.RegisterType<EthereumCoreSaga>();
 
             builder.RegisterType<ForwardWithdrawalCommandHandler>();
             builder.RegisterType<BitcoinCommandHandler>()
@@ -89,6 +92,7 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<HistoryCommandHandler>();
             builder.RegisterType<LimitOrderCommandHandler>();
             builder.RegisterType<NotificationsCommandHandler>();
+            builder.RegisterType<EthereumCoreCommandHandler>();
 
             builder.RegisterType<OperationHistoryProjection>();
             builder.RegisterType<EmailProjection>();
@@ -177,6 +181,19 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingEvents(typeof(EthereumTransferSentEvent))
                         .With(defaultPipeline)
                     .WithCommandsHandler<EthereumCommandHandler>(),
+
+                Register.BoundedContext(BoundedContexts.EthereumCommands)
+                    .FailedCommandRetryDelay(defaultRetryDelay)
+                    .ListeningCommands(typeof(ProcessCoinEventCommand),
+                                       typeof(ProcessHotWalletEventCommand),
+                                       typeof(EnrollEthCashinToMatchingEngineCommand), 
+                                       typeof(SaveEthInHistoryCommand))
+                        .On(defaultRoute)
+                    .PublishingEvents(typeof(CashinDetectedEvent),
+                                      typeof(EthCashinEnrolledToMatchingEngineEvent),
+                                      typeof(EthCashinSavedInHistoryEvent))
+                        .With(defaultPipeline)
+                    .WithCommandsHandler<EthereumCoreCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.Offchain)
                     .FailedCommandRetryDelay(defaultRetryDelay)
@@ -284,6 +301,15 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .To(BoundedContexts.Operations).With(defaultPipeline)
                     .PublishingCommands(typeof(CreateOffchainCashinRequestCommand))
                         .To(BoundedContexts.Offchain).With(defaultPipeline),
+
+                Register.Saga<EthereumCoreSaga>("ethereum-core-saga")
+                    .ListeningEvents(typeof(CashinDetectedEvent),
+                                     typeof(EthCashinEnrolledToMatchingEngineEvent),
+                                     typeof(EthCashinSavedInHistoryEvent))
+                        .From(BoundedContexts.EthereumCommands).On(defaultRoute)
+                    .PublishingCommands(typeof(EnrollEthCashinToMatchingEngineCommand),
+                                        typeof(SaveEthInHistoryCommand))
+                        .To(BoundedContexts.EthereumCommands).With(defaultPipeline),
 
                 Register.DefaultRouting
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))

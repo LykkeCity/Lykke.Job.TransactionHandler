@@ -18,6 +18,7 @@ using Lykke.Service.Assets.Client.Models;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
+    //Cashout operations from WalletApi
     public class EthereumCommandHandler
     {
         private readonly ILog _log;
