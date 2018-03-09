@@ -19,10 +19,10 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
         public DateTime? CashinEnrolledToMatchingEngineDate { get; private set; }
         public DateTime? HistorySavedDate { get; private set; }
 
-        public EthereumCashinAggregate(string transactionHash, 
-            string clientId, 
+        public EthereumCashinAggregate(string transactionHash,
+            string clientId,
             string assetId,
-            string clientAddress, 
+            string clientAddress,
             decimal amount,
             bool createPendingActions)
         {
@@ -35,15 +35,17 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
             CashinOperationId = Guid.NewGuid();
         }
 
-        private EthereumCashinAggregate(string version, 
+        private EthereumCashinAggregate(string version,
             EthereumCashinState state,
-            string transactionHash, 
-            string clientId, 
-            string assetId, 
-            string clientAddress, 
+            string transactionHash,
+            string clientId,
+            string assetId,
+            string clientAddress,
             decimal amount,
             bool createPendingActions,
-            Guid cashinOperationId)
+            Guid cashinOperationId,
+            DateTime? cashinEnrolledToMatchingEngineDate,
+            DateTime? historySavedDate)
         {
             Version = version;
             State = state;
@@ -54,6 +56,8 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
             Amount = amount;
             CreatePendingActions = createPendingActions;
             CashinOperationId = cashinOperationId;
+            CashinEnrolledToMatchingEngineDate = cashinEnrolledToMatchingEngineDate;
+            HistorySavedDate = historySavedDate;
         }
 
         public bool OnEnrolledToMatchingEngineEvent()
@@ -99,15 +103,17 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
             return true;
         }
 
-        public static EthereumCashinAggregate Restore(string version, 
-            EthereumCashinState state, 
-            string transactionHash, 
-            string clientId, 
-            string assetId, 
-            string clientAddress, 
-            decimal amount, 
-            bool createPendingActions, 
-            Guid cashinOperationId)
+        public static EthereumCashinAggregate Restore(
+            string version,
+            EthereumCashinState state,
+            string transactionHash,
+            string clientId, string assetId,
+            string clientAddress,
+            decimal amount,
+            bool createPendingActions,
+            Guid cashinOperationId,
+            DateTime? cashinEnrolledToMatchingEngineDate,
+            DateTime? historySavedDate)
         {
             return new EthereumCashinAggregate(version,
                 state,
@@ -117,7 +123,9 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
                 clientAddress,
                 amount,
                 createPendingActions,
-                cashinOperationId);
+                cashinOperationId,
+                cashinEnrolledToMatchingEngineDate,
+                historySavedDate);
         }
     }
 }

@@ -63,7 +63,10 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum.Entities
                 ClientAddress = aggregate.ClientAddress,
                 Amount = aggregate.Amount,
                 CreatePendingActions = aggregate.CreatePendingActions,
-                CashinOperationId = aggregate.CashinOperationId
+                CashinOperationId = aggregate.CashinOperationId,
+                State = aggregate.State,
+                CashinEnrolledToMatchingEngineDate = aggregate.CashinEnrolledToMatchingEngineDate,
+                HistorySavedDate = aggregate.HistorySavedDate
             };
         }
 
@@ -78,7 +81,9 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum.Entities
                 ClientAddress,
                 Amount,
                 CreatePendingActions,
-                CashinOperationId);
+                CashinOperationId,
+                CashinEnrolledToMatchingEngineDate,
+                HistorySavedDate);
         }
 
         #endregion

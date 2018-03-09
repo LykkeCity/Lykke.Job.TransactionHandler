@@ -188,11 +188,13 @@ namespace Lykke.Job.TransactionHandler.Modules
                                        typeof(ProcessHotWalletEventCommand),
                                        typeof(EnrollEthCashinToMatchingEngineCommand), 
                                        typeof(SaveEthInHistoryCommand))
-                        .On(defaultRoute)
+                        .On(defaultRoute) 
+                        .WithLoopback(defaultRoute)
                     .PublishingEvents(typeof(CashinDetectedEvent),
                                       typeof(EthCashinEnrolledToMatchingEngineEvent),
                                       typeof(EthCashinSavedInHistoryEvent))
                         .With(defaultPipeline)
+                        .WithLoopback(defaultPipeline)
                     .WithCommandsHandler<EthereumCoreCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.Offchain)
