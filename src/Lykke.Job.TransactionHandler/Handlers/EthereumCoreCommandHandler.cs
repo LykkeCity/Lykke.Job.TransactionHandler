@@ -193,12 +193,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 }
                 else
                 {
-                    await _paymentTransactionsRepository.TryCreateAsync(paymentTransaction);
                     eventPublisher.PublishEvent(new EthCashinEnrolledToMatchingEngineEvent()
                     {
                         CashinOperationId = command.CashinOperationId,
                         TransactionHash = hash,
                     });
+                    await _paymentTransactionsRepository.TryCreateAsync(paymentTransaction);
 
                     return CommandHandlingResult.Ok();
                 }
