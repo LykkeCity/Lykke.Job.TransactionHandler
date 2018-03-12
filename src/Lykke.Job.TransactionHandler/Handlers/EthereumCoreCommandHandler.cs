@@ -71,7 +71,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             IExchangeOperationsServiceClient exchangeOperationsServiceClient,
             IClientCommentsRepository clientCommentsRepository)
         {
-            _log = log;
+            _log = log.CreateComponentScope(nameof(EthereumCoreCommandHandler));
             _matchingEngineClient = matchingEngineClient;
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
             _clientAccountClient = clientAccountClient;
@@ -114,7 +114,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError("EthereumCoreCommandHandler", command, e);
+                _log.WriteError(command.TransactionHash ?? "Empty", command, e);
                 throw;
             }
         }
@@ -143,7 +143,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError("EthereumCoreCommandHandler", command, e);
+                _log.WriteError(command.TransactionHash ?? "Empty", command, e);
                 throw;
             }
 }
@@ -167,8 +167,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                 if (exists)
                 {
-                    await
-                        _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(Handle), command.ToJson(),
+                    _log.WriteWarning(command.TransactionHash ?? "Empty", command,
                             $"Transaction already handled {hash}");
 
                     return CommandHandlingResult.Ok();
@@ -188,11 +187,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
                    (result.Status != MeStatusCodes.Ok &&
                     result.Status != MeStatusCodes.Duplicate))
                 {
-                    await
-                        _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(Handle), "ME error",
-                            result.ToJson());
+                    _log.WriteWarning(command.TransactionHash ?? "Empty", result, "ME error");
 
-                    return CommandHandlingResult.Fail(TimeSpan.FromMinutes(5));
+                    return CommandHandlingResult.Fail(TimeSpan.FromMinutes(1));
                 }
                 else
                 {
@@ -208,7 +205,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError("EthereumCoreCommandHandler", command, e);
+                _log.WriteError(command.TransactionHash ?? "Empty", command, e);
                 throw;
             }
         }
@@ -252,7 +249,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError("EthereumCoreCommandHandler", command, e);
+                _log.WriteError(command.TransactionHash ?? "Empty", command, e);
                 throw;
             }
         }

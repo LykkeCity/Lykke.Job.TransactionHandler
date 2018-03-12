@@ -28,7 +28,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             [NotNull] IEthereumCashinAggregateRepository ethereumCashinAggregateRepository,
             [NotNull] IChaosKitty chaosKitty)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log?.CreateComponentScope(nameof(EthereumCoreSaga)) ?? throw new ArgumentNullException(nameof(log));
             _ethereumCashinAggregateRepository = ethereumCashinAggregateRepository;
             _chaosKitty = chaosKitty;
         }
@@ -40,7 +40,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             {
                 sw.Start();
 
-                _log.WriteInfo(nameof(EthereumCoreSaga), evt, "Eth Cashin startetd");
+                _log.WriteInfo(evt.TransactionHash, evt, "Eth Cashin startetd");
 
                 var aggregate = await _ethereumCashinAggregateRepository.GetOrAddAsync(evt.TransactionHash, () =>
                                     new EthereumCashinAggregate(evt.TransactionHash, evt.ClientId, evt.AssetId,
@@ -64,12 +64,12 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(EthereumCoreSaga), evt, e);
+                _log.WriteError(evt.TransactionHash, evt, e);
                 throw;
             }
             finally
             {
-                _log.WriteInfo(nameof(EthereumCoreSaga), evt, $"Eth Cashin start completed in {sw.ElapsedMilliseconds}");
+                _log.WriteInfo(evt.TransactionHash, evt, $"Eth Cashin start completed in {sw.ElapsedMilliseconds}");
                 sw.Stop();
             }
         }
@@ -80,7 +80,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             try
             {
                 sw.Start();
-                _log.WriteInfo(nameof(EthereumCoreSaga), evt, "Cashin Enrolled To ME");
+                _log.WriteInfo(evt.TransactionHash, evt, "Cashin Enrolled To ME");
 
                 var aggregate = await _ethereumCashinAggregateRepository.TryGetAsync(evt.TransactionHash);
 
@@ -105,12 +105,12 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(EthereumCoreSaga), evt, e);
+                _log.WriteError(evt.TransactionHash, evt, e);
                 throw;
             }
             finally
             {
-                _log.WriteInfo(nameof(EthereumCoreSaga), evt, $"Cashin Enrolled To ME in {sw.ElapsedMilliseconds}");
+                _log.WriteInfo(evt.TransactionHash, evt, $"Cashin Enrolled To ME in {sw.ElapsedMilliseconds}");
                 sw.Stop();
             }
         }
@@ -121,7 +121,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             try
             {
                 sw.Start();
-                _log.WriteInfo(nameof(EthereumCoreSaga), evt, "Cashin save history start");
+                _log.WriteInfo(evt.TransactionHash, evt, "Cashin save history start");
 
                 var aggregate = await _ethereumCashinAggregateRepository.TryGetAsync(evt.TransactionHash);
 
@@ -134,12 +134,12 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(EthereumCoreSaga), evt, e);
+                _log.WriteError(evt.TransactionHash, evt, e);
                 throw;
             }
             finally
             {
-                _log.WriteInfo(nameof(EthereumCoreSaga), evt, $"Cashin save history completed in {sw.ElapsedMilliseconds}");
+                _log.WriteInfo(evt.TransactionHash, evt, $"Cashin save history completed in {sw.ElapsedMilliseconds}");
                 sw.Stop();
             }
         }
