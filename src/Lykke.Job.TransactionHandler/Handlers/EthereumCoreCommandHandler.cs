@@ -185,8 +185,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 var result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId, asset.Id, (double)amount);
 
                 if (result == null ||
-                    result.Status != MeStatusCodes.Ok ||
-                    result.Status != MeStatusCodes.Duplicate)
+                   (result.Status != MeStatusCodes.Ok &&
+                    result.Status != MeStatusCodes.Duplicate))
                 {
                     await
                         _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(Handle), "ME error",
