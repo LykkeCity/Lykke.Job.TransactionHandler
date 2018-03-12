@@ -18,11 +18,11 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             _assetsServiceWithCache = assetsServiceWithCache;
         }
 
-        public async Task<ClientTrade[]> Create(string orderId, string clientId, string assetPairId, TradeQueueItem.TradeInfo trade, double marketVolume, double limitVolume)
+        public async Task<ClientTrade[]> Create(string orderId, string clientId, string assetPairId, TradeQueueItem.TradeInfo trade, double marketVolume, double limitVolume, double price)
         {
             var result = new List<ClientTrade>();
 
-            result.AddRange(CreateTradeRecordsForClientWithVolumes(trade, orderId, trade.MarketClientId, marketVolume, limitVolume));
+            result.AddRange(CreateTradeRecordsForClientWithVolumes(trade, orderId, trade.MarketClientId, marketVolume, limitVolume, price));
 
             var assets = await _assetsServiceWithCache.GetAllAssetsAsync(true);
 
@@ -46,10 +46,10 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
         }
 
         private static ClientTrade[] CreateTradeRecordsForClientWithVolumes(TradeQueueItem.TradeInfo trade,
-            string marketOrderId, string clientId, double marketVolume, double limitVolume)
+            string marketOrderId, string clientId, double marketVolume, double limitVolume, double price)
         {
-            var marketAssetRecord = CreateCommonPartForTradeRecord(trade, marketOrderId);
-            var limitAssetRecord = CreateCommonPartForTradeRecord(trade, marketOrderId);
+            var marketAssetRecord = CreateCommonPartForTradeRecord(trade, marketOrderId, price);
+            var limitAssetRecord = CreateCommonPartForTradeRecord(trade, marketOrderId, price);
 
             marketAssetRecord.ClientId = limitAssetRecord.ClientId = clientId;
 
@@ -81,12 +81,12 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             return new[] { marketAssetRecord, limitAssetRecord };
         }
 
-        private static ClientTrade CreateCommonPartForTradeRecord(TradeQueueItem.TradeInfo trade, string marketOrderId)
+        private static ClientTrade CreateCommonPartForTradeRecord(TradeQueueItem.TradeInfo trade, string marketOrderId, double price)
         {
             return new ClientTrade
             {
                 DateTime = trade.Timestamp,
-                Price = trade.Price.GetValueOrDefault(),
+                Price = price,
                 LimitOrderId = trade.LimitOrderExternalId,
                 MarketOrderId = marketOrderId,
                 TransactionId = marketOrderId

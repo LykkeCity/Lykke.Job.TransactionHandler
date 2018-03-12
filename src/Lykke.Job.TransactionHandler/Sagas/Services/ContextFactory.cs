@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Common;
+using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Service.Assets.Client;
@@ -35,9 +37,12 @@ namespace Lykke.Job.TransactionHandler.Sagas.Services
             var marketVolume = trades.Sum(x => x.MarketVolume);
             var limitVolume = trades.Sum(x => x.LimitVolume);
 
+            // if only one trade, we save price from this trade, otherwise we calculate effective price by trades
+            var price = await CalcEffectivePrice(trades, order.AssetPairId, trades[0].MarketAsset, marketVolume, limitVolume);
+
             context.Order = order;
             context.Trades = trades;
-            context.ClientTrades = await _clientTradesFactory.Create(order.Id, clientId, order?.AssetPairId, trades[0], marketVolume, limitVolume);
+            context.ClientTrades = await _clientTradesFactory.Create(order.Id, clientId, order.AssetPairId, trades[0], marketVolume, limitVolume, price);
             context.IsTrustedClient = (await _clientAccountClient.IsTrustedAsync(clientId)).Value;
             context.Status = OperationStatus.Matched;
 
@@ -54,7 +59,7 @@ namespace Lykke.Job.TransactionHandler.Sagas.Services
                 {
                     var trade = context.ClientTrades.FirstOrDefault(x =>
                         x.ClientId == clientId && x.AssetId == operation.Asset.Id &&
-                        Math.Abs(x.Amount - (double)operation.Amount) < 0.00000001);
+                        Math.Abs(x.Amount - (double)operation.Amount) < LykkeConstants.Eps);
 
                     // find existed operation (which was inserted in LW after guarantee transfer)
                     var existed = context.Operations.FirstOrDefault(x => x.ClientId == clientId && x.AssetId == operation.Asset.Id);
@@ -98,6 +103,20 @@ namespace Lykke.Job.TransactionHandler.Sagas.Services
             };
 
             return (sellTransfer, buyTransfer);
+        }
+
+        private async Task<double> CalcEffectivePrice(List<TradeQueueItem.TradeInfo> trades, string assetPair, string assetId, double volume, double oppositeVolume)
+        {
+            // if only one trade, or one of the volumes is equals to zero (after ME rounding)
+            if (trades.Count == 1 || Math.Abs(volume) < LykkeConstants.Eps || Math.Abs(oppositeVolume) < LykkeConstants.Eps)
+                return trades[0].Price.GetValueOrDefault();
+
+            var pair = await _assetsServiceWithCache.TryGetAssetPairAsync(assetPair);
+
+            if (pair.QuotingAssetId == assetId)
+                return (volume / oppositeVolume).TruncateDecimalPlaces(pair.Accuracy, true);
+
+            return (oppositeVolume / volume).TruncateDecimalPlaces(pair.Accuracy, true);
         }
     }
 }
