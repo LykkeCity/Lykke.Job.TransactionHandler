@@ -94,135 +94,167 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(ProcessHotWalletEventCommand command, IEventPublisher eventPublisher)
         {
-            switch (command.EventType)
+            try
             {
-                case EthereumCore.Contracts.Enums.HotWalletEventType.CashinCompleted:
-                    await ProcessHotWalletCashin(command, eventPublisher);
-                    break;
+                switch (command.EventType)
+                {
+                    case EthereumCore.Contracts.Enums.HotWalletEventType.CashinCompleted:
+                        await ProcessHotWalletCashin(command, eventPublisher);
+                        break;
 
-                case EthereumCore.Contracts.Enums.HotWalletEventType.CashoutCompleted:
-                    await ProcessHotWalletCashout(command);
-                    break;
+                    case EthereumCore.Contracts.Enums.HotWalletEventType.CashoutCompleted:
+                        await ProcessHotWalletCashout(command);
+                        break;
 
-                default:
-                    break;
+                    default:
+                        break;
+                }
+
+                return CommandHandlingResult.Ok();
             }
-
-            return CommandHandlingResult.Ok();
+            catch (Exception e)
+            {
+                _log.WriteError("EthereumCoreCommandHandler", command, e);
+                throw;
+            }
         }
 
         public async Task<CommandHandlingResult> Handle(ProcessCoinEventCommand command, IEventPublisher eventPublisher)
         {
-            switch (command.CoinEventType)
+            try
             {
-                case CoinEventType.CashinCompleted:
-                    await ProcessCashIn(command, eventPublisher);
-                    break;
-                case CoinEventType.TransferCompleted:
-                case CoinEventType.CashoutCompleted:
-                    await ProcessOutcomeOperation(command);
-                    break;
-                case CoinEventType.CashoutFailed:
-                    await ProcessFailedCashout(command, eventPublisher);
-                    break;
-                default:
-                    break; ;
-            }
+                switch (command.CoinEventType)
+                {
+                    case CoinEventType.CashinCompleted:
+                        await ProcessCashIn(command, eventPublisher);
+                        break;
+                    case CoinEventType.TransferCompleted:
+                    case CoinEventType.CashoutCompleted:
+                        await ProcessOutcomeOperation(command);
+                        break;
+                    case CoinEventType.CashoutFailed:
+                        await ProcessFailedCashout(command, eventPublisher);
+                        break;
+                    default:
+                        break; ;
+                }
 
-            return CommandHandlingResult.Ok();
-        }
+                return CommandHandlingResult.Ok();
+            }
+            catch (Exception e)
+            {
+                _log.WriteError("EthereumCoreCommandHandler", command, e);
+                throw;
+            }
+}
 
         public async Task<CommandHandlingResult> Handle(EnrollEthCashinToMatchingEngineCommand command, IEventPublisher eventPublisher)
         {
-            var cashinId = command.CashinOperationId.ToString("N");
-            var clientId = command.ClientId;
-            var hash = command.TransactionHash;
-            var amount = command.Amount;
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
-            var createPendingActions = command.CreatePendingActions;
-            var clientAddress = command.ClientAddress;
-            var paymentTransaction = PaymentTransaction.Create(hash,
-                CashInPaymentSystem.Ethereum, clientId, (double)amount,
-                asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing);
-
-            var exists = await _paymentTransactionsRepository.CheckExistsAsync(paymentTransaction);
-
-            if (exists)
+            try
             {
-                await
-                    _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(Handle), command.ToJson(),
-                        $"Transaction already handled {hash}");
+                var cashinId = command.CashinOperationId.ToString("N");
+                var clientId = command.ClientId;
+                var hash = command.TransactionHash;
+                var amount = command.Amount;
+                var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
+                var createPendingActions = command.CreatePendingActions;
+                var clientAddress = command.ClientAddress;
+                var paymentTransaction = PaymentTransaction.Create(hash,
+                    CashInPaymentSystem.Ethereum, clientId, (double)amount,
+                    asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing);
 
-                return CommandHandlingResult.Ok();
-            }
+                var exists = await _paymentTransactionsRepository.CheckExistsAsync(paymentTransaction);
 
-            if (createPendingActions)
-            {
-                if (asset.IsTrusted)
+                if (exists)
                 {
-                    await _ethererumPendingActionsRepository.CreateAsync(clientId, Guid.NewGuid().ToString());
+                    await
+                        _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(Handle), command.ToJson(),
+                            $"Transaction already handled {hash}");
+
+                    return CommandHandlingResult.Ok();
+                }
+
+                if (createPendingActions)
+                {
+                    if (asset.IsTrusted)
+                    {
+                        await _ethererumPendingActionsRepository.CreateAsync(clientId, Guid.NewGuid().ToString());
+                    }
+                }
+
+                var result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId, asset.Id, (double)amount);
+
+                if (result == null ||
+                    result.Status != MeStatusCodes.Ok ||
+                    result.Status != MeStatusCodes.Duplicate)
+                {
+                    await
+                        _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(Handle), "ME error",
+                            result.ToJson());
+
+                    return CommandHandlingResult.Fail(TimeSpan.FromMinutes(5));
+                }
+                else
+                {
+                    await _paymentTransactionsRepository.TryCreateAsync(paymentTransaction);
+                    eventPublisher.PublishEvent(new EthCashinEnrolledToMatchingEngineEvent()
+                    {
+                        CashinOperationId = command.CashinOperationId,
+                        TransactionHash = hash,
+                    });
+
+                    return CommandHandlingResult.Ok();
                 }
             }
-
-            var result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId, asset.Id, (double)amount);
-
-            if (result == null ||
-                result.Status != MeStatusCodes.Ok ||
-                result.Status != MeStatusCodes.Duplicate)
+            catch (Exception e)
             {
-                await
-                    _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(Handle), "ME error",
-                        result.ToJson());
-
-                return CommandHandlingResult.Fail(TimeSpan.FromMinutes(5));
-            }
-            else
-            {
-                await _paymentTransactionsRepository.TryCreateAsync(paymentTransaction);
-                eventPublisher.PublishEvent(new EthCashinEnrolledToMatchingEngineEvent()
-                {
-                    CashinOperationId = command.CashinOperationId,
-                    TransactionHash = hash,
-                });
-
-                return CommandHandlingResult.Ok();
+                _log.WriteError("EthereumCoreCommandHandler", command, e);
+                throw;
             }
         }
 
         public async Task<CommandHandlingResult> Handle(SaveEthInHistoryCommand command, IEventPublisher eventPublisher)
         {
-            var cashinId = command.CashinOperationId.ToString("N");
-            var clientId = command.ClientId;
-            var hash = command.TransactionHash;
-            var amount = command.Amount;
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
-            var clientAddress = command.ClientAddress;
-
-            var walletCreds = await _walletCredentialsRepository.GetAsync(clientId);
-            await _cashOperationsRepositoryClient.RegisterAsync(new CashInOutOperation
+            try
             {
-                Id = cashinId,
-                ClientId = clientId,
-                Multisig = walletCreds.MultiSig,
-                AssetId = asset.Id,
-                Amount = (double)amount,
-                BlockChainHash = hash,
-                DateTime = DateTime.UtcNow,
-                AddressTo = clientAddress,
-                State = TransactionStates.SettledOnchain
-            });
+                var cashinId = command.CashinOperationId.ToString("N");
+                var clientId = command.ClientId;
+                var hash = command.TransactionHash;
+                var amount = command.Amount;
+                var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
+                var clientAddress = command.ClientAddress;
 
-            var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
-            await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientAcc.Email, amount, asset.Id);
-            await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
+                var walletCreds = await _walletCredentialsRepository.GetAsync(clientId);
+                await _cashOperationsRepositoryClient.RegisterAsync(new CashInOutOperation
+                {
+                    Id = cashinId,
+                    ClientId = clientId,
+                    Multisig = walletCreds.MultiSig,
+                    AssetId = asset.Id,
+                    Amount = (double)amount,
+                    BlockChainHash = hash,
+                    DateTime = DateTime.UtcNow,
+                    AddressTo = clientAddress,
+                    State = TransactionStates.SettledOnchain
+                });
 
-            eventPublisher.PublishEvent(new EthCashinSavedInHistoryEvent()
+                var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
+                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientAcc.Email, amount, asset.Id);
+                await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
+
+                eventPublisher.PublishEvent(new EthCashinSavedInHistoryEvent()
+                {
+                    CashinOperationId = cashinId,
+                    TransactionHash = hash
+                });
+
+                return CommandHandlingResult.Ok();
+            }
+            catch (Exception e)
             {
-                CashinOperationId = cashinId,
-                TransactionHash = hash
-            });
-
-            return CommandHandlingResult.Ok();
+                _log.WriteError("EthereumCoreCommandHandler", command, e);
+                throw;
+            }
         }
 
         #endregion
@@ -238,7 +270,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(token.AssetId);
             var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
 
-            await HandleCashInOperation(asset, amount, bcnCreds.ClientId, 
+            await HandleCashInOperation(asset, amount, bcnCreds.ClientId,
                 bcnCreds.Address, queueMessage.TransactionHash, eventPublisher);
 
             return true;
