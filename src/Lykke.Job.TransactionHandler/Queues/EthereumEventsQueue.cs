@@ -116,7 +116,11 @@ namespace Lykke.Job.TransactionHandler.Queues
 
                 try
                 {
-                    _subscriber = new RabbitMqSubscriber<CoinEvent>(settings, new DeadQueueErrorHandlingStrategy(_log, settings))
+                    var resilentErrorHandlingStrategyEth = new ResilientErrorHandlingStrategy(_log, settings,
+                        retryTimeout: TimeSpan.FromSeconds(10),
+                        retryNum: 10,
+                        next: new DeadQueueErrorHandlingStrategy(_log, settings)); 
+                    _subscriber = new RabbitMqSubscriber<CoinEvent>(settings, resilentErrorHandlingStrategyEth)
                         .SetMessageDeserializer(new JsonMessageDeserializer<CoinEvent>())
                         .SetMessageReadStrategy(new MessageReadQueueStrategy())
                         .Subscribe(SendEventToCQRS)
@@ -145,10 +149,15 @@ namespace Lykke.Job.TransactionHandler.Queues
                     IsDurable = true
                 };
 
+                var resilentErrorHandlingStrategyEth = new ResilientErrorHandlingStrategy(_log, settings,
+                      retryTimeout: TimeSpan.FromSeconds(10),
+                      retryNum: 10,
+                      next: new DeadQueueErrorHandlingStrategy(_log, settings));
+
                 try
                 {
                     _subscriberHotWallet = new RabbitMqSubscriber<HotWalletEvent>(settings,
-                        new DeadQueueErrorHandlingStrategy(_log, settings))
+                         resilentErrorHandlingStrategyEth)
                         .SetMessageDeserializer(new JsonMessageDeserializer<HotWalletEvent>())
                         .SetMessageReadStrategy(new MessageReadQueueStrategy())
                         .Subscribe(SendHotWalletEventToCQRS)
