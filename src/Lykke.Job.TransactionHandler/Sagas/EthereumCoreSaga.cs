@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -34,12 +35,15 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
         private async Task Handle(CashinDetectedEvent evt, ICommandSender sender)
         {
+            Stopwatch sw = new Stopwatch();
             try
             {
+                sw.Start();
+
                 _log.WriteInfo(nameof(EthereumCoreSaga), evt, "Eth Cashin startetd");
 
-                var aggregate = await _ethereumCashinAggregateRepository.GetOrAddAsync(evt.TransactionHash, () => 
-                                    new EthereumCashinAggregate(evt.TransactionHash, evt.ClientId, evt.AssetId, 
+                var aggregate = await _ethereumCashinAggregateRepository.GetOrAddAsync(evt.TransactionHash, () =>
+                                    new EthereumCashinAggregate(evt.TransactionHash, evt.ClientId, evt.AssetId,
                                     evt.ClientAddress, evt.Amount, evt.CreatePendingActions));
 
                 if (aggregate.State == EthereumCashinState.CashinStarted)
@@ -63,12 +67,19 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 _log.WriteError(nameof(EthereumCoreSaga), evt, e);
                 throw;
             }
+            finally
+            {
+                _log.WriteInfo(nameof(EthereumCoreSaga), evt, $"Eth Cashin start completed in {sw.ElapsedMilliseconds}");
+                sw.Stop();
+            }
         }
 
         private async Task Handle(EthCashinEnrolledToMatchingEngineEvent evt, ICommandSender sender)
         {
+            Stopwatch sw = new Stopwatch();
             try
             {
+                sw.Start();
                 _log.WriteInfo(nameof(EthereumCoreSaga), evt, "Cashin Enrolled To ME");
 
                 var aggregate = await _ethereumCashinAggregateRepository.TryGetAsync(evt.TransactionHash);
@@ -97,13 +108,20 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 _log.WriteError(nameof(EthereumCoreSaga), evt, e);
                 throw;
             }
+            finally
+            {
+                _log.WriteInfo(nameof(EthereumCoreSaga), evt, $"Cashin Enrolled To ME in {sw.ElapsedMilliseconds}");
+                sw.Stop();
+            }
         }
 
         private async Task Handle(EthCashinSavedInHistoryEvent evt, ICommandSender sender)
         {
+            Stopwatch sw = new Stopwatch();
             try
             {
-                _log.WriteInfo(nameof(EthereumCoreSaga), evt, "Cashin saved in history");
+                sw.Start();
+                _log.WriteInfo(nameof(EthereumCoreSaga), evt, "Cashin save history start");
 
                 var aggregate = await _ethereumCashinAggregateRepository.TryGetAsync(evt.TransactionHash);
 
@@ -118,6 +136,11 @@ namespace Lykke.Job.TransactionHandler.Sagas
             {
                 _log.WriteError(nameof(EthereumCoreSaga), evt, e);
                 throw;
+            }
+            finally
+            {
+                _log.WriteInfo(nameof(EthereumCoreSaga), evt, $"Cashin save history completed in {sw.ElapsedMilliseconds}");
+                sw.Stop();
             }
         }
     }
