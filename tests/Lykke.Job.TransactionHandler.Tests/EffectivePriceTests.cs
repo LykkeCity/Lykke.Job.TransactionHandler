@@ -157,8 +157,8 @@ namespace Lykke.Job.TransactionHandler.Tests
                 }
             };
 
-            Assert.Equal(10666.666, EffectivePriceCalculator.CalcEffectivePrice(trades, pair, true), pair.Accuracy);
-            Assert.Equal(10666.667, EffectivePriceCalculator.CalcEffectivePrice(trades, pair, false), pair.Accuracy);
+            Assert.Equal(10666.666, EffectivePriceCalculator.CalcEffectivePrice(trades, pair, false), pair.Accuracy);
+            Assert.Equal(10666.667, EffectivePriceCalculator.CalcEffectivePrice(trades, pair, true), pair.Accuracy);
         }
 
         private AssetPair GetDefaultPair()

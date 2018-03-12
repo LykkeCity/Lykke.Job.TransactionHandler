@@ -48,9 +48,9 @@ namespace Lykke.Job.TransactionHandler.Services
                 return usedTrades[0].Price;
 
             if (assetPair.QuotingAssetId == trades[0].Asset)
-                return (volume / oppositeVolume).TruncateDecimalPlaces(assetPair.Accuracy, !isBuy);
+                return (volume / oppositeVolume).TruncateDecimalPlaces(assetPair.Accuracy, isBuy);
 
-            return (oppositeVolume / volume).TruncateDecimalPlaces(assetPair.Accuracy, !isBuy);
+            return (oppositeVolume / volume).TruncateDecimalPlaces(assetPair.Accuracy, isBuy);
         }
 
 
