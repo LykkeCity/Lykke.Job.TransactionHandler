@@ -6,13 +6,15 @@ using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Handlers;
+using Lykke.Job.TransactionHandler.Services;
+using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client.Models;
 
 namespace Lykke.Job.TransactionHandler
 {
     public static class ConvertExtensions
     {
-        public static IReadOnlyList<ClientTrade> ToDomainOffchain(this LimitQueueItem.LimitOrderWithTrades item, string btcTransactionId, string clientId, AssetPair assetPair)
+        public static IReadOnlyList<ClientTrade> ToDomainOffchain(this LimitQueueItem.LimitOrderWithTrades item, string btcTransactionId, string clientId, AssetPair assetPair, bool isBuy)
         {
             var trade = item.Trades[0];
 
@@ -20,7 +22,7 @@ namespace Lykke.Job.TransactionHandler
             var oppositeLimitVolume = item.Trades.Sum(x => x.OppositeVolume);
 
             // if only one trade, we save price from this trade, otherwise we calculate effective price by trades
-            var price = CalcEffectivePrice(item.Trades, assetPair, trade.Asset, limitVolume, oppositeLimitVolume);
+            var price = EffectivePriceCalculator.CalcEffectivePrice(item.Trades, assetPair, isBuy);
 
             var result = new List<ClientTrade>();
 
@@ -78,18 +80,6 @@ namespace Lykke.Job.TransactionHandler
                 TransactionId = btcTransactionId,
                 IsLimitOrderResult = true
             };
-        }
-
-        private static double CalcEffectivePrice(List<LimitQueueItem.LimitTradeInfo> trades, AssetPair assetPair, string assetId, double volume, double oppositeVolume)
-        {
-            // if only one trade, or one of the volumes is equals to zero (after ME rounding)
-            if (trades.Count == 1 || Math.Abs(volume) < LykkeConstants.Eps || Math.Abs(oppositeVolume) < LykkeConstants.Eps)
-                return trades[0].Price;
-
-            if (assetPair.QuotingAssetId == assetId)
-                return (volume / oppositeVolume).TruncateDecimalPlaces(assetPair.Accuracy, true);
-
-            return (oppositeVolume / volume).TruncateDecimalPlaces(assetPair.Accuracy, true);
         }
     }
 }

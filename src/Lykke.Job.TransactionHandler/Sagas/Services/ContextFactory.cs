@@ -6,6 +6,8 @@ using Common;
 using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Services;
+using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 
@@ -38,7 +40,8 @@ namespace Lykke.Job.TransactionHandler.Sagas.Services
             var limitVolume = trades.Sum(x => x.LimitVolume);
 
             // if only one trade, we save price from this trade, otherwise we calculate effective price by trades
-            var price = await CalcEffectivePrice(trades, order.AssetPairId, trades[0].MarketAsset, marketVolume, limitVolume);
+            var pair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
+            var price = EffectivePriceCalculator.CalcEffectivePrice(trades, pair, order.Volume > 0);
 
             context.Order = order;
             context.Trades = trades;
@@ -103,20 +106,6 @@ namespace Lykke.Job.TransactionHandler.Sagas.Services
             };
 
             return (sellTransfer, buyTransfer);
-        }
-
-        private async Task<double> CalcEffectivePrice(List<TradeQueueItem.TradeInfo> trades, string assetPair, string assetId, double volume, double oppositeVolume)
-        {
-            // if only one trade, or one of the volumes is equals to zero (after ME rounding)
-            if (trades.Count == 1 || Math.Abs(volume) < LykkeConstants.Eps || Math.Abs(oppositeVolume) < LykkeConstants.Eps)
-                return trades[0].Price.GetValueOrDefault();
-
-            var pair = await _assetsServiceWithCache.TryGetAssetPairAsync(assetPair);
-
-            if (pair.QuotingAssetId == assetId)
-                return (volume / oppositeVolume).TruncateDecimalPlaces(pair.Accuracy, true);
-
-            return (oppositeVolume / volume).TruncateDecimalPlaces(pair.Accuracy, true);
         }
     }
 }

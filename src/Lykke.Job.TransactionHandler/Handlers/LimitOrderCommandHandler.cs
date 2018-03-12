@@ -92,7 +92,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(limitOrderWithTrades.Order.AssetPairId);
 
-            var trades = limitOrderWithTrades.ToDomainOffchain(limitOrderWithTrades.Order.Id, limitOrderWithTrades.Trades[0].ClientId, assetPair);
+            var trades = limitOrderWithTrades.ToDomainOffchain(limitOrderWithTrades.Order.Id, limitOrderWithTrades.Trades[0].ClientId, assetPair, limitOrderWithTrades.Order.Volume > 0);
 
             foreach (var trade in trades)
             {
