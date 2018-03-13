@@ -21,16 +21,13 @@ namespace Lykke.Job.TransactionHandler.Sagas
     {
         private readonly ILog _log;
         private readonly IEthereumCashinAggregateRepository _ethereumCashinAggregateRepository;
-        private readonly IChaosKitty _chaosKitty;
 
         public EthereumCoreSaga(
             [NotNull] ILog log,
-            [NotNull] IEthereumCashinAggregateRepository ethereumCashinAggregateRepository,
-            [NotNull] IChaosKitty chaosKitty)
+            [NotNull] IEthereumCashinAggregateRepository ethereumCashinAggregateRepository)
         {
             _log = log?.CreateComponentScope(nameof(EthereumCoreSaga)) ?? throw new ArgumentNullException(nameof(log));
             _ethereumCashinAggregateRepository = ethereumCashinAggregateRepository;
-            _chaosKitty = chaosKitty;
         }
 
         private async Task Handle(CashinDetectedEvent evt, ICommandSender sender)
@@ -48,8 +45,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
                 if (aggregate.State == EthereumCashinState.CashinStarted)
                 {
-                    _chaosKitty.Meow(evt.TransactionHash);
-
                     sender.SendCommand(new EnrollEthCashinToMatchingEngineCommand()
                     {
                         TransactionHash = evt.TransactionHash,
@@ -86,8 +81,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
                 if (aggregate.OnEnrolledToMatchingEngineEvent())
                 {
-                    _chaosKitty.Meow(evt.TransactionHash);
-
                     sender.SendCommand(new SaveEthInHistoryCommand()
                     {
                         TransactionHash = aggregate.TransactionHash,
@@ -97,8 +90,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
                         ClientId = aggregate.ClientId,
                         CashinOperationId = aggregate.CashinOperationId
                     }, BoundedContexts.EthereumCommands);
-
-                    _chaosKitty.Meow(evt.TransactionHash);
 
                     await _ethereumCashinAggregateRepository.SaveAsync(aggregate);
                 }
@@ -127,8 +118,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
                 if (aggregate.OnHistorySavedEvent())
                 {
-                    _chaosKitty.Meow(evt.TransactionHash);
-
                     await _ethereumCashinAggregateRepository.SaveAsync(aggregate);
                 }
             }
