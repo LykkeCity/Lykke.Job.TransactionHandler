@@ -131,7 +131,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
             }
             else
             {                                   
-                await  _tableStorage.DeleteAsync(LimitOrderEntity.ByClientIdActive.GeneratePartitionKey(limitOrder.ClientId), limitOrder.Id);
+                await  _tableStorage.DeleteIfExistAsync(LimitOrderEntity.ByClientIdActive.GeneratePartitionKey(limitOrder.ClientId), limitOrder.Id);
             }
         }
 
