@@ -195,7 +195,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                                       typeof(EthCashinEnrolledToMatchingEngineEvent),
                                       typeof(EthCashinSavedInHistoryEvent))
                         .With(defaultPipeline)
-                    .WithCommandsHandler<EthereumCoreCommandHandler>(),
+                    .WithCommandsHandler<EthereumCoreCommandHandler>()
+                    .ProcessingOptions(defaultRoute).MultiThreaded(4).QueueCapacity(1024),
 
                 Register.BoundedContext(BoundedContexts.Offchain)
                     .FailedCommandRetryDelay(defaultRetryDelay)
@@ -311,7 +312,8 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .From(BoundedContexts.EthereumCommands).On(defaultRoute)
                     .PublishingCommands(typeof(EnrollEthCashinToMatchingEngineCommand),
                                         typeof(SaveEthInHistoryCommand))
-                        .To(BoundedContexts.EthereumCommands).With(defaultPipeline),
+                        .To(BoundedContexts.EthereumCommands).With(defaultPipeline)
+                        .ProcessingOptions(defaultRoute).MultiThreaded(4).QueueCapacity(1024),
 
                 Register.DefaultRouting
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
