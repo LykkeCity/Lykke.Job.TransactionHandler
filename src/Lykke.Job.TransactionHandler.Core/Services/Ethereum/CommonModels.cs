@@ -1,4 +1,6 @@
-﻿namespace Lykke.Job.TransactionHandler.Core.Services.Ethereum
+using System;
+
+namespace Lykke.Job.TransactionHandler.Core.Services.Ethereum
 {
     public class EthereumResponse<T> : EthereumBaseResponse
     {
@@ -22,10 +24,10 @@
             get
             {
                 ErrorCode code;
-                if (!int.TryParse(Code, out var value))
-                    code = ErrorCode.Exception;
+                if (!Enum.TryParse<ErrorCode>(Code, out var value))
+                    code = ErrorCode.None;
                 else
-                    code = (ErrorCode)value;
+                    code = value;
                 return code;
             }
         }
@@ -33,7 +35,7 @@
 
     public enum ErrorCode
     {
-        Exception = 0,
+        None = 0,
         ContractPoolEmpty = 1,
         MissingRequiredParams = 2,
         WrongParams = 3,
@@ -45,6 +47,7 @@
 
         NotEnoughFunds = 100,
         TransactionExists = 101,
+        TransactionRequiresMoreGas = 102,
 
         #endregion
     }
