@@ -68,7 +68,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     (decimal)Math.Abs(command.Amount),
                     asset);
 
-                if (response.HasError && response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists)
+                if (response.HasError && 
+                    response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists && 
+                    response.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
                     errorMessage = response.Error.ToJson();
             }
             else
@@ -84,7 +86,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     command.Address,
                     (decimal)Math.Abs(command.Amount));
 
-                if (response.HasError && response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists)
+                if (response.HasError && 
+                    response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists &&
+                    response.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
                     errorMessage = response.Error.ToJson();
             }
 
@@ -147,7 +151,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             ChaosKitty.Meow();
 
-            if (response.HasError && response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists)
+            if (response.HasError &&
+                response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists &&
+                response.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
             {
                 var errorMessage = response.Error.ToJson();
                 _log.WriteError(nameof(TransferEthereumCommand), new Exception(errorMessage));
