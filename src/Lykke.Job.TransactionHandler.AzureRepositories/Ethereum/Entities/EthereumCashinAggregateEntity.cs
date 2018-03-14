@@ -14,7 +14,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum.Entities
         // ReSharper disable MemberCanBePrivate.Global
 
         public string TransactionHash { get; set; }
-        public string ClientId { get; set; }
+        public Guid ClientId { get; set; }
         public string AssetId { get; set; }
         public string ClientAddress { get; set; }
         public decimal Amount { get; set; }

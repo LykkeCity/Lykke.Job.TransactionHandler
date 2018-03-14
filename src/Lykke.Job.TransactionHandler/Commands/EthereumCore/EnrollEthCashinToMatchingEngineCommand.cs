@@ -12,7 +12,7 @@ namespace Lykke.Job.TransactionHandler.Commands.EthereumCore
         public decimal Amount { get; set; }
         public string AssetId { get; set; }
         public string ClientAddress { get; set; }
-        public string ClientId { get; set; }
+        public Guid ClientId { get; set; }
         public bool CreatePendingActions { get; set; }
         public Guid CashinOperationId { get; set; }
     }

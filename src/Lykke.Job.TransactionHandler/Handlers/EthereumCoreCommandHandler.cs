@@ -28,6 +28,7 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Events.EthereumCore;
 using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
+using Lykke.Job.TransactionHandler.Utils;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -92,7 +93,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         #region CommanHandling
 
-        public async Task<CommandHandlingResult> Handle(ProcessHotWalletEventCommand command, IEventPublisher eventPublisher)
+        public async Task<CommandHandlingResult> Handle(ProcessHotWalletErc20EventCommand command, IEventPublisher eventPublisher)
         {
             try
             {
@@ -107,19 +108,19 @@ namespace Lykke.Job.TransactionHandler.Handlers
                         break;
 
                     default:
-                        break;
+                        throw new ArgumentOutOfRangeException($"{command.EventType} - is not supported for processing {command.ToJson()}. ");
                 }
 
                 return CommandHandlingResult.Ok();
             }
             catch (Exception e)
             {
-                _log.WriteError(command.TransactionHash ?? "Empty", command, e);
+                _log.WriteError(nameof(ProcessHotWalletErc20EventCommand), command, e);
                 throw;
             }
         }
 
-        public async Task<CommandHandlingResult> Handle(ProcessCoinEventCommand command, IEventPublisher eventPublisher)
+        public async Task<CommandHandlingResult> Handle(ProcessEthCoinEventCommand command, IEventPublisher eventPublisher)
         {
             try
             {
@@ -135,18 +136,25 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     case CoinEventType.CashoutFailed:
                         await ProcessFailedCashout(command, eventPublisher);
                         break;
+
+                    case CoinEventType.CashinStarted:
+                    case CoinEventType.CashoutStarted:
+                    case CoinEventType.TransferStarted:
+                        //DO NOTHING!
+                        break;
+
                     default:
-                        break; ;
+                        throw new ArgumentOutOfRangeException($"{command.CoinEventType} - is not supported for processing {command.ToJson()}. ");
                 }
 
                 return CommandHandlingResult.Ok();
             }
             catch (Exception e)
             {
-                _log.WriteError(command.TransactionHash ?? "Empty", command, e);
+                _log.WriteError(nameof(ProcessEthCoinEventCommand), command, e);
                 throw;
             }
-}
+        }
 
         public async Task<CommandHandlingResult> Handle(EnrollEthCashinToMatchingEngineCommand command, IEventPublisher eventPublisher)
         {
@@ -160,7 +168,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 var createPendingActions = command.CreatePendingActions;
                 var clientAddress = command.ClientAddress;
                 var paymentTransaction = PaymentTransaction.Create(hash,
-                    CashInPaymentSystem.Ethereum, clientId, (double)amount,
+                    CashInPaymentSystem.Ethereum, clientId.ToString(), (double)amount,
                     asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing);
 
                 var exists = await _paymentTransactionsRepository.CheckExistsAsync(paymentTransaction);
@@ -177,11 +185,13 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 {
                     if (asset.IsTrusted)
                     {
-                        await _ethererumPendingActionsRepository.CreateAsync(clientId, Guid.NewGuid().ToString());
+                        await _ethererumPendingActionsRepository.CreateAsync(clientId.ToString(), Guid.NewGuid().ToString());
                     }
                 }
 
-                var result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId, asset.Id, (double)amount);
+                ChaosKitty.Meow();
+
+                var result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId.ToString(), asset.Id, (double)amount);
 
                 if (result == null ||
                    (result.Status != MeStatusCodes.Ok &&
@@ -195,9 +205,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 {
                     eventPublisher.PublishEvent(new EthCashinEnrolledToMatchingEngineEvent()
                     {
-                        CashinOperationId = command.CashinOperationId,
                         TransactionHash = hash,
                     });
+
+                    ChaosKitty.Meow();
+
                     await _paymentTransactionsRepository.TryCreateAsync(paymentTransaction);
 
                     return CommandHandlingResult.Ok();
@@ -205,7 +217,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError(command.TransactionHash ?? "Empty", command, e);
+                _log.WriteError(nameof(EnrollEthCashinToMatchingEngineCommand), command, e);
                 throw;
             }
         }
@@ -221,11 +233,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
                 var clientAddress = command.ClientAddress;
 
-                var walletCreds = await _walletCredentialsRepository.GetAsync(clientId);
+                var walletCreds = await _walletCredentialsRepository.GetAsync(clientId.ToString());
                 await _cashOperationsRepositoryClient.RegisterAsync(new CashInOutOperation
                 {
                     Id = cashinId,
-                    ClientId = clientId,
+                    ClientId = clientId.ToString(),
                     Multisig = walletCreds.MultiSig,
                     AssetId = asset.Id,
                     Amount = (double)amount,
@@ -235,13 +247,16 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     State = TransactionStates.SettledOnchain
                 });
 
-                var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
+                ChaosKitty.Meow();
+
+                var clientAcc = await _clientAccountClient.GetByIdAsync(clientId.ToString());
                 await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientAcc.Email, amount, asset.Id);
                 await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
 
+                ChaosKitty.Meow();
+
                 eventPublisher.PublishEvent(new EthCashinSavedInHistoryEvent()
                 {
-                    CashinOperationId = cashinId,
                     TransactionHash = hash
                 });
 
@@ -249,7 +264,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError(command.TransactionHash ?? "Empty", command, e);
+                _log.WriteError(nameof(SaveEthInHistoryCommand), command, e);
                 throw;
             }
         }
@@ -258,7 +273,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         #region Private
 
-        private async Task<bool> ProcessHotWalletCashin(ProcessHotWalletEventCommand queueMessage,
+        private async Task ProcessHotWalletCashin(ProcessHotWalletErc20EventCommand queueMessage,
             IEventPublisher eventPublisher)
         {
             var bcnCreds = await _bcnClientCredentialsRepository.GetByAssetAddressAsync(queueMessage.FromAddress);
@@ -266,14 +281,13 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var token = await _assetsService.Erc20TokenGetByAddressAsync(tokenAddress);
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(token.AssetId);
             var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
+            Guid.TryParse(bcnCreds.ClientId, out var clientId);
 
-            await HandleCashInOperation(asset, amount, bcnCreds.ClientId,
+            await HandleCashInOperation(asset, amount, clientId,
                 bcnCreds.Address, queueMessage.TransactionHash, eventPublisher);
-
-            return true;
         }
 
-        private async Task<bool> ProcessHotWalletCashout(ProcessHotWalletEventCommand queueMessage)
+        private async Task ProcessHotWalletCashout(ProcessHotWalletErc20EventCommand queueMessage)
         {
             string transactionId = queueMessage.OperationId;
             CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
@@ -282,15 +296,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
             string cashOperationId = context.CashOperationId;
 
             await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
-
-            return true;
         }
 
-        private async Task<bool> ProcessOutcomeOperation(ProcessCoinEventCommand queueMessage)
+        private async Task ProcessOutcomeOperation(ProcessEthCoinEventCommand queueMessage)
         {
             var transferTx = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(queueMessage.OperationId));
             CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
-
 
             if (transferTx != null)
             {
@@ -308,24 +319,25 @@ namespace Lykke.Job.TransactionHandler.Handlers
                         break;
                 }
 
-                return true;
+                ChaosKitty.Meow();
+
+                return;
             }
 
-            if (context != null)
-            {
-                string clientId = context.ClientId;
-                string hash = queueMessage.TransactionHash;
-                string cashOperationId = context.CashOperationId;
+            if (context == null)
+                return;
 
-                await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
-            }
+            string clientId = context.ClientId;
+            string hash = queueMessage.TransactionHash;
+            string cashOperationId = context.CashOperationId;
 
+            await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
 
-            return true;
+            ChaosKitty.Meow();
         }
 
         //TODO: Split wth the help of the process management
-        private async Task<bool> ProcessFailedCashout(ProcessCoinEventCommand queueMessage, IEventPublisher eventPublisher)
+        private async Task ProcessFailedCashout(ProcessEthCoinEventCommand queueMessage, IEventPublisher eventPublisher)
         {
             CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
 
@@ -340,6 +352,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                 try
                 {
+                    ChaosKitty.Meow();
+
                     var asset = await _assetsService.AssetGetAsync(assetId);
                     await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
                     var pt = await _paymentTransactionsRepository.TryCreateAsync(PaymentTransaction.Create(hash,
@@ -351,8 +365,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
                             _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), hash,
                                 "Transaction already handled");
                         //return if was handled previously
-                        return false;
                     }
+
+                    ChaosKitty.Meow();
 
                     var sign = "+";
                     var commentText =
@@ -380,12 +395,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
                                 QueueMessage = queueMessage
                             }).ToJson(),
                                 "ME operation failed");
-
-                        return false;
                     }
 
                     await _clientCommentsRepository.AddClientCommentAsync(newComment);
                     await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
+
+                    ChaosKitty.Meow();
                 }
                 catch (Exception e)
                 {
@@ -397,8 +412,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 await _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), queueMessage.ToJson());
             }
-
-            return true;
         }
 
         private async Task SetTradeHashes(IEthereumTransactionRequest txRequest, string hash)
@@ -425,26 +438,25 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
         }
 
-        private async Task<bool> ProcessCashIn(ProcessCoinEventCommand queueMessage, IEventPublisher eventPublisher)
+        private async Task ProcessCashIn(ProcessEthCoinEventCommand queueMessage, IEventPublisher eventPublisher)
         {
             if (queueMessage.CoinEventType != CoinEventType.CashinCompleted)
-                return true;
+                return;
 
             var bcnCreds = await _bcnClientCredentialsRepository.GetByAssetAddressAsync(queueMessage.FromAddress);
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(bcnCreds.AssetId);
             var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
+            Guid.TryParse(bcnCreds.ClientId, out var clientId);
 
-            await HandleCashInOperation(asset, amount, bcnCreds.ClientId, bcnCreds.Address,
+            await HandleCashInOperation(asset, amount, clientId, bcnCreds.Address,
                 queueMessage.TransactionHash, eventPublisher, createPendingActions: true);
-
-            return true;
         }
 
-        private async Task HandleCashInOperation(Asset asset, decimal amount, string clientId, string clientAddress,
+        private async Task HandleCashInOperation(Asset asset, decimal amount, Guid clientId, string clientAddress,
             string hash, IEventPublisher eventPublisher, bool createPendingActions = false)
         {
             var exists = await _paymentTransactionsRepository.CheckExistsAsync(PaymentTransaction.Create(hash,
-                CashInPaymentSystem.Ethereum, clientId, (double)amount,
+                CashInPaymentSystem.Ethereum, clientId.ToString(), (double)amount,
                 asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing));
 
             if (exists)

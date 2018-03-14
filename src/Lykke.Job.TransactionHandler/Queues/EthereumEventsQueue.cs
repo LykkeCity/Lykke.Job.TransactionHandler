@@ -190,7 +190,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return false;
             }
 
-            _cqrsEngine.SendCommand<ProcessCoinEventCommand>(new ProcessCoinEventCommand()
+            _cqrsEngine.SendCommand<ProcessEthCoinEventCommand>(new ProcessEthCoinEventCommand()
                 {
                     Additional = @event.Additional,
                     Amount = @event.Amount,
@@ -216,7 +216,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 return false;
             }
 
-            _cqrsEngine.SendCommand<ProcessHotWalletEventCommand>(new ProcessHotWalletEventCommand()
+            _cqrsEngine.SendCommand<ProcessHotWalletErc20EventCommand>(new ProcessHotWalletErc20EventCommand()
                 {
                     Amount = @event.Amount,
                     TransactionHash = @event.TransactionHash,

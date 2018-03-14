@@ -7,7 +7,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
     public class EthereumCashinAggregate
     {
         public string TransactionHash { get; private set; }
-        public string ClientId { get; set; }
+        public Guid ClientId { get; set; }
         public string AssetId { get; set; }
         public string ClientAddress { get; set; }
         public decimal Amount { get; set; }
@@ -20,7 +20,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
         public DateTime? HistorySavedDate { get; private set; }
 
         public EthereumCashinAggregate(string transactionHash,
-            string clientId,
+            Guid clientId,
             string assetId,
             string clientAddress,
             decimal amount,
@@ -38,7 +38,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
         private EthereumCashinAggregate(string version,
             EthereumCashinState state,
             string transactionHash,
-            string clientId,
+            Guid clientId,
             string assetId,
             string clientAddress,
             decimal amount,
@@ -107,7 +107,8 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
             string version,
             EthereumCashinState state,
             string transactionHash,
-            string clientId, string assetId,
+            Guid clientId,
+            string assetId,
             string clientAddress,
             decimal amount,
             bool createPendingActions,

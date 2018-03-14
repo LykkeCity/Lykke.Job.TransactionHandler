@@ -8,7 +8,7 @@ namespace Lykke.Job.TransactionHandler.Events.EthereumCore
     [MessagePackObject(keyAsPropertyName: true)]
     public class CashinDetectedEvent
     {
-        public string ClientId { get; set; }
+        public Guid ClientId { get; set; }
         public string ClientAddress { get; set; }
         public string AssetId { get; set; }
         public decimal Amount { get; set; }

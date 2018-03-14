@@ -9,6 +9,5 @@ namespace Lykke.Job.TransactionHandler.Events.EthereumCore
     public class EthCashinEnrolledToMatchingEngineEvent
     {
         public string TransactionHash { get; set; }
-        public Guid CashinOperationId { get; set; }
     }
 }
