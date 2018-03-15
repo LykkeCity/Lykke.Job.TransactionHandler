@@ -279,6 +279,14 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var bcnCreds = await _bcnClientCredentialsRepository.GetByAssetAddressAsync(queueMessage.FromAddress);
             string tokenAddress = queueMessage.TokenAddress;
             var token = await _assetsService.Erc20TokenGetByAddressAsync(tokenAddress);
+            if (token == null)
+            {
+                _log.WriteError(nameof(ProcessHotWalletErc20EventCommand),
+                    queueMessage,
+                    new Exception($"Skipping cashin. Unsupported Erc 20 token - {tokenAddress}"));
+
+                return;
+            }
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(token.AssetId);
             var amount = EthServiceHelpers.ConvertFromContract(queueMessage.Amount, asset.MultiplierPower, asset.Accuracy);
             Guid.TryParse(bcnCreds.ClientId, out var clientId);
