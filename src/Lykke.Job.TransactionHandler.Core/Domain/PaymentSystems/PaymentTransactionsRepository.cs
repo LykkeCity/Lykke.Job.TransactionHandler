@@ -97,5 +97,7 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems
         Task<IPaymentTransaction> TryCreateAsync(IPaymentTransaction paymentTransaction);
 
         Task<IPaymentTransaction> SetStatus(string id, PaymentStatus status);
+
+        Task<bool> CheckExistsAsync(IPaymentTransaction paymentTransaction);
     }
 }
