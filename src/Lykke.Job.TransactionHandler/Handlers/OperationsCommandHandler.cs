@@ -34,7 +34,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             [NotNull] IOperationsClient operationsClient,
             TimeSpan retryTimeout)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log.CreateComponentScope(nameof(OperationsCommandHandler)) ?? throw new ArgumentNullException(nameof(log));
             _transactionsRepository = transactionsRepository ?? throw new ArgumentNullException(nameof(transactionsRepository));
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
@@ -45,7 +45,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveCashoutOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveCashoutOperationStateCommand), command.ToJson(), "");
+            _log.WriteInfo(nameof(Commands.SaveCashoutOperationStateCommand), command, "");
 
             await SaveState(command.Command, command.Context);
 
@@ -56,7 +56,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveIssueOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveIssueOperationStateCommand), command.ToJson(), "");
+            _log.WriteInfo(nameof(Commands.SaveIssueOperationStateCommand), command, "");
 
             await SaveState(command.Command, command.Context);
 
@@ -67,7 +67,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveManualOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveManualOperationStateCommand), command.ToJson(), "");
+            _log.WriteInfo(nameof(Commands.SaveManualOperationStateCommand), command, "");
 
             eventPublisher.PublishEvent(new ManualTransactionStateSavedEvent { Message = command.Message });
 
@@ -76,7 +76,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveTransferOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            await _log.WriteInfoAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveTransferOperationStateCommand), command.ToJson());
+            _log.WriteInfo(nameof(Commands.SaveTransferOperationStateCommand), command, "");
 
             var message = command.QueueMessage;
             var transactionId = message.Id;
@@ -84,8 +84,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var transaction = await _transactionsRepository.FindByTransactionIdAsync(transactionId);
             if (transaction == null)
             {
-                await _log.WriteWarningAsync(nameof(OperationsCommandHandler), nameof(Commands.SaveManualOperationStateCommand), command.ToJson(), "unknown transaction");
-                return CommandHandlingResult.Fail(_retryTimeout);
+                _log.WriteError(nameof(Commands.SaveManualOperationStateCommand), command, new Exception($"unknown transaction {transactionId}"));
+                return CommandHandlingResult.Ok();
             }
 
             var amountNoFee = await _feeCalculationService.GetAmountNoFeeAsync(message);
