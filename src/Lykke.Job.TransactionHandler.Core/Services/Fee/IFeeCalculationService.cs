@@ -5,6 +5,6 @@ namespace Lykke.Job.TransactionHandler.Core.Services.Fee
 {
     public interface IFeeCalculationService
     {
-        Task<decimal> GetAmountNoFeeAsync(decimal initialAmount, string assetId, List<Contracts.Fee> fees);
+        Task<decimal> GetAmountNoFeeAsync(decimal initialAmount, string assetId, List<Contracts.Fee> fees, string clientId = null);
     }
 }
