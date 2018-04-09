@@ -19,9 +19,16 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
 
         public async Task<decimal> GetAmountNoFeeAsync(decimal initialAmount, string assetId, List<Core.Contracts.Fee> fees)
         {
+            var fee = fees?.FirstOrDefault();
+
+            if (fee?.Instruction?.Type == Core.Contracts.FeeType.EXTERNAL_FEE)
+            {
+                return initialAmount;
+            }
+
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(assetId);
 
-            var feeTransfer = fees?.FirstOrDefault()?.Transfer;
+            var feeTransfer = fee?.Transfer;
 
             var feeAmount = (feeTransfer?.Volume ?? 0).TruncateDecimalPlaces(asset.Accuracy, true);
 
