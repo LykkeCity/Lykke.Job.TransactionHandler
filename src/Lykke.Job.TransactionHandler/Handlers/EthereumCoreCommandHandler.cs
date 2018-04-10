@@ -372,7 +372,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                         await
                             _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), hash,
                                 "Transaction already handled");
-                        //return if was handled previously
+                        return; //if was handled previously
                     }
 
                     ChaosKitty.Meow();
