@@ -75,7 +75,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             if (status == OrderStatus.Processing && command.LimitOrder.Trades.Count == 0)
                 status = OrderStatus.InOrderBook;
 
-            if (status == OrderStatus.Processing || status == OrderStatus.Matched)
+            if (status == OrderStatus.Processing || status == OrderStatus.Matched || status == OrderStatus.Cancelled)
             {
                 limitOrderExecutedEvent.Trades = await CreateTrades(command.LimitOrder);
             }
