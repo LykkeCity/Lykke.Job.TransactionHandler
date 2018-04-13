@@ -181,7 +181,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 ClientId = message.ClientId,
                 Multisig = multisig,
                 AssetId = message.AssetId,
-                Amount = (double) Math.Abs(amount),
+                Amount = (double)Math.Abs(amount),
                 DateTime = DateTime.UtcNow,
                 AddressTo = multisig,
                 TransactionId = transactionId,
@@ -319,8 +319,12 @@ namespace Lykke.Job.TransactionHandler.Projections
             switch (status)
             {
                 case OrderStatus.InOrderBook:
+                    await CreateEvent(evt.LimitOrder, status);
+                    break;
                 case OrderStatus.Cancelled:
-                    await CreateEvent(evt.LimitOrder, status.Value);
+                    if (evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Count > 0)
+                        await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
+                    await CreateEvent(evt.LimitOrder, status);
                     break;
                 case OrderStatus.Processing:
                 case OrderStatus.Matched:
