@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
@@ -28,6 +29,8 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(SolarCashOutCompletedEvent evt)
         {
+            await _log.WriteInfoAsync(nameof(EmailProjection), nameof(SolarCashOutCompletedEvent), evt.ToJson(), "");
+
             var slrAddress = new SolarCoinAddress(evt.Address);
             var clientAcc = await _clientAccountClient.GetByIdAsync(evt.ClientId);
 

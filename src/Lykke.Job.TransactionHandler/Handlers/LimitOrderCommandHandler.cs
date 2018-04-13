@@ -11,6 +11,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
+using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -38,8 +39,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(ProcessLimitOrderCommand command, IEventPublisher eventPublisher)
         {
+            _log.WriteInfo(nameof(LimitOrderCommandHandler), JsonConvert.SerializeObject(command.LimitOrder, Formatting.Indented), "ProcessLimitOrderCommand");
+
             await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
-            
+
+            _log.WriteInfo(nameof(LimitOrderCommandHandler), JsonConvert.SerializeObject(command.LimitOrder.Order, Formatting.Indented), $"Client {command.LimitOrder.Order.ClientId}. Limit order {command.LimitOrder.Order.Id} updated.");
+
             var clientId = command.LimitOrder.Order.ClientId;
 
             if (!_trusted.ContainsKey(clientId))

@@ -37,6 +37,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(CreateTradeCommand command, IEventPublisher eventPublisher)
         {
+            await _log.WriteInfoAsync(nameof(TradeCommandHandler), nameof(CreateTradeCommand), command.ToJson());
+
             var queueMessage = command.QueueMessage;
 
             var clientId = queueMessage.Order.ClientId;
@@ -73,6 +75,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(CreateTransactionCommand command)
         {
+            await _log.WriteInfoAsync(nameof(TradeCommandHandler), nameof(CreateTransactionCommand), command.ToJson());
+
             await _transactionsRepository.TryCreateAsync(command.OrderId, BitCoinCommands.SwapOffchain, "", null, "");
 
             ChaosKitty.Meow();

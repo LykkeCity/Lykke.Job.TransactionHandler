@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
@@ -25,6 +26,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(CreateOffchainCashoutRequestCommand command)
         {
+            await _log.WriteInfoAsync(nameof(OffchainCommandHandler), nameof(CreateOffchainCashoutRequestCommand), command.ToJson(), "");
+
             await _offchainRequestService.CreateOffchainRequestAndNotify(
                 transactionId: command.Id,
                 clientId: command.ClientId,
@@ -40,6 +43,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(CreateOffchainCashinRequestCommand command)
         {
+            await _log.WriteInfoAsync(nameof(OffchainCommandHandler), nameof(CreateOffchainCashinRequestCommand), command.ToJson(), "");
+
             await _offchainRequestService.CreateOffchainRequestAndNotify(
                     transactionId: command.Id,
                     clientId: command.ClientId,
