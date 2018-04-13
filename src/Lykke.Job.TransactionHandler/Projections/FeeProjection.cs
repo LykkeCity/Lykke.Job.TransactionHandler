@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Services.Fee;
@@ -24,8 +23,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TradeCreatedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(FeeProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
-
             await _feeLogService.WriteFeeInfoAsync(evt.QueueMessage);
 
             ChaosKitty.Meow();
@@ -33,8 +30,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TransferOperationStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(FeeProjection), nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
-
             await _feeLogService.WriteFeeInfoAsync(evt.QueueMessage);
 
             ChaosKitty.Meow();

@@ -42,8 +42,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveCashoutOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(Commands.SaveCashoutOperationStateCommand), command, "");
-
             await SaveState(command.Command, command.Context);
 
             eventPublisher.PublishEvent(new CashoutTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
@@ -53,8 +51,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveIssueOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(Commands.SaveIssueOperationStateCommand), command, "");
-
             await SaveState(command.Command, command.Context);
 
             eventPublisher.PublishEvent(new IssueTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
@@ -64,8 +60,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveManualOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(Commands.SaveManualOperationStateCommand), command, "");
-
             eventPublisher.PublishEvent(new ManualTransactionStateSavedEvent { Message = command.Message });
 
             return CommandHandlingResult.Ok();
@@ -73,8 +67,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveTransferOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(Commands.SaveTransferOperationStateCommand), command, "");
-
             var message = command.QueueMessage;
             var transactionId = message.Id;
 

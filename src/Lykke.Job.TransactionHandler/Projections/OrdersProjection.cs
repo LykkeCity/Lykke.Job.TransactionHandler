@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
@@ -24,8 +23,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TradeCreatedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OrdersProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
-
             await _marketOrdersRepository.TryCreateAsync(evt.MarketOrder);
 
             ChaosKitty.Meow();

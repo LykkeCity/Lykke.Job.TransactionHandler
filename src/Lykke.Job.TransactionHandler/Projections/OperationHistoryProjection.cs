@@ -16,7 +16,6 @@ using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
-using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
@@ -60,8 +59,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TransferOperationStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
-
             var message = evt.QueueMessage;
             var transactionId = message.Id;
             var amountNoFee = evt.AmountNoFee;
@@ -135,8 +132,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TradeCreatedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
-
             if (evt.ClientTrades != null)
             {
                 await _clientTradesRepository.SaveAsync(evt.ClientTrades);
@@ -147,8 +142,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(ManualTransactionStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(ManualTransactionStateSavedEvent), evt.ToJson(), "");
-
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
 
@@ -177,8 +170,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(IssueTransactionStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(IssueTransactionStateSavedEvent), evt.ToJson(), "");
-
             var message = evt.Message;
             var multisig = evt.Command.Multisig;
             var amount = evt.Command.Amount;
@@ -204,8 +195,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(CashoutTransactionStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
-
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
             var amount = message.Amount.ParseAnyDouble();
@@ -236,8 +225,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(ForwardWithdawalLinkedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(ForwardWithdawalLinkedEvent), evt.ToJson(), "");
-
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
             var amount = message.Amount.ParseAnyDouble();
@@ -293,22 +280,12 @@ namespace Lykke.Job.TransactionHandler.Projections
                     }).ToArray();
 
                 await _clientTradesRepository.SaveAsync(clientTrades);
-
-                _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(clientTrades, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit trade {evt.LimitOrder.Order.Id}. Client trades saved");
-            }
-            else
-            {
-                _log.WriteInfo(nameof(OperationHistoryProjection), null, $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Client trades are empty");
             }
 
             // Save fee logs
             if (evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
             {
                 await _feeLogService.WriteFeeInfoAsync(evt.LimitOrder);
-            }
-            else
-            {
-                _log.WriteInfo(nameof(OperationHistoryProjection), null, $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Fee logs are empty, there are no trades.");
             }
 
             if (evt.IsTrustedClient)
@@ -336,14 +313,8 @@ namespace Lykke.Job.TransactionHandler.Projections
             await _transactionService.CreateOrUpdateAsync(evt.LimitOrder.Order.Id);
             await _transactionService.SetTransactionContext(evt.LimitOrder.Order.Id, contextData);
 
-            _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(contextData, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
-
             // Save limit trade events
-            var parseResult = Enum.TryParse(typeof(OrderStatus), evt.LimitOrder.Order.Status, out var orderStatus);
-            var status = parseResult ? (OrderStatus?) orderStatus : null;
-
-            if (status == null)                                
-                return;            
+            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), evt.LimitOrder.Order.Status);
 
             switch (status)
             {
@@ -383,8 +354,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             };
 
             await _limitTradeEventsRepositoryClient.CreateAsync(insertRequest);
-
-            _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(insertRequest, Formatting.Indented), $"Client {order.ClientId}. Limit trade {order.Id}. State has changed -> {status}");
         }
 
         private async Task RegisterOperation(CashInOutOperation operation)
