@@ -41,10 +41,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             _log.WriteInfo(nameof(LimitOrderCommandHandler), JsonConvert.SerializeObject(command.LimitOrder, Formatting.Indented), "ProcessLimitOrderCommand");
 
-            await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
-
-            _log.WriteInfo(nameof(LimitOrderCommandHandler), JsonConvert.SerializeObject(command.LimitOrder.Order, Formatting.Indented), $"Client {command.LimitOrder.Order.ClientId}. Limit order {command.LimitOrder.Order.Id} updated.");
-
             var clientId = command.LimitOrder.Order.ClientId;
 
             if (!_trusted.ContainsKey(clientId))
@@ -69,6 +65,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 limitOrderExecutedEvent.Aggregated = AggregateSwaps(limitOrderExecutedEvent.LimitOrder.Trades);
             }
 
+            await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
+            
             var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), command.LimitOrder.Order.Status);
 
             // workaround: ME sends wrong status

@@ -347,7 +347,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                     await CreateEvent(evt.LimitOrder, status);
                     break;
                 case OrderStatus.Cancelled:
-                    if (evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Count > 0)
+                    if (!evt.HasPrevOrderState && evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Count > 0)
                         await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
                     await CreateEvent(evt.LimitOrder, status);
                     break;
