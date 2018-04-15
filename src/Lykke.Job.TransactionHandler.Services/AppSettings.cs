@@ -20,6 +20,7 @@ namespace Lykke.Job.TransactionHandler.Services
         public MatchingEngineSettings MatchingEngineClient { get; set; }
         public NotificationsSettings AppNotifications { get; set; }
         public RabbitMqSettings RabbitMq { get; set; }
+        public EthRabbitMqSettings EthRabbitMq { get; set; }
         public PersonalDataServiceClientSettings PersonalDataServiceSettings { get; set; }
         public OperationsRepositoryServiceClientSettings OperationsRepositoryServiceClient { get; set; }
 
@@ -127,6 +128,12 @@ namespace Lykke.Job.TransactionHandler.Services
             public string HotwalletAddress { get; set; }
         }
 
+        public class EthRabbitMqSettings
+        {
+            public string ConnectionString { get; set; }
+            public string ExchangeEthereumEvents { get; set; }
+        }
+
         public class RabbitMqSettings
         {
             public string ConnectionString { get; set; }
@@ -136,8 +143,6 @@ namespace Lykke.Job.TransactionHandler.Services
             public string ExchangeCashOperation { get; set; }
             public string ExchangeTransfer { get; set; }
             public string ExchangeSwapOperation { get; set; }
-
-            public string ExchangeEthereumCashIn { get; set; }
         }
 
         public class SlackNotificationsSettings
