@@ -55,11 +55,11 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IExchangeOperationsServiceClient _exchangeOperationsServiceClient;
         private readonly IClientCommentsRepository _clientCommentsRepository;
         private readonly ICqrsEngine _cqrsEngine;
-        private readonly AppSettings.RabbitMqSettings _rabbitConfig;
+        private readonly AppSettings.EthRabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
         private RabbitMqSubscriber<Lykke.Job.EthereumCore.Contracts.Events.HotWalletEvent> _subscriberHotWallet;
 
-        public EthereumEventsQueue(AppSettings.RabbitMqSettings config, ILog log,
+        public EthereumEventsQueue(AppSettings.EthRabbitMqSettings config, ILog log,
             IMatchingEngineClient matchingEngineClient,
             ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             IClientAccountClient clientAccountClient,
@@ -108,8 +108,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                 {
                     ConnectionString = _rabbitConfig.ConnectionString,
                     QueueName = QueueName,
-                    ExchangeName = _rabbitConfig.ExchangeEthereumCashIn,
-                    DeadLetterExchangeName = $"{_rabbitConfig.ExchangeEthereumCashIn}.dlx",
+                    ExchangeName = _rabbitConfig.ExchangeEthereumEvents,
+                    DeadLetterExchangeName = $"{_rabbitConfig.ExchangeEthereumEvents}.dlx",
                     RoutingKey = "",
                     IsDurable = true
                 };
@@ -138,7 +138,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             #region HotWallet
 
             {
-                string exchangeName = $"{_rabbitConfig.ExchangeEthereumCashIn}.hotwallet";
+                string exchangeName = $"{_rabbitConfig.ExchangeEthereumEvents}.hotwallet";
                 var settings = new RabbitMqSubscriptionSettings
                 {
                     ConnectionString = _rabbitConfig.ConnectionString,
