@@ -303,7 +303,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             string hash = queueMessage.TransactionHash;
             string cashOperationId = context.CashOperationId;
 
+            var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
             await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
+            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, context.Amount, context.AssetId, hash);
         }
 
         private async Task ProcessOutcomeOperation(ProcessEthCoinEventCommand queueMessage)
@@ -339,7 +341,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             string hash = queueMessage.TransactionHash;
             string cashOperationId = context.CashOperationId;
 
+            var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
             await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
+            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, context.Amount, context.AssetId, hash);
 
             ChaosKitty.Meow();
         }
