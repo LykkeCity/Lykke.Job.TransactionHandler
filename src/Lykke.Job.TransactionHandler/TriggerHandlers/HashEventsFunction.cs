@@ -46,7 +46,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                     var asset = await _assetsService.TryGetAssetAsync(cashOutContext.AssetId);
                     await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(cashOutContext.ClientId, cashOutContext.CashOperationId, hash);
                     var clientAcc = await _сlientAccountClient.GetByIdAsync(cashOutContext.ClientId);
-                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, cashOutContext.Amount, asset.Name, hash);
+                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, cashOutContext.Amount, asset.DisplayId, hash);
 
                     break;
             }
