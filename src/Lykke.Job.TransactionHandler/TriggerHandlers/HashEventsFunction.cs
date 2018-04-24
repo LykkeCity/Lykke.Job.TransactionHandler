@@ -17,19 +17,16 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
         private readonly IClientAccountClient _сlientAccountClient;
         private readonly ISrvEmailsFacade _srvEmailsFacade;
-        private readonly IAssetsServiceWithCache _assetsService;
 
         public HashEventsFunction(ITransactionsRepository bitcoinTransactionRepository, ITransactionService transactionService, ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             IClientAccountClient сlientAccountClient,
-            ISrvEmailsFacade srvEmailsFacade,
-            IAssetsServiceWithCache assetsService)
+            ISrvEmailsFacade srvEmailsFacade)
         {
             _bitcoinTransactionRepository = bitcoinTransactionRepository;
             _transactionService = transactionService;
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
             _сlientAccountClient = сlientAccountClient;
             _srvEmailsFacade = srvEmailsFacade;
-            _assetsService = assetsService;
         }
 
 
@@ -43,12 +40,10 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             {
                 case BitCoinCommands.CashOut:
                     var cashOutContext = await _transactionService.GetTransactionContext<CashOutContextData>(tx.TransactionId);
-                    await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(cashOutContext.ClientId, cashOutContext.CashOperationId, hash);
-                    var clientAccTask = _сlientAccountClient.GetByIdAsync(cashOutContext.ClientId);
-                    var asset = await _assetsService.TryGetAssetAsync(cashOutContext.AssetId);
-                    var clientAcc = await clientAccTask;
+                    var clientAcc = await _сlientAccountClient.GetByIdAsync(cashOutContext.ClientId);
 
-                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, cashOutContext.Amount, asset.DisplayId, hash);
+                    await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(cashOutContext.ClientId, cashOutContext.CashOperationId, hash);
+                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, cashOutContext.Amount, cashOutContext.AssetId, hash);
 
                     break;
             }

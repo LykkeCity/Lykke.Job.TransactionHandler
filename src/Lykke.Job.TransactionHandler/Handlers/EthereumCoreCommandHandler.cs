@@ -248,10 +248,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                 ChaosKitty.Meow();
 
-                var clientAccTask = _clientAccountClient.GetByIdAsync(clientId.ToString());
-                var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
-                var clientAcc = await clientAccTask;
-                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientAcc.Email, amount, asset.Id);
+                var clientAcc = await _clientAccountClient.GetByIdAsync(clientId.ToString());
+                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientAcc.Email, amount, command.AssetId);
                 await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
 
                 ChaosKitty.Meow();
@@ -304,11 +302,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             string hash = queueMessage.TransactionHash;
             string cashOperationId = context.CashOperationId;
 
-            var clientAccTask = _clientAccountClient.GetByIdAsync(clientId);
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(context.AssetId);
-            var clientAcc = await clientAccTask;
+            var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
             await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
-            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, context.Amount, asset.DisplayId, hash);
+            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, context.Amount, context.AssetId, hash);
         }
 
         private async Task ProcessOutcomeOperation(ProcessEthCoinEventCommand queueMessage)
@@ -344,11 +340,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             string hash = queueMessage.TransactionHash;
             string cashOperationId = context.CashOperationId;
 
-            var clientAccTask = _clientAccountClient.GetByIdAsync(clientId);
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(context.AssetId);
-            var clientAcc = await clientAccTask;
+            var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
             await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
-            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, context.Amount, asset.DisplayId, hash);
+            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, context.Amount, context.AssetId, hash);
 
             ChaosKitty.Meow();
         }
