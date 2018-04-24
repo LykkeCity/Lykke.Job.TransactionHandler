@@ -20,7 +20,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly IAssetsServiceWithCache _assetsService;
 
         public HashEventsFunction(ITransactionsRepository bitcoinTransactionRepository, ITransactionService transactionService, ICashOperationsRepositoryClient cashOperationsRepositoryClient,
-            IClientAccountClient сlientAccountClient, 
+            IClientAccountClient сlientAccountClient,
             ISrvEmailsFacade srvEmailsFacade,
             IAssetsServiceWithCache assetsService)
         {
@@ -43,9 +43,11 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             {
                 case BitCoinCommands.CashOut:
                     var cashOutContext = await _transactionService.GetTransactionContext<CashOutContextData>(tx.TransactionId);
-                    var asset = await _assetsService.TryGetAssetAsync(cashOutContext.AssetId);
                     await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(cashOutContext.ClientId, cashOutContext.CashOperationId, hash);
-                    var clientAcc = await _сlientAccountClient.GetByIdAsync(cashOutContext.ClientId);
+                    var clientAccTask = _сlientAccountClient.GetByIdAsync(cashOutContext.ClientId);
+                    var asset = await _assetsService.TryGetAssetAsync(cashOutContext.AssetId);
+                    var clientAcc = await clientAccTask;
+
                     await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, cashOutContext.Amount, asset.DisplayId, hash);
 
                     break;
