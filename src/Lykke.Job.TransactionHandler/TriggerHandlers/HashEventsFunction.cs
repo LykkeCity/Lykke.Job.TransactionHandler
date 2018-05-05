@@ -34,9 +34,13 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         public async Task Process(HashEvent ev)
         {
             var tx = await _bitcoinTransactionRepository.FindByTransactionIdAsync(ev.Id);
+
+            if (tx == null)
+                return;
+            
             string hash = ev.Hash;
 
-            switch (tx?.CommandType)
+            switch (tx.CommandType)
             {
                 case BitCoinCommands.CashOut:
                     var cashOutContext = await _transactionService.GetTransactionContext<CashOutContextData>(tx.TransactionId);

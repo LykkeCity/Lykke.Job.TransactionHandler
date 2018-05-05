@@ -32,8 +32,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
 
     public interface IOffchainRequestRepository
     {
-        Task<IOffchainRequest> CreateRequest(string transferId, string clientId, string assetId, RequestType type, OffchainTransferType transferType, DateTime? serverLock);
-
+        Task<IOffchainRequest> CreateRequest(string transferId, string clientId, string assetId, RequestType type, OffchainTransferType transferType, DateTime? serverLock = null);
     }
-
 }

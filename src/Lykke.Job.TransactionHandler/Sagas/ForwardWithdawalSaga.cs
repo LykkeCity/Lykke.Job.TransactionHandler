@@ -24,7 +24,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
         }
 
-        private async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
+        public async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
         {
             await _log.WriteInfoAsync(nameof(ForwardWithdawalSaga), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
 
@@ -44,6 +44,5 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 }, BoundedContexts.ForwardWithdrawal);
             }
         }
-
     }
 }

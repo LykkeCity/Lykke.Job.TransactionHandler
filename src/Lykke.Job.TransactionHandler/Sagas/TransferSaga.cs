@@ -32,7 +32,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
         }
 
-        private async Task Handle(TransferOperationStateSavedEvent evt, ICommandSender sender)
+        public async Task Handle(TransferOperationStateSavedEvent evt, ICommandSender sender)
         {
             await _log.WriteInfoAsync(nameof(TransferSaga), nameof(TransferOperationStateSavedEvent), evt.ToJson());
 
@@ -73,8 +73,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
         }
 
-
-        private async Task Handle(EthereumTransferSentEvent evt, ICommandSender sender)
+        public async Task Handle(EthereumTransferSentEvent evt, ICommandSender sender)
         {
             sender.SendCommand(
                 new CompleteOperationCommand { CommandId = evt.TransferId },

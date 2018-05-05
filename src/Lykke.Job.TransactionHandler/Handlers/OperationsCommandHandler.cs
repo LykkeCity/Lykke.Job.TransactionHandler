@@ -23,7 +23,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly IFeeCalculationService _feeCalculationService;
         private readonly IOperationsClient _operationsClient;
-        private readonly TimeSpan _retryTimeout;
 
         public OperationsCommandHandler(
             [NotNull] ILog log,
@@ -31,8 +30,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             [NotNull] ITransactionService transactionService,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
             [NotNull] IFeeCalculationService feeCalculationService,
-            [NotNull] IOperationsClient operationsClient,
-            TimeSpan retryTimeout)
+            [NotNull] IOperationsClient operationsClient)
         {
             _log = log.CreateComponentScope(nameof(OperationsCommandHandler)) ?? throw new ArgumentNullException(nameof(log));
             _transactionsRepository = transactionsRepository ?? throw new ArgumentNullException(nameof(transactionsRepository));
@@ -40,7 +38,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
             _feeCalculationService = feeCalculationService ?? throw new ArgumentNullException(nameof(feeCalculationService));
             _operationsClient = operationsClient ?? throw new ArgumentNullException(nameof(operationsClient));
-            _retryTimeout = retryTimeout;
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveCashoutOperationStateCommand command, IEventPublisher eventPublisher)

@@ -10,7 +10,7 @@ using Lykke.Job.TransactionHandler.Services;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public class TransferQueue : IQueueSubscriber
+    public sealed class TransferQueue : IQueueSubscriber
     {
 #if DEBUG
         private const string QueueName = "transactions.transfer-dev";

@@ -2,12 +2,10 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
-using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
@@ -22,11 +20,9 @@ using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.EthereumCore.Contracts.Events;
 using Lykke.Job.EthereumCore.Contracts.Enums;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Events.EthereumCore;
-using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 using Lykke.Job.TransactionHandler.Utils;
 
@@ -50,7 +46,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly ITransactionService _transactionService;
         private readonly IAssetsService _assetsService;
         private readonly IEthererumPendingActionsRepository _ethererumPendingActionsRepository;
-        private readonly IDeduplicator _deduplicator;
         private readonly IExchangeOperationsServiceClient _exchangeOperationsServiceClient;
         private readonly IClientCommentsRepository _clientCommentsRepository;
 
@@ -166,7 +161,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 var amount = command.Amount;
                 var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
                 var createPendingActions = command.CreatePendingActions;
-                var clientAddress = command.ClientAddress;
                 var paymentTransaction = PaymentTransaction.Create(hash,
                     CashInPaymentSystem.Ethereum, clientId.ToString(), (double)amount,
                     asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing);
@@ -181,12 +175,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     return CommandHandlingResult.Ok();
                 }
 
-                if (createPendingActions)
+                if (createPendingActions && asset.IsTrusted)
                 {
-                    if (asset.IsTrusted)
-                    {
-                        await _ethererumPendingActionsRepository.CreateAsync(clientId.ToString(), Guid.NewGuid().ToString());
-                    }
+                    await _ethererumPendingActionsRepository.CreateAsync(clientId.ToString(), Guid.NewGuid().ToString());
                 }
 
                 ChaosKitty.Meow();
@@ -201,19 +192,17 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                     return CommandHandlingResult.Fail(TimeSpan.FromMinutes(1));
                 }
-                else
+
+                eventPublisher.PublishEvent(new EthCashinEnrolledToMatchingEngineEvent()
                 {
-                    eventPublisher.PublishEvent(new EthCashinEnrolledToMatchingEngineEvent()
-                    {
-                        TransactionHash = hash,
-                    });
+                    TransactionHash = hash,
+                });
 
-                    ChaosKitty.Meow();
+                ChaosKitty.Meow();
 
-                    await _paymentTransactionsRepository.TryCreateAsync(paymentTransaction);
+                await _paymentTransactionsRepository.TryCreateAsync(paymentTransaction);
 
-                    return CommandHandlingResult.Ok();
-                }
+                return CommandHandlingResult.Ok();
             }
             catch (Exception e)
             {
@@ -416,7 +405,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 catch (Exception e)
                 {
                     await _log.WriteErrorAsync(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), queueMessage.ToJson(), e);
-                    throw e;
+                    throw;
                 }
             }
             else

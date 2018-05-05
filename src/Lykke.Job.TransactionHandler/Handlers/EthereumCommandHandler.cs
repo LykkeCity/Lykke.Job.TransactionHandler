@@ -66,7 +66,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     command.TransactionId,
                     _settings.HotwalletAddress,
                     command.Address,
-                    (decimal)Math.Abs(command.Amount),
+                    Math.Abs(command.Amount),
                     asset);
 
                 if (response.HasError && 
@@ -85,7 +85,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     asset,
                     address,
                     command.Address,
-                    (decimal)Math.Abs(command.Amount));
+                    Math.Abs(command.Amount));
 
                 if (response.HasError && 
                     response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists &&

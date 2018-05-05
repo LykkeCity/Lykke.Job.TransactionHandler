@@ -20,7 +20,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
-        private async Task Handle(TradeCreatedEvent evt, ICommandSender sender)
+        public async Task Handle(TradeCreatedEvent evt, ICommandSender sender)
         {
             await _log.WriteInfoAsync(nameof(TradeSaga), nameof(TradeCreatedEvent), evt.ToJson());
 

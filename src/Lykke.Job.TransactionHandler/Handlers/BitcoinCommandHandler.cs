@@ -32,7 +32,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             var response = await _bitcoinApiClient.CashoutAsync(new CashoutModel
             {
-                Amount = (decimal)command.Amount,
+                Amount = command.Amount,
                 AssetId = command.AssetId,
                 DestinationAddress = command.Address,
                 TransactionId = Guid.Parse(command.TransactionId)

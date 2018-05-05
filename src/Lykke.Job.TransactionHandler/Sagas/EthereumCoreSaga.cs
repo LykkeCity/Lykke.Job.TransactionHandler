@@ -1,19 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
 using JetBrains.Annotations;
-using Lykke.Common.Chaos;
 using Lykke.Cqrs;
-using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
-using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
-using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
-using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.EthereumCore;
-using Lykke.Service.Assets.Client;
 
 namespace Lykke.Job.TransactionHandler.Sagas
 {
@@ -26,11 +19,11 @@ namespace Lykke.Job.TransactionHandler.Sagas
             [NotNull] ILog log,
             [NotNull] IEthereumCashinAggregateRepository ethereumCashinAggregateRepository)
         {
-            _log = log?.CreateComponentScope(nameof(EthereumCoreSaga)) ?? throw new ArgumentNullException(nameof(log));
+            _log = log.CreateComponentScope(nameof(EthereumCoreSaga)) ?? throw new ArgumentNullException(nameof(log));
             _ethereumCashinAggregateRepository = ethereumCashinAggregateRepository;
         }
 
-        private async Task Handle(CashinDetectedEvent evt, ICommandSender sender)
+        public async Task Handle(CashinDetectedEvent evt, ICommandSender sender)
         {
             Stopwatch sw = new Stopwatch();
             try
@@ -69,7 +62,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
         }
 
-        private async Task Handle(EthCashinEnrolledToMatchingEngineEvent evt, ICommandSender sender)
+        public async Task Handle(EthCashinEnrolledToMatchingEngineEvent evt, ICommandSender sender)
         {
             Stopwatch sw = new Stopwatch();
             try
@@ -106,7 +99,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
         }
 
-        private async Task Handle(EthCashinSavedInHistoryEvent evt, ICommandSender sender)
+        public async Task Handle(EthCashinSavedInHistoryEvent evt, ICommandSender sender)
         {
             Stopwatch sw = new Stopwatch();
             try
