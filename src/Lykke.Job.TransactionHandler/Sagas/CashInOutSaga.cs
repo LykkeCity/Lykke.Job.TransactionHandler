@@ -35,7 +35,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                 feeCalculationService ?? throw new ArgumentNullException(nameof(feeCalculationService));
         }
 
-        private async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
+        public async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
         {
             await _log.WriteInfoAsync(nameof(CashInOutSaga), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
 

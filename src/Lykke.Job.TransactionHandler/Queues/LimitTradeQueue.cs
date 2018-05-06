@@ -11,7 +11,7 @@ using Lykke.RabbitMqBroker.Subscriber;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public class LimitTradeQueue : IQueueSubscriber
+    public sealed class LimitTradeQueue : IQueueSubscriber
     {
 #if DEBUG
         private const string QueueName = "transactions.limit-trades-dev";

@@ -11,7 +11,7 @@ using Lykke.Job.TransactionHandler.Services;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public class TradeQueue : IQueueSubscriber
+    public sealed class TradeQueue : IQueueSubscriber
     {
 #if DEBUG
         private const string QueueName = "transactions.trades-dev";

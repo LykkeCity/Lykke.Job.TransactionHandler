@@ -28,7 +28,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
 
         public static class ByRecord
         {
-            public static string Partition = "OffchainSignatureRequestEntity";
+            private const string Partition = "OffchainSignatureRequestEntity";
 
             public static OffchainRequestEntity Create(string id, string transferId, string clientId, string assetId, RequestType type, OffchainTransferType transferType, DateTime? serverLock)
             {
@@ -99,7 +99,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
             };
         }
     }
-
 
     public class OffchainRequestRepository : IOffchainRequestRepository
     {

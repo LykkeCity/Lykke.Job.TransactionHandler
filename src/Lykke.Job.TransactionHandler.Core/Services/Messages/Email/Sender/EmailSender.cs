@@ -5,6 +5,6 @@ namespace Lykke.Job.TransactionHandler.Core.Services.Messages.Email.Sender
 {
     public interface IEmailSender
     {
-        Task SendEmailAsync<T>(string partnerId, string emailAddress, T messageData) where T : IEmailMessageData;
+        Task SendEmailAsync<T>(string partnerId, string email, T messageData) where T : IEmailMessageData;
     }
 }

@@ -30,7 +30,7 @@ namespace Lykke.Job.TransactionHandler.Core
         public static readonly TimeSpan SessionLifetime = TimeSpan.FromDays(3);
         public static readonly TimeSpan SessionRefreshPeriod = TimeSpan.FromDays(1);
 
-        public static double Eps = 0.00000000001;
+        public const double Eps = 0.00000000001;
 
         #region Cache keys
 

@@ -115,19 +115,19 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.PaymentSystems
             _tableStorageIndices = tableStorageIndices;
         }
 
-        public async Task CreateAsync(IPaymentTransaction src)
+        public async Task CreateAsync(IPaymentTransaction paymentTransaction)
         {
 
-            var commonEntity = PaymentTransactionEntity.Create(src);
+            var commonEntity = PaymentTransactionEntity.Create(paymentTransaction);
             commonEntity.PartitionKey = PaymentTransactionEntity.IndexCommon.GeneratePartitionKey();
-            await _tableStorage.InsertAndGenerateRowKeyAsDateTimeAsync(commonEntity, src.Created);
+            await _tableStorage.InsertAndGenerateRowKeyAsDateTimeAsync(commonEntity, paymentTransaction.Created);
 
-            var entityByClient = PaymentTransactionEntity.Create(src);
-            entityByClient.PartitionKey = PaymentTransactionEntity.IndexByClient.GeneratePartitionKey(src.ClientId);
-            entityByClient.RowKey = PaymentTransactionEntity.IndexByClient.GenerateRowKey(src.Id);
+            var entityByClient = PaymentTransactionEntity.Create(paymentTransaction);
+            entityByClient.PartitionKey = PaymentTransactionEntity.IndexByClient.GeneratePartitionKey(paymentTransaction.ClientId);
+            entityByClient.RowKey = PaymentTransactionEntity.IndexByClient.GenerateRowKey(paymentTransaction.Id);
 
 
-            var index = AzureMultiIndex.Create(IndexPartitinKey, src.Id, commonEntity, entityByClient);
+            var index = AzureMultiIndex.Create(IndexPartitinKey, paymentTransaction.Id, commonEntity, entityByClient);
 
 
             await Task.WhenAll(

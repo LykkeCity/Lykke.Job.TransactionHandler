@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
 {
-    public class BitCoinCommands
+    public static class BitCoinCommands
     {
         public const string CashIn = "CashIn";
         public const string Swap = "Swap";

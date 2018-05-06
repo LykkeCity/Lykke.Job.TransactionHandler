@@ -10,7 +10,7 @@ using Lykke.Job.TransactionHandler.Services;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public class CashInOutQueue : IQueueSubscriber
+    public sealed class CashInOutQueue : IQueueSubscriber
     {
 #if DEBUG
         private const string QueueName = "transactions.cashinout-dev";
