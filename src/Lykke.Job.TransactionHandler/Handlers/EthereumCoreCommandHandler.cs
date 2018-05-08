@@ -38,7 +38,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly ISrvEmailsFacade _srvEmailsFacade;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IPaymentTransactionsRepository _paymentTransactionsRepository;
-        private readonly IWalletCredentialsRepository _walletCredentialsRepository;
         private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
@@ -74,7 +73,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _srvEmailsFacade = srvEmailsFacade;
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository;
             _paymentTransactionsRepository = paymentTransactionsRepository;
-            _walletCredentialsRepository = walletCredentialsRepository;
             _clientTradesRepositoryClient = clientTradesRepositoryClient;
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository;
             _assetsServiceWithCache = assetsServiceWithCache;
@@ -221,12 +219,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 var amount = command.Amount;
                 var clientAddress = command.ClientAddress;
 
-                var walletCreds = await _walletCredentialsRepository.GetAsync(clientId.ToString());
                 await _cashOperationsRepositoryClient.RegisterAsync(new CashInOutOperation
                 {
                     Id = cashinId,
                     ClientId = clientId.ToString(),
-                    Multisig = walletCreds.MultiSig,
                     AssetId = command.AssetId,
                     Amount = (double)amount,
                     BlockChainHash = hash,
