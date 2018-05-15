@@ -46,7 +46,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             var order = command.LimitOrder.Order;
             var aggregated = command.Aggregated ?? new List<AggregatedTransfer>();
-            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), order.Status);
+            var parseResult = Enum.TryParse(typeof(OrderStatus), order.Status, out var orderStatus);
+            
+            var status = parseResult ? (OrderStatus?)orderStatus : null;
+
+            if (status == null)
+                return CommandHandlingResult.Ok();
 
             var clientId = order.ClientId;
             var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
@@ -74,6 +79,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 // already handled in wallet api
                 case OrderStatus.InOrderBook:
                 case OrderStatus.Cancelled:
+                case OrderStatus.Replaced:
                 case OrderStatus.NoLiquidity:
                 case OrderStatus.NotEnoughFunds:
                 case OrderStatus.ReservedVolumeGreaterThanBalance:
@@ -81,6 +87,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 case OrderStatus.LeadToNegativeSpread:
                 case OrderStatus.InvalidFee:
                 case OrderStatus.TooSmallVolume:
+                case OrderStatus.Pending:
+                case OrderStatus.DisabledAsset:
+                case OrderStatus.InvalidPrice:
+                case OrderStatus.NotFoundPrevious:
                     return CommandHandlingResult.Ok();
                 case OrderStatus.Processing:
                     msg = string.Format(TextResources.LimitOrderPartiallyExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
@@ -97,7 +107,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
 
-                await _appNotifications.SendLimitOrderNotification(new[] { clientAcc.NotificationsId }, msg, type, status);
+                await _appNotifications.SendLimitOrderNotification(new[] { clientAcc.NotificationsId }, msg, type, status.Value);
 
                 _log.WriteInfo(nameof(NotificationsCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), $"Client {clientId}. Order status: {status}. Push message: {msg}");
             }

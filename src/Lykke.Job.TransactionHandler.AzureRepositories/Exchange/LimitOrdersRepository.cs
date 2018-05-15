@@ -116,8 +116,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
 
         public async Task CreateOrUpdateAsync(ILimitOrder limitOrder)
         {
-            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), limitOrder.Status);
-
             var byOrderEntity = LimitOrderEntity.ByOrderId.Create(limitOrder);
             var byClientEntity = LimitOrderEntity.ByClientId.Create(limitOrder);
             var byClientEntityActive = LimitOrderEntity.ByClientIdActive.Create(limitOrder);
@@ -125,7 +123,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
             await _tableStorage.InsertOrMergeAsync(byOrderEntity);
             await _tableStorage.InsertOrMergeAsync(byClientEntity);
 
-            if (status == OrderStatus.InOrderBook || status == OrderStatus.Processing)
+            if (limitOrder.Status == "InOrderBook" || limitOrder.Status == "Processing")
             {                                    
                 await _tableStorage.InsertOrMergeAsync(byClientEntityActive);
             }

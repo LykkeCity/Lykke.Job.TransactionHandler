@@ -69,13 +69,13 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 limitOrderExecutedEvent.Aggregated = AggregateSwaps(limitOrderExecutedEvent.LimitOrder.Trades);
             }
 
-            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), command.LimitOrder.Order.Status);
+            var status = command.LimitOrder.Order.Status;
 
             // workaround: ME sends wrong status
-            if (status == OrderStatus.Processing && command.LimitOrder.Trades.Count == 0)
-                status = OrderStatus.InOrderBook;
+            if (status == "Processing" && command.LimitOrder.Trades.Count == 0)
+                status = "InOrderBook";
 
-            if (status == OrderStatus.Processing || status == OrderStatus.Matched || status == OrderStatus.Cancelled)
+            if (status == "Processing" || status == "Matched")
             {
                 limitOrderExecutedEvent.Trades = await CreateTrades(command.LimitOrder);
             }
