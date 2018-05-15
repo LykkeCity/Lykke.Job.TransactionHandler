@@ -79,6 +79,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 // already handled in wallet api
                 case OrderStatus.InOrderBook:
                 case OrderStatus.Cancelled:
+                case OrderStatus.Replaced:
                 case OrderStatus.NoLiquidity:
                 case OrderStatus.NotEnoughFunds:
                 case OrderStatus.ReservedVolumeGreaterThanBalance:
@@ -86,6 +87,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 case OrderStatus.LeadToNegativeSpread:
                 case OrderStatus.InvalidFee:
                 case OrderStatus.TooSmallVolume:
+                case OrderStatus.Pending:
+                case OrderStatus.DisabledAsset:
+                case OrderStatus.InvalidPrice:
+                case OrderStatus.NotFoundPrevious:
                     return CommandHandlingResult.Ok();
                 case OrderStatus.Processing:
                     msg = string.Format(TextResources.LimitOrderPartiallyExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
