@@ -160,9 +160,9 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterType<QuantaService>().As<IQuantaService>().SingleInstance();
 
-            builder.Register<IEthereumApi>(x =>
+            builder.Register<IEthereumCoreAPI>(x =>
             {
-                var api = new EthereumApi(new Uri(_settings.Ethereum.EthereumCoreUrl));
+                var api = new EthereumCoreAPI(new Uri(_settings.Ethereum.EthereumCoreUrl));
                 api.SetRetryPolicy(null);
                 return api;
             }).SingleInstance();
