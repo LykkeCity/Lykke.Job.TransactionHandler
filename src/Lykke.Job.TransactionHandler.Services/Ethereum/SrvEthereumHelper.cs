@@ -13,10 +13,10 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
 {
     public class SrvEthereumHelper : ISrvEthereumHelper
     {
-        private readonly IEthereumApi _ethereumApi;
+        private readonly IEthereumCoreAPI _ethereumApi;
         private readonly IAssetsService _assetsService;
 
-        public SrvEthereumHelper(IEthereumApi ethereumApi, IAssetsService assetsService)
+        public SrvEthereumHelper(IEthereumCoreAPI ethereumApi, IAssetsService assetsService)
         {
             _ethereumApi = ethereumApi;
             _assetsService = assetsService;
@@ -38,7 +38,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             {
                 return new EthereumResponse<OperationResponse>
                 {
-                    Error = new ErrorResponse { Code = error.Error.Code, Message = error.Error.Message }
+                    Error = new ErrorResponse { Code = error.Error.Code.ToString(), Message = error.Error.Message }
                 };
             }
 
@@ -66,7 +66,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             {
                 return new EthereumResponse<OperationResponse>
                 {
-                    Error = new ErrorResponse { Code = error.Error.Code, Message = error.Error.Message }
+                    Error = new ErrorResponse { Code = error.Error.Code.ToString(), Message = error.Error.Message }
                 };
             }
 
@@ -99,7 +99,7 @@ namespace Lykke.Job.TransactionHandler.Services.Ethereum
             {
                 return new EthereumResponse<bool>
                 {
-                    Error = new ErrorResponse { Code = response.Error.Code, Message = response.Error.Message }
+                    Error = new ErrorResponse { Code = response.Error.Code.ToString(), Message = response.Error.Message }
                 };
             }
 
