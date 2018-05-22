@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using Autofac;
 using Common.Log;
 using Lykke.Cqrs;
-using Inceptum.Cqrs.Configuration;
-using Inceptum.Messaging;
-using Inceptum.Messaging.RabbitMq;
+using Lykke.Cqrs.Configuration;
 using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
@@ -20,6 +18,7 @@ using Lykke.Job.TransactionHandler.Sagas.Services;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Messaging;
+using Lykke.Messaging.RabbitMq;
 using Lykke.SettingsReader;
 
 namespace Lykke.Job.TransactionHandler.Modules
@@ -42,7 +41,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 ChaosKitty.StateOfChaos = _settings.TransactionHandlerJob.ChaosKitty.StateOfChaos;
             }
 
-            Inceptum.Messaging.Serialization.MessagePackSerializerFactory.Defaults.FormatterResolver = MessagePack.Resolvers.ContractlessStandardResolver.Instance;
+            Messaging.Serialization.MessagePackSerializerFactory.Defaults.FormatterResolver = MessagePack.Resolvers.ContractlessStandardResolver.Instance;
 
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
@@ -186,7 +185,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(ProcessEthCoinEventCommand),
                                        typeof(ProcessHotWalletErc20EventCommand))
-                        .On(defaultRoute)
+                        .On(defaultRoute) 
                         .WithLoopback(defaultRoute)
                     .ListeningCommands(typeof(EnrollEthCashinToMatchingEngineCommand),
                                        typeof(SaveEthInHistoryCommand))
