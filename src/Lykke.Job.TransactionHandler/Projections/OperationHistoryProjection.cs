@@ -158,11 +158,11 @@ namespace Lykke.Job.TransactionHandler.Projections
             {
                 Id = transactionId,
                 ClientId = message.ClientId,
-                Multisig = walletCredentials.MultiSig,
+                Multisig = walletCredentials?.MultiSig,
                 AssetId = message.AssetId,
                 Amount = message.Amount.ParseAnyDouble(),
                 DateTime = DateTime.UtcNow,
-                AddressFrom = walletCredentials.MultiSig,
+                AddressFrom = walletCredentials?.MultiSig,
                 AddressTo = context.Address,
                 TransactionId = transactionId,
                 Type = CashOperationType.None,
