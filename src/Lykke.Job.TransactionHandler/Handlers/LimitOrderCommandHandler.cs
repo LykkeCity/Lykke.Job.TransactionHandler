@@ -61,7 +61,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             if (!isTrustedClient)
             {
                 // need previous order state for not trusted clients
-                var prevOrderState = await _limitOrdersRepository.GetOrderAsync(command.LimitOrder.Order.Id);
+                var prevOrderState = await _limitOrdersRepository.GetOrderAsync(command.LimitOrder.Order.ClientId, command.LimitOrder.Order.Id);
 
                 limitOrderExecutedEvent.HasPrevOrderState = prevOrderState != null;
                 limitOrderExecutedEvent.PrevRemainingVolume = prevOrderState?.RemainingVolume;
