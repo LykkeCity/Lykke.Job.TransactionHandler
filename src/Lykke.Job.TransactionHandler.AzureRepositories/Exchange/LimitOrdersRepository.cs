@@ -8,28 +8,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
 {
     public class LimitOrderEntity : BaseEntity, ILimitOrder
     {
-
-        public static class ByOrderId
-        {
-            public static string GeneratePartitionKey()
-            {
-                return "OrderId";
-            }
-
-            public static string GenerateRowKey(string orderId)
-            {
-                return orderId;
-            }
-
-            public static LimitOrderEntity Create(ILimitOrder limitOrder)
-            {
-                var entity = CreateNew(limitOrder);
-                entity.RowKey = GenerateRowKey(limitOrder.Id);
-                entity.PartitionKey = GeneratePartitionKey();
-                return entity;
-            }
-        }
-
         public static class ByClientId
         {
             public static string GeneratePartitionKey(string clientId)
@@ -116,11 +94,9 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
 
         public async Task CreateOrUpdateAsync(ILimitOrder limitOrder)
         {
-            var byOrderEntity = LimitOrderEntity.ByOrderId.Create(limitOrder);
             var byClientEntity = LimitOrderEntity.ByClientId.Create(limitOrder);
             var byClientEntityActive = LimitOrderEntity.ByClientIdActive.Create(limitOrder);
-
-            await _tableStorage.InsertOrMergeAsync(byOrderEntity);
+            
             await _tableStorage.InsertOrMergeAsync(byClientEntity);
 
             if (limitOrder.Status == "InOrderBook" || limitOrder.Status == "Processing")
@@ -133,9 +109,9 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
             }
         }
 
-        public async Task<ILimitOrder> GetOrderAsync(string orderId)
+        public async Task<ILimitOrder> GetOrderAsync(string clientId, string orderId)
         {
-            return await _tableStorage.GetDataAsync(LimitOrderEntity.ByOrderId.GeneratePartitionKey(), orderId);
+            return await _tableStorage.GetDataAsync(clientId, orderId);
         }
 
         public async Task<IEnumerable<ILimitOrder>> GetActiveOrdersAsync(string clientId)
