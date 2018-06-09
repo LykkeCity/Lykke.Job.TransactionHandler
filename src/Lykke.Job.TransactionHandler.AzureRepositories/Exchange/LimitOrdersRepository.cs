@@ -124,8 +124,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
             var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), limitOrder.Status);
             if (status == OrderStatus.InOrderBook || status == OrderStatus.Processing)
             {
-                var byClientEntityActive = LimitOrderEntity.ByClientIdActive.Create(limitOrder);
-                tasks.Add(_tableStorage.InsertOrMergeAsync(byClientEntityActive));
+                tasks.Add(_tableStorage.InsertOrMergeAsync(LimitOrderEntity.ByClientIdActive.Create(limitOrder)));
             }
             else
             {
