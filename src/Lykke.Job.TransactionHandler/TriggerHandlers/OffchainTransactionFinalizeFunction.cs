@@ -319,7 +319,8 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                 {
                     var clientData = await _personalDataService.GetAsync(contextData.ClientId);
                     var clientAcc = await _clientAccountClient.GetByIdAsync(contextData.ClientId);
-                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientData.Email, contextData.Amount, contextData.AssetId, transaction.BlockchainHash);
+                    var asset = await _assetsServiceWithCache.TryGetAssetAsync(contextData.AssetId);
+                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientData.Email, contextData.Amount, asset.DisplayId, transaction.BlockchainHash);
                 }
             }
         }
