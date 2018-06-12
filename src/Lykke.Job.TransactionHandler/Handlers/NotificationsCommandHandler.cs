@@ -46,19 +46,14 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             var order = command.LimitOrder.Order;
             var aggregated = command.Aggregated ?? new List<AggregatedTransfer>();
-            var parseResult = Enum.TryParse(typeof(OrderStatus), order.Status, out var orderStatus);
-            
-            var status = parseResult ? (OrderStatus?)orderStatus : null;
-
-            if (status == null)
-                return CommandHandlingResult.Ok();
+            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), order.Status);
 
             var clientId = order.ClientId;
             var type = order.Volume > 0 ? OrderType.Buy : OrderType.Sell;
             var typeString = type.ToString().ToLower();
-            var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId); 
+            var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
 
-             var receivedAsset = type == OrderType.Buy ? assetPair.BaseAssetId : assetPair.QuotingAssetId;
+            var receivedAsset = type == OrderType.Buy ? assetPair.BaseAssetId : assetPair.QuotingAssetId;
             var receivedAssetEntity = await _assetsServiceWithCache.TryGetAssetAsync(receivedAsset);
 
             var priceAsset = await _assetsServiceWithCache.TryGetAssetAsync(assetPair.QuotingAssetId);
@@ -91,6 +86,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 case OrderStatus.DisabledAsset:
                 case OrderStatus.InvalidPrice:
                 case OrderStatus.NotFoundPrevious:
+                case OrderStatus.InvalidPriceAccuracy:
+                case OrderStatus.InvalidVolumeAccuracy:
                     return CommandHandlingResult.Ok();
                 case OrderStatus.Processing:
                     msg = string.Format(TextResources.LimitOrderPartiallyExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
@@ -107,7 +104,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
 
-                await _appNotifications.SendLimitOrderNotification(new[] { clientAcc.NotificationsId }, msg, type, status.Value);
+                await _appNotifications.SendLimitOrderNotification(new[] { clientAcc.NotificationsId }, msg, type, status);
 
                 _log.WriteInfo(nameof(NotificationsCommandHandler), JsonConvert.SerializeObject(command, Formatting.Indented), $"Client {clientId}. Order status: {status}. Push message: {msg}");
             }
