@@ -6,9 +6,14 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Clients
 {
     public class ClientCacheEntity : BaseEntity, IClientCache
     {
-        public static string GeneratePartitionKey()
+        public static string GeneratePartitionKey(string clientId)
         {
-            return "ClientCache";
+            return clientId;
+        }
+
+        public static string GenerateRowKey()
+        {
+            return "LimitOrdersCount";
         }
 
         public int LimitOrdersCount { get; set; }
@@ -17,8 +22,8 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Clients
         {
             return new ClientCacheEntity
             {
-                PartitionKey = GeneratePartitionKey(),
-                RowKey = clientId
+                PartitionKey = GeneratePartitionKey(clientId),
+                RowKey = GenerateRowKey(),
             };
         }
     }
