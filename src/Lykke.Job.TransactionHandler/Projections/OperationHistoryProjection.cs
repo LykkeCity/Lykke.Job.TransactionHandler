@@ -347,7 +347,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                     await CreateEvent(evt.LimitOrder, status);
                     break;
                 case OrderStatus.Cancelled:
-                    if (!evt.HasPrevOrderState && evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Count > 0)
+                    if (!evt.HasPrevOrderState && evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
                         await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
                     await CreateEvent(evt.LimitOrder, status);
                     break;
@@ -358,7 +358,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                     break;
                 default:
                     _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
-                    break;                
+                    break;
             }
         }
 
