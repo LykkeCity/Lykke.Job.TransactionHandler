@@ -54,23 +54,25 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 LimitOrder = command.LimitOrder
             };
 
+            var tradesWerePerformed = command.LimitOrder.Trades != null && command.LimitOrder.Trades.Any();
             if (!isTrustedClient)
             {
                 // need previous order state for not trusted clients
                 var prevOrderState = await _limitOrdersRepository.GetOrderAsync(command.LimitOrder.Order.ClientId, command.LimitOrder.Order.Id);
 
-                limitOrderExecutedEvent.HasPrevOrderState = prevOrderState != null;
+                var isImmediateTrade = tradesWerePerformed && command.LimitOrder.Trades.First().Timestamp == command.LimitOrder.Order.Registered;
+                limitOrderExecutedEvent.HasPrevOrderState = prevOrderState != null && !isImmediateTrade;
                 limitOrderExecutedEvent.PrevRemainingVolume = prevOrderState?.RemainingVolume;
 
                 limitOrderExecutedEvent.Aggregated = AggregateSwaps(limitOrderExecutedEvent.LimitOrder.Trades);
             }
 
             await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
-            
+
             var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), command.LimitOrder.Order.Status);
 
             // workaround: ME sends wrong status
-            if (status == OrderStatus.Processing && command.LimitOrder.Trades.Count == 0)
+            if (status == OrderStatus.Processing && !tradesWerePerformed)
                 status = OrderStatus.InOrderBook;
 
             if (status == OrderStatus.Processing || status == OrderStatus.Matched || status == OrderStatus.Cancelled)
