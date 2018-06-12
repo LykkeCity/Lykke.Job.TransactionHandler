@@ -190,7 +190,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                 ClientId = message.ClientId,
                 Multisig = multisig,
                 AssetId = message.AssetId,
-                Amount = (double) Math.Abs(amount),
+                Amount = (double)Math.Abs(amount),
                 DateTime = DateTime.UtcNow,
                 AddressTo = multisig,
                 TransactionId = transactionId,
@@ -339,17 +339,17 @@ namespace Lykke.Job.TransactionHandler.Projections
             _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(contextData, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
 
             // Save limit trade events
-            var parseResult = Enum.TryParse(typeof(OrderStatus), evt.LimitOrder.Order.Status, out var orderStatus);
-            var status = parseResult ? (OrderStatus?) orderStatus : null;
-
-            if (status == null)                                
-                return;            
+            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), evt.LimitOrder.Order.Status);
 
             switch (status)
             {
                 case OrderStatus.InOrderBook:
+                    await CreateEvent(evt.LimitOrder, status);
+                    break;
                 case OrderStatus.Cancelled:
-                    await CreateEvent(evt.LimitOrder, status.Value);
+                    if (!evt.HasPrevOrderState && evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
+                        await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
+                    await CreateEvent(evt.LimitOrder, status);
                     break;
                 case OrderStatus.Processing:
                 case OrderStatus.Matched:
@@ -358,7 +358,7 @@ namespace Lykke.Job.TransactionHandler.Projections
                     break;
                 default:
                     _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
-                    break;                
+                    break;
             }
         }
 
