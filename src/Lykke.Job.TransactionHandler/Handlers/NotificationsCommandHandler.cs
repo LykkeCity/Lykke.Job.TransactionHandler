@@ -32,7 +32,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             IClientAccountClient clientAccountClient,
             IAppNotifications appNotifications)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log.CreateComponentScope(nameof(NotificationsCommandHandler));
             _assetsServiceWithCache = assetsServiceWithCache;
             _clientSettingsRepository = clientSettingsRepository;
             _clientAccountClient = clientAccountClient;
@@ -72,8 +72,17 @@ namespace Lykke.Job.TransactionHandler.Handlers
             switch (status)
             {
                 // already handled in wallet api
-                case OrderStatus.InOrderBook:
                 case OrderStatus.Cancelled:
+                    if (command.LimitOrder.Trades != null && command.LimitOrder.Trades.Count > 0)
+                    {
+                        msg = string.Format(TextResources.LimitOrderExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
+                    }
+                    else
+                    {
+                        return CommandHandlingResult.Ok();
+                    }
+                    break;
+                case OrderStatus.InOrderBook:
                 case OrderStatus.Replaced:
                 case OrderStatus.NoLiquidity:
                 case OrderStatus.NotEnoughFunds:
