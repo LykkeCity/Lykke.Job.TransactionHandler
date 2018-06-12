@@ -116,7 +116,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             Mapper.Initialize(cfg =>
             {
                 cfg.CreateMap<IBcnCredentialsRecord, BcnCredentialsRecordEntity>().IgnoreTableEntityFields();
-                cfg.AddProfile<ClientAutomapperProfile>();
                 cfg.CreateMap<IEthereumTransactionRequest, EthereumTransactionReqEntity>().IgnoreTableEntityFields()
                     .ForMember(x => x.SignedTransferVal, config => config.Ignore())
                     .ForMember(x => x.OperationIdsVal, config => config.Ignore());
