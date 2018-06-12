@@ -89,8 +89,14 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
         /// </summary>
         Replaced,
 
+        /// <summary>
+        /// Invalid price accuracy
+        /// </summary>
         InvalidPriceAccuracy,
 
+        /// <summary>
+        /// Invalid volume accuracy
+        /// </summary>
         InvalidVolumeAccuracy
     }
 
