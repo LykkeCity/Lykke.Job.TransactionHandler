@@ -75,7 +75,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 case OrderStatus.Cancelled:
                     if (command.LimitOrder.Trades != null && command.LimitOrder.Trades.Count > 0)
                     {
-                        _log.WriteInfo("push", null, "cancelled order with trades push");
                         msg = string.Format(TextResources.LimitOrderExecuted, typeString, order.AssetPairId, remainingVolume, order.Price, priceAsset.DisplayId, executedSum, receivedAssetEntity.DisplayId);
                     }
                     else
