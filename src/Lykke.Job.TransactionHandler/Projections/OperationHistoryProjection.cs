@@ -46,7 +46,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository)
         {
             _limitTradeEventsRepositoryClient = limitTradeEventsRepositoryClient;
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log.CreateComponentScope(nameof(OperationHistoryProjection));
             _clientTradesRepository = clientTradesRepository ?? throw new ArgumentNullException(nameof(clientTradesRepository));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
             _transferEventsRepositoryClient = transferEventsRepositoryClient ?? throw new ArgumentNullException(nameof(transferEventsRepositoryClient));
@@ -60,7 +60,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TransferOperationStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
+            _log.WriteInfo(nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
 
             var message = evt.QueueMessage;
             var transactionId = message.Id;
@@ -125,8 +125,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             var response = await _transferEventsRepositoryClient.RegisterAsync(operation);
             if (response.Id != operation.Id)
             {
-                await _log.WriteWarningAsync(nameof(OperationHistoryProjection),
-                    nameof(RegisterOperation), operation.ToJson(),
+                _log.WriteWarning(nameof(RegisterOperation), operation.ToJson(),
                     $"Unexpected response from Operations Service: {response.ToJson()}");
             }
 
@@ -135,7 +134,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TradeCreatedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(TradeCreatedEvent), evt.ToJson(), "");
+            _log.WriteInfo(nameof(TradeCreatedEvent), evt.ToJson(), "");
 
             if (evt.ClientTrades != null)
             {
@@ -147,7 +146,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(ManualTransactionStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(ManualTransactionStateSavedEvent), evt.ToJson(), "");
+            _log.WriteInfo(nameof(ManualTransactionStateSavedEvent), evt.ToJson(), "");
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
@@ -177,7 +176,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(IssueTransactionStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(IssueTransactionStateSavedEvent), evt.ToJson(), "");
+            _log.WriteInfo(nameof(IssueTransactionStateSavedEvent), evt.ToJson(), "");
 
             var message = evt.Message;
             var multisig = evt.Command.Multisig;
@@ -204,7 +203,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(CashoutTransactionStateSavedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
+            _log.WriteInfo(nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
@@ -236,7 +235,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(ForwardWithdawalLinkedEvent evt)
         {
-            await _log.WriteInfoAsync(nameof(OperationHistoryProjection), nameof(ForwardWithdawalLinkedEvent), evt.ToJson(), "");
+            _log.WriteInfo(nameof(ForwardWithdawalLinkedEvent), evt.ToJson(), "");
 
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
@@ -336,29 +335,34 @@ namespace Lykke.Job.TransactionHandler.Projections
             await _transactionService.CreateOrUpdateAsync(evt.LimitOrder.Order.Id);
             await _transactionService.SetTransactionContext(evt.LimitOrder.Order.Id, contextData);
 
-            _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(contextData, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
+            _log.WriteInfo(nameof(LimitOrderExecutedEvent), JsonConvert.SerializeObject(contextData, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
 
             // Save limit trade events
-            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), evt.LimitOrder.Order.Status);
-
-            switch (status)
+            if (Enum.TryParse(typeof(OrderStatus), evt.LimitOrder.Order.Status, out var status))
             {
-                case OrderStatus.InOrderBook:
-                    await CreateEvent(evt.LimitOrder, status);
-                    break;
-                case OrderStatus.Cancelled:
-                    if (!evt.HasPrevOrderState && evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
+                switch (status)
+                {
+                    case OrderStatus.InOrderBook:
                         await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
-                    await CreateEvent(evt.LimitOrder, status);
-                    break;
-                case OrderStatus.Processing:
-                case OrderStatus.Matched:
-                    if (!evt.HasPrevOrderState)
-                        await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
-                    break;
-                default:
-                    _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
-                    break;
+                        break;
+                    case OrderStatus.Cancelled:
+                        if (!evt.HasPrevOrderState && evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
+                            await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
+                        await CreateEvent(evt.LimitOrder, OrderStatus.Cancelled);
+                        break;
+                    case OrderStatus.Processing:
+                    case OrderStatus.Matched:
+                        if (!evt.HasPrevOrderState)
+                            await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
+                        break;
+                    default:
+                        _log.WriteInfo(nameof(LimitOrderExecutedEvent), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
+                        break;
+                }
+            }
+            else
+            {
+                _log.WriteWarning(nameof(LimitOrderExecutedEvent), evt.LimitOrder.Order.Status, "Not supported order status by Lykke.Service.OperationsRepository.");
             }
         }
 
@@ -392,8 +396,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             var operationId = await _cashOperationsRepositoryClient.RegisterAsync(operation);
             if (operationId != operation.Id)
             {
-                await _log.WriteWarningAsync(nameof(OperationHistoryProjection),
-                    nameof(RegisterOperation), operation.ToJson(),
+                _log.WriteWarning(nameof(RegisterOperation), operation.ToJson(),
                     $"Unexpected response from Operations Service: {operationId}");
             }
 
