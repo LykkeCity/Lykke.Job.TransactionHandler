@@ -60,8 +60,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TransferOperationStateSavedEvent evt)
         {
-            _log.WriteInfo(nameof(TransferOperationStateSavedEvent), evt.ToJson(), "");
-
             var message = evt.QueueMessage;
             var transactionId = message.Id;
             var amountNoFee = evt.AmountNoFee;
@@ -134,8 +132,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(TradeCreatedEvent evt)
         {
-            _log.WriteInfo(nameof(TradeCreatedEvent), evt.ToJson(), "");
-
             if (evt.ClientTrades != null)
             {
                 await _clientTradesRepository.SaveAsync(evt.ClientTrades);
@@ -146,8 +142,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(ManualTransactionStateSavedEvent evt)
         {
-            _log.WriteInfo(nameof(ManualTransactionStateSavedEvent), evt.ToJson(), "");
-
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
 
@@ -176,8 +170,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(IssueTransactionStateSavedEvent evt)
         {
-            _log.WriteInfo(nameof(IssueTransactionStateSavedEvent), evt.ToJson(), "");
-
             var message = evt.Message;
             var multisig = evt.Command.Multisig;
             var amount = evt.Command.Amount;
@@ -203,8 +195,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(CashoutTransactionStateSavedEvent evt)
         {
-            _log.WriteInfo(nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
-
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
             var amount = message.Amount.ParseAnyDouble();
@@ -235,8 +225,6 @@ namespace Lykke.Job.TransactionHandler.Projections
 
         public async Task Handle(ForwardWithdawalLinkedEvent evt)
         {
-            _log.WriteInfo(nameof(ForwardWithdawalLinkedEvent), evt.ToJson(), "");
-
             var message = evt.Message;
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
             var amount = message.Amount.ParseAnyDouble();
