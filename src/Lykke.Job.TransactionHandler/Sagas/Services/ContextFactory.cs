@@ -2,12 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Common;
 using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
-using Lykke.Job.TransactionHandler.Services;
-using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 
@@ -36,16 +33,9 @@ namespace Lykke.Job.TransactionHandler.Sagas.Services
 
         public async Task<SwapOffchainContextData> FillTradeContext(SwapOffchainContextData context, TradeQueueItem.MarketOrder order, List<TradeQueueItem.TradeInfo> trades, string clientId)
         {
-            var marketVolume = trades.Sum(x => x.MarketVolume);
-            var limitVolume = trades.Sum(x => x.LimitVolume);
-
-            // if only one trade, we save price from this trade, otherwise we calculate effective price by trades
-            var pair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
-            var price = EffectivePriceCalculator.CalcEffectivePrice(trades, pair, order.Volume > 0);
-
             context.Order = order;
             context.Trades = trades;
-            context.ClientTrades = await _clientTradesFactory.Create(order.Id, clientId, order.AssetPairId, trades[0], marketVolume, limitVolume, price);
+            context.ClientTrades = await _clientTradesFactory.Create(order, trades, clientId);
             context.IsTrustedClient = (await _clientAccountClient.IsTrustedAsync(clientId)).Value;
             context.Status = OperationStatus.Matched;
 

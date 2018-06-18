@@ -25,7 +25,7 @@ namespace Lykke.Job.TransactionHandler.Tests
                 }
             };
 
-            Assert.Equal(9000, EffectivePriceCalculator.CalcEffectivePrice(trades, GetDefaultPair(), false));
+            Assert.Equal(9000, ConvertExtensions.CalcEffectivePrice(trades, GetDefaultPair(), false));
         }
 
         [Fact]
@@ -43,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Tests
                 }
             };
 
-            Assert.Equal(9000, EffectivePriceCalculator.CalcEffectivePrice(trades, GetDefaultPair(), false));
+            Assert.Equal(9000, ConvertExtensions.CalcEffectivePrice(trades, GetDefaultPair(), false));
         }
 
         [Fact]
@@ -77,7 +77,7 @@ namespace Lykke.Job.TransactionHandler.Tests
                 }
             };
 
-            Assert.Equal(9050, EffectivePriceCalculator.CalcEffectivePrice(trades, GetDefaultPair(), false));
+            Assert.Equal(9050, ConvertExtensions.CalcEffectivePrice(trades, GetDefaultPair(), false));
         }
 
         [Fact]
@@ -103,7 +103,7 @@ namespace Lykke.Job.TransactionHandler.Tests
                 }
             };
 
-            Assert.Equal(9090, EffectivePriceCalculator.CalcEffectivePrice(trades, GetDefaultPair(), false));
+            Assert.Equal(9090, ConvertExtensions.CalcEffectivePrice(trades, GetDefaultPair(), false));
         }
 
         [Fact]
@@ -129,7 +129,7 @@ namespace Lykke.Job.TransactionHandler.Tests
                 }
             };
 
-            Assert.Equal(9150, EffectivePriceCalculator.CalcEffectivePrice(trades, GetDefaultPair(), false));
+            Assert.Equal(9150, ConvertExtensions.CalcEffectivePrice(trades, GetDefaultPair(), false));
         }
 
         [Fact]
@@ -157,8 +157,8 @@ namespace Lykke.Job.TransactionHandler.Tests
                 }
             };
 
-            Assert.Equal(10666.666, EffectivePriceCalculator.CalcEffectivePrice(trades, pair, false), pair.Accuracy);
-            Assert.Equal(10666.667, EffectivePriceCalculator.CalcEffectivePrice(trades, pair, true), pair.Accuracy);
+            Assert.Equal(10666.666, ConvertExtensions.CalcEffectivePrice(trades, pair, false), pair.Accuracy);
+            Assert.Equal(10666.667, ConvertExtensions.CalcEffectivePrice(trades, pair, true), pair.Accuracy);
         }
 
         private AssetPair GetDefaultPair()

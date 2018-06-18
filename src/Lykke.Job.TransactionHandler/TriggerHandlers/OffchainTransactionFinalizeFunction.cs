@@ -292,36 +292,12 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
         private async Task FinalizeCashOut(IBitcoinTransaction transaction, IOffchainTransfer offchainTransfer)
         {
-            var amount = Math.Abs((double)offchainTransfer.Amount);
-
             var data = await _exchangeOperationsService.FinishCashOutAsync(transaction.TransactionId, offchainTransfer.ClientId, (double)offchainTransfer.Amount, offchainTransfer.AssetId);
 
             if (!data.IsOk())
             {
                 await _log.WriteWarningAsync("CashOutController", "CashOut", data.ToJson(), "ME operation failed");
                 await _srvSlackNotifications.SendNotification(ChannelTypes.Errors, $"Cashout failed in ME, client: {offchainTransfer.ClientId}, transfer: {transaction.TransactionId}, ME code result: {data.Code}");
-            }
-
-            var contextData = await _transactionService.GetTransactionContext<CashOutContextData>(transaction.TransactionId);
-
-            var swiftData = contextData.AddData?.SwiftData;
-            if (swiftData != null)
-            {
-                await _cashOutAttemptRepositoryClient.SetIsSettledOffchain(contextData.ClientId, swiftData.CashOutRequestId);
-            }
-            else
-            {
-                if (offchainTransfer.AssetId == LykkeConstants.QuantaAssetId)
-                {
-                    await PostQuantaCashOut(contextData.Address, amount, transaction.TransactionId);
-                }
-                else
-                {
-                    var clientData = await _personalDataService.GetAsync(contextData.ClientId);
-                    var clientAcc = await _clientAccountClient.GetByIdAsync(contextData.ClientId);
-                    var asset = await _assetsServiceWithCache.TryGetAssetAsync(contextData.AssetId);
-                    await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientData.Email, contextData.Amount, asset.DisplayId, transaction.BlockchainHash);
-                }
             }
         }
 

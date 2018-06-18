@@ -92,18 +92,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(limitOrderWithTrades.Order.AssetPairId);
 
-            var trades = limitOrderWithTrades.ToDomainOffchain(limitOrderWithTrades.Order.Id, limitOrderWithTrades.Trades[0].ClientId, assetPair, limitOrderWithTrades.Order.Volume > 0);
-
-            foreach (var trade in trades)
-            {
-                var tradeAsset = await _assetsServiceWithCache.TryGetAssetAsync(trade.AssetId);
-
-                // already settled guarantee transaction or trusted asset
-                if (trade.Amount < 0 || tradeAsset.IsTrusted)
-                    trade.State = Service.OperationsRepository.AutorestClient.Models.TransactionStates.SettledOffchain;
-                else
-                    trade.State = Service.OperationsRepository.AutorestClient.Models.TransactionStates.InProcessOffchain;
-            }
+            var trades = limitOrderWithTrades.ToDomain(assetPair);
 
             return trades.ToArray();
         }
