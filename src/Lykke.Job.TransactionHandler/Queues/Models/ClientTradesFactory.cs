@@ -18,60 +18,42 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             _assetsServiceWithCache = assetsServiceWithCache;
         }
 
-        public async Task<ClientTrade[]> Create(string orderId, string clientId, string assetPairId, TradeQueueItem.TradeInfo trade, double marketVolume, double limitVolume, double price)
+        public async Task<ClientTrade[]> Create(TradeQueueItem.MarketOrder order, List<TradeQueueItem.TradeInfo> trades, string clientId)
         {
-            var result = new List<ClientTrade>();
+            var assetPair = await _assetsServiceWithCache.TryGetAssetPairAsync(order.AssetPairId);
 
-            result.AddRange(CreateTradeRecordsForClientWithVolumes(trade, orderId, trade.MarketClientId, marketVolume, limitVolume, price));
+            var trade = trades[0];
+            var price = ConvertExtensions.CalcEffectivePrice(trades, assetPair, order.Volume > 0);
+            var marketVolume = trades.Sum(x => x.MarketVolume);
+            var limitVolume = trades.Sum(x => x.LimitVolume);
 
-            var assets = await _assetsServiceWithCache.GetAllAssetsAsync(true);
-
-            foreach (var clientTrade in result)
-            {
-                var asset = assets.FirstOrDefault(x => x.Id == clientTrade.AssetId);
-
-                clientTrade.AssetPairId = assetPairId;
-                
-                if (asset == null)
-                    throw new ArgumentException("Unknown asset");
-
-                // if client guarantee transaction or trusted asset, then it is already settled
-                if (clientTrade.ClientId == clientId && clientTrade.Amount< 0 || asset.IsTrusted)
-                    clientTrade.State = TransactionStates.SettledOffchain;
-                else
-                    clientTrade.State = TransactionStates.InProcessOffchain;
-            }
-
-            return result.ToArray();
-        }
-
-        private static ClientTrade[] CreateTradeRecordsForClientWithVolumes(TradeQueueItem.TradeInfo trade,
-            string marketOrderId, string clientId, double marketVolume, double limitVolume, double price)
-        {
-            var marketAssetRecord = CreateCommonPartForTradeRecord(trade, marketOrderId, price);
-            var limitAssetRecord = CreateCommonPartForTradeRecord(trade, marketOrderId, price);
+            var marketAssetRecord = CreateCommonPartForTradeRecord(trade, order.Id, price, order.AssetPairId);
+            var limitAssetRecord = CreateCommonPartForTradeRecord(trade, order.Id, price, order.AssetPairId);
 
             marketAssetRecord.ClientId = limitAssetRecord.ClientId = clientId;
 
-            marketAssetRecord.Amount = marketVolume* -1;
+            marketAssetRecord.Amount = marketVolume * -1;
             marketAssetRecord.AssetId = trade.MarketAsset;
 
             limitAssetRecord.Amount = limitVolume;
             limitAssetRecord.AssetId = trade.LimitAsset;
 
-            var transfer = trade.Fees?.FirstOrDefault()?.Transfer;
-
-            if (transfer != null)
+            foreach (var t in trades)
             {
-                if (marketAssetRecord.AssetId == transfer.Asset)
+                var transfer = t.Fees?.FirstOrDefault()?.Transfer;
+
+                if (transfer != null)
                 {
-                    marketAssetRecord.FeeSize = (double) transfer.Volume;
-                    marketAssetRecord.FeeType = FeeType.Absolute;
-                }
-                else
-                {
-                    limitAssetRecord.FeeSize = (double) transfer.Volume;
-                    limitAssetRecord.FeeType = FeeType.Absolute;
+                    if (marketAssetRecord.AssetId == transfer.Asset)
+                    {
+                        marketAssetRecord.FeeSize += (double)transfer.Volume;
+                        marketAssetRecord.FeeType = FeeType.Absolute;
+                    }
+                    else
+                    {
+                        limitAssetRecord.FeeSize += (double)transfer.Volume;
+                        limitAssetRecord.FeeType = FeeType.Absolute;
+                    }
                 }
             }
 
@@ -81,7 +63,7 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
             return new[] { marketAssetRecord, limitAssetRecord };
         }
 
-        private static ClientTrade CreateCommonPartForTradeRecord(TradeQueueItem.TradeInfo trade, string marketOrderId, double price)
+        private static ClientTrade CreateCommonPartForTradeRecord(TradeQueueItem.TradeInfo trade, string marketOrderId, double price, string assetPairId)
         {
             return new ClientTrade
             {
@@ -89,8 +71,10 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
                 Price = price,
                 LimitOrderId = trade.LimitOrderExternalId,
                 MarketOrderId = marketOrderId,
-                TransactionId = marketOrderId
+                TransactionId = marketOrderId,
+                AssetPairId = assetPairId,
+                State = TransactionStates.SettledOffchain
             };
         }
     }
-} 
+}
