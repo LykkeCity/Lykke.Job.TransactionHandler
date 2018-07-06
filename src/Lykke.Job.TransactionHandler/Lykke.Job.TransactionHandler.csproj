@@ -11,7 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Lykke.Common.ApiLibrary" Version="1.7.1" />
-    <PackageReference Include="Lykke.Cqrs" Version="4.6.0" />
+    <PackageReference Include="Lykke.Cqrs" Version="4.8.0" />
     <PackageReference Include="Lykke.Job.BlockchainCashoutProcessor.Contract" Version="2.1.1" />
     <PackageReference Include="Lykke.Contracts" Version="1.0.50" />
     <PackageReference Include="Lykke.Job.EthereumCore.Contracts" Version="1.1.4" />
@@ -19,7 +19,7 @@
     <PackageReference Include="Lykke.Logs" Version="4.3.4" />
     <PackageReference Include="Lykke.MatchingEngineConnector" Version="6.0.3" />
     <PackageReference Include="Lykke.MatchingEngineConnector.Abstractions" Version="6.0.3" />
-    <PackageReference Include="Lykke.Messaging" Version="5.0.0" />
+    <PackageReference Include="Lykke.Messaging" Version="5.1.0" />
     <PackageReference Include="Lykke.Messaging.RabbitMq" Version="2.0.0" />
     <PackageReference Include="Lykke.RabbitMqBroker" Version="7.0.1" />
     <PackageReference Include="Lykke.Service.Assets.Client" Version="3.3.2" />
