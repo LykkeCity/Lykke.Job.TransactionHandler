@@ -8,6 +8,7 @@ using Lykke.Job.TransactionHandler.Core.Services.SolarCoin;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.ClientAccount.Client;
+using Lykke.Service.PersonalData.Contract;
 
 namespace Lykke.Job.TransactionHandler.Projections
 {
@@ -16,6 +17,7 @@ namespace Lykke.Job.TransactionHandler.Projections
         private readonly ILog _log;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly ISrvEmailsFacade _srvEmailsFacade;
+        private readonly IPersonalDataService _personalDataService;
 
         public EmailProjection(
             [NotNull] ILog log,
@@ -33,8 +35,9 @@ namespace Lykke.Job.TransactionHandler.Projections
 
             var slrAddress = new SolarCoinAddress(evt.Address);
             var clientAcc = await _clientAccountClient.GetByIdAsync(evt.ClientId);
+            var clientEmail = await _personalDataService.GetEmailAsync(evt.ClientId);
 
-            await _srvEmailsFacade.SendSolarCashOutCompletedEmail(clientAcc.PartnerId, clientAcc.Email, slrAddress.Value, evt.Amount);
+            await _srvEmailsFacade.SendSolarCashOutCompletedEmail(clientAcc.PartnerId, clientEmail, slrAddress.Value, evt.Amount);
 
             ChaosKitty.Meow();
         }

@@ -25,6 +25,7 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Events.EthereumCore;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 using Lykke.Job.TransactionHandler.Utils;
+using Lykke.Service.PersonalData.Contract;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -47,6 +48,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly IEthererumPendingActionsRepository _ethererumPendingActionsRepository;
         private readonly IExchangeOperationsServiceClient _exchangeOperationsServiceClient;
         private readonly IClientCommentsRepository _clientCommentsRepository;
+        private readonly IPersonalDataService _personalDataService;
 
         public EthereumCoreCommandHandler(AppSettings.RabbitMqSettings config, ILog log,
             IMatchingEngineClient matchingEngineClient,
@@ -64,7 +66,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
             IAssetsService assetsService,
             IEthererumPendingActionsRepository ethererumPendingActionsRepository,
             IExchangeOperationsServiceClient exchangeOperationsServiceClient,
-            IClientCommentsRepository clientCommentsRepository)
+            IClientCommentsRepository clientCommentsRepository,
+            IPersonalDataService personalDataService)
         {
             _log = log.CreateComponentScope(nameof(EthereumCoreCommandHandler));
             _matchingEngineClient = matchingEngineClient;
@@ -82,6 +85,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _ethererumPendingActionsRepository = ethererumPendingActionsRepository;
             _exchangeOperationsServiceClient = exchangeOperationsServiceClient;
             _clientCommentsRepository = clientCommentsRepository;
+            _personalDataService = personalDataService;
         }
 
         #region CommanHandling
@@ -234,7 +238,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 ChaosKitty.Meow();
 
                 var clientAcc = await _clientAccountClient.GetByIdAsync(clientId.ToString());
-                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientAcc.Email, amount, command.AssetId);
+                var clientEmail = await _personalDataService.GetEmailAsync(clientId.ToString());
+                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientEmail, amount, command.AssetId);
                 await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
 
                 ChaosKitty.Meow();
@@ -288,8 +293,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
             string cashOperationId = context.CashOperationId;
 
             var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
+            var clientEmail = await _personalDataService.GetEmailAsync(clientId);
+
             await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
-            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, context.Amount, context.AssetId, hash);
+            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientEmail, context.Amount, context.AssetId, hash);
         }
 
         private async Task ProcessOutcomeOperation(ProcessEthCoinEventCommand queueMessage)
@@ -326,8 +333,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
             string cashOperationId = context.CashOperationId;
 
             var clientAcc = await _clientAccountClient.GetByIdAsync(clientId);
+            var clientEmail = await _personalDataService.GetEmailAsync(clientId);
+
             await _cashOperationsRepositoryClient.UpdateBlockchainHashAsync(clientId, cashOperationId, hash);
-            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientAcc.Email, context.Amount, context.AssetId, hash);
+            await _srvEmailsFacade.SendNoRefundOCashOutMail(clientAcc.PartnerId, clientEmail, context.Amount, context.AssetId, hash);
 
             ChaosKitty.Meow();
         }
