@@ -185,7 +185,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                 ChaosKitty.Meow();
 
-                var result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId.ToString(), asset.Id, (double)amount);
+                MeResponseModel result = null;
+
+                await ExecuteWithTimeoutHelper.ExecuteWithTimeoutAsync(async () =>
+                    {
+                        result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId.ToString(), asset.Id, (double)amount);
+                    }, 5 * 60 * 1000); // 5 min in ms
 
                 if (result == null ||
                    (result.Status != MeStatusCodes.Ok &&
@@ -289,7 +294,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             string transactionId = queueMessage.OperationId;
             CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
-            
+
             if (context == null)
             {
                 _log.WriteError(
