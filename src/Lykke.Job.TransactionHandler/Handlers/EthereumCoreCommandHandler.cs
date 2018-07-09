@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
@@ -283,6 +284,17 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             string transactionId = queueMessage.OperationId;
             CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
+            
+            if (context == null)
+            {
+                _log.WriteError(
+                    nameof(ProcessHotWalletCashout),
+                    queueMessage.ToJson(),
+                    new NullReferenceException("Context is null for hotwallet cashout"));
+
+                return;
+            }
+
             string clientId = context.ClientId;
             string hash = queueMessage.TransactionHash;
             string cashOperationId = context.CashOperationId;
