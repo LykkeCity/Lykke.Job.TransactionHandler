@@ -29,14 +29,6 @@ namespace Lykke.Job.TransactionHandler.Services.Fee
 
             if (fee?.Instruction?.Type == Core.Contracts.FeeType.EXTERNAL_FEE)
             {
-                // if transfer ToClientId and fee TargetClient are the same client
-                // this case used, for example, during Swift withdrawal return from BO to a client
-                // fee is returned from one client, main sum is returned from another client
-                // to a withdrawal original client
-                if (clientId != null && clientId == fee.Instruction.TargetClientId)  
-                {
-                    return initialAmount + feeAmount;
-                }
                 return initialAmount;
             }
 
