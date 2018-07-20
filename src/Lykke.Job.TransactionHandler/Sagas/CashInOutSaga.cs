@@ -89,15 +89,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Amount = Math.Abs(amountNoFee)
                 }, BoundedContexts.Solarcoin);
             }
-            else if (asset.Id == LykkeConstants.ChronoBankAssetId)
-            {
-                sender.SendCommand(new Commands.ChronoBankCashOutCommand
-                {
-                    TransactionId = transactionId,
-                    Amount = Math.Abs(amountNoFee),
-                    Address = context.Address
-                }, BoundedContexts.Chronobank);
-            }
             else if (asset.Blockchain == Blockchain.Bitcoin && asset.IsTrusted && asset.BlockchainWithdrawal)
             {
                 sender.SendCommand(new Commands.BitcoinCashOutCommand
