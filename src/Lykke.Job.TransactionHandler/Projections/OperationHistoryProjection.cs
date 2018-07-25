@@ -13,6 +13,7 @@ using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Utils;
+using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
@@ -81,41 +82,47 @@ namespace Lykke.Job.TransactionHandler.Projections
                     ? TransactionStates.SettledNoChain
                     : TransactionStates.SettledOnchain;
 
-            await RegisterOperation(
-                new TransferEvent
-                {
-                    Id = context.Transfers.Single(x => x.ClientId == message.ToClientid).OperationId,
-                    ClientId = message.ToClientid,
-                    DateTime = DateTime.UtcNow,
-                    FromId = null,
-                    AssetId = message.AssetId,
-                    Amount = amountNoFee,
-                    TransactionId = transactionId,
-                    IsHidden = false,
-                    AddressFrom = destWallet?.Address,
-                    AddressTo = destWallet?.MultiSig,
-                    Multisig = destWallet?.MultiSig,
-                    IsSettled = false,
-                    State = transferState
-                });
+            var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
 
-            await RegisterOperation(
-                new TransferEvent
-                {
-                    Id = context.Transfers.Single(x => x.ClientId == message.FromClientId).OperationId,
-                    ClientId = message.FromClientId,
-                    DateTime = DateTime.UtcNow,
-                    FromId = null,
-                    AssetId = message.AssetId,
-                    Amount = -amountNoFee,
-                    TransactionId = transactionId,
-                    IsHidden = false,
-                    AddressFrom = sourceWallet?.Address,
-                    AddressTo = sourceWallet?.MultiSig,
-                    Multisig = sourceWallet?.MultiSig,
-                    IsSettled = false,
-                    State = transferState
-                });
+            var toOperation = new TransferEvent
+            {
+                Id = context.Transfers.Single(x => x.ClientId == message.ToClientid).OperationId,
+                ClientId = message.ToClientid,
+                DateTime = DateTime.UtcNow,
+                FromId = null,
+                AssetId = message.AssetId,
+                Amount = amountNoFee,
+                TransactionId = transactionId,
+                IsHidden = false,
+                AddressFrom = destWallet?.Address,
+                AddressTo = destWallet?.MultiSig,
+                Multisig = destWallet?.MultiSig,
+                IsSettled = false,
+                State = transferState
+            };
+
+            var fromOperation = new TransferEvent
+            {
+                Id = context.Transfers.Single(x => x.ClientId == message.FromClientId).OperationId,
+                ClientId = message.FromClientId,
+                DateTime = DateTime.UtcNow,
+                FromId = null,
+                AssetId = message.AssetId,
+                Amount = -amountNoFee,
+                TransactionId = transactionId,
+                IsHidden = false,
+                AddressFrom = sourceWallet?.Address,
+                AddressTo = sourceWallet?.MultiSig,
+                Multisig = sourceWallet?.MultiSig,
+                IsSettled = false,
+                State = transferState
+            };
+
+            toOperation.AddFeeDataToOperation(message, asset);
+            fromOperation.AddFeeDataToOperation(message, asset);
+
+            await RegisterOperation(toOperation);
+            await RegisterOperation(fromOperation);
         }
 
         private async Task RegisterOperation(TransferEvent operation)
