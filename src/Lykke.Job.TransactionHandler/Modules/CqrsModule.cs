@@ -77,8 +77,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterType<ForwardWithdrawalCommandHandler>();
             builder.RegisterType<BitcoinCommandHandler>()
-                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));
-            builder.RegisterType<ChronoBankCommandHandler>();
+                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay))).SingleInstance();
             builder.RegisterType<EthereumCommandHandler>()
                 .WithParameter(TypedParameter.From(_settings.Ethereum))
                 .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));
@@ -166,12 +165,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningCommands(typeof(BitcoinCashOutCommand), typeof(SegwitTransferCommand))
                         .On(defaultRoute)
                     .WithCommandsHandler<BitcoinCommandHandler>(),
-
-                Register.BoundedContext(BoundedContexts.Chronobank)
-                    .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(ChronoBankCashOutCommand))
-                        .On(defaultRoute)
-                    .WithCommandsHandler<ChronoBankCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.Ethereum)
                     .FailedCommandRetryDelay(defaultRetryDelay)
@@ -265,8 +258,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .From(BoundedContexts.Operations).On(defaultRoute)
                     .PublishingCommands(typeof(BitcoinCashOutCommand))
                         .To(BoundedContexts.Bitcoin).With(defaultPipeline)
-                    .PublishingCommands(typeof(ChronoBankCashOutCommand))
-                        .To(BoundedContexts.Chronobank).With(defaultPipeline)
                     .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
                         .To(BoundedContexts.Ethereum).With(defaultPipeline)
                     .PublishingCommands(typeof(SolarCashOutCommand))
