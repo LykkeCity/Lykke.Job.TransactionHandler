@@ -76,6 +76,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             else
             {
+                //Cashout is disabled for Ethereum
+                _log.WriteError(nameof(ProcessEthereumCashoutCommand), 
+                    command, 
+                    new Exception("Cashouts for ETHEREUM Should be performed by Blockchain Integration layer"));
+
+                return CommandHandlingResult.Ok();
                 var transactionId = Guid.Parse(command.TransactionId);
                 var address = _settings.HotwalletAddress;
 

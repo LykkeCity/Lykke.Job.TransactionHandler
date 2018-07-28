@@ -69,6 +69,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
             else if (asset.Blockchain == Blockchain.Ethereum)
             {
+                //ERC20 Only
                 sender.SendCommand(new Commands.ProcessEthereumCashoutCommand
                 {
                     TransactionId = transactionId,

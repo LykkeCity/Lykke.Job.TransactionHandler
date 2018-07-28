@@ -176,8 +176,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.BoundedContext(BoundedContexts.EthereumCommands)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(ProcessEthCoinEventCommand),
-                                       typeof(ProcessHotWalletErc20EventCommand))
+                    .ListeningCommands(typeof(ProcessHotWalletErc20EventCommand))
                         .On(defaultRoute) 
                         .WithLoopback(defaultRoute)
                     .ListeningCommands(typeof(EnrollEthCashinToMatchingEngineCommand),

@@ -22,7 +22,6 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IDeduplicator _deduplicator;
         private readonly ICqrsEngine _cqrsEngine;
         private readonly AppSettings.EthRabbitMqSettings _rabbitConfig;
-        private RabbitMqSubscriber<CoinEvent> _subscriber;
         private RabbitMqSubscriber<HotWalletEvent> _subscriberHotWallet;
 
         public EthereumEventsQueue(AppSettings.EthRabbitMqSettings config, ILog log,
@@ -37,38 +36,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public void Start()
         {
-            {
-                var settings = new RabbitMqSubscriptionSettings
-                {
-                    ConnectionString = _rabbitConfig.ConnectionString,
-                    QueueName = QueueName,
-                    ExchangeName = _rabbitConfig.ExchangeEthereumEvents,
-                    DeadLetterExchangeName = $"{_rabbitConfig.ExchangeEthereumEvents}.dlx",
-                    RoutingKey = "",
-                    IsDurable = true
-                };
-
-                try
-                {
-                    var resilentErrorHandlingStrategyEth = new ResilientErrorHandlingStrategy(_log, settings,
-                        retryTimeout: TimeSpan.FromSeconds(10),
-                        retryNum: 10,
-                        next: new DeadQueueErrorHandlingStrategy(_log, settings)); 
-                    _subscriber = new RabbitMqSubscriber<CoinEvent>(settings, resilentErrorHandlingStrategyEth)
-                        .SetMessageDeserializer(new JsonMessageDeserializer<CoinEvent>())
-                        .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                        .Subscribe(SendEventToCQRS)
-                        .CreateDefaultBinding()
-                        .SetLogger(_log)
-                        .Start();
-                }
-                catch (Exception ex)
-                {
-                    _log.WriteErrorAsync(nameof(EthereumEventsQueue), nameof(Start), null, ex).Wait();
-                    throw;
-                }
-            }
-
             #region HotWallet
 
             {
@@ -112,34 +79,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public void Stop()
         {
-            _subscriber?.Stop();
             _subscriberHotWallet?.Stop();
-        }
-
-        public async Task<bool> SendEventToCQRS(CoinEvent @event)
-        {
-            if (!await _deduplicator.EnsureNotDuplicateAsync(@event))
-            {
-                await _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(SendEventToCQRS), @event.ToJson(), "Duplicated message");
-                return false;
-            }
-
-            _cqrsEngine.SendCommand(new ProcessEthCoinEventCommand
-                {
-                    Additional = @event.Additional,
-                    Amount = @event.Amount,
-                    CoinEventType = @event.CoinEventType,
-                    ContractAddress = @event.ContractAddress,
-                    EventTime = @event.EventTime,
-                    FromAddress = @event.FromAddress,
-                    OperationId = @event.OperationId,
-                    ToAddress = @event.ToAddress,
-                    TransactionHash = @event.TransactionHash,
-                },
-                BoundedContexts.EthereumCommands,
-                BoundedContexts.EthereumCommands);
-
-            return true;
         }
 
         public async Task<bool> SendHotWalletEventToCQRS(HotWalletEvent @event)
