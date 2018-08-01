@@ -6,6 +6,7 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Services;
+using Lykke.RabbitMq.Mongo.Deduplicator;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 
@@ -22,18 +23,22 @@ namespace Lykke.Job.TransactionHandler.Queues
 #endif        
         private readonly ILog _log;        
         private readonly ICqrsEngine _cqrsEngine;
-        
+        private readonly AppSettings.TransactionHandlerSettings _settings;
+
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<LimitQueueItem> _subscriber;
 
         public LimitTradeQueue(
             AppSettings.RabbitMqSettings config,
             ILog log,            
-            ICqrsEngine cqrsEngine)
+            ICqrsEngine cqrsEngine,
+            AppSettings.TransactionHandlerSettings settings
+            )
         {
             _rabbitConfig = config;            
             _log = log;            
-            _cqrsEngine = cqrsEngine;            
+            _cqrsEngine = cqrsEngine;
+            _settings = settings;
         }
 
         public void Start()
@@ -53,6 +58,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                 _subscriber = new RabbitMqSubscriber<LimitQueueItem>(settings, new DeadQueueErrorHandlingStrategy(_log, settings))
                     .SetMessageDeserializer(new JsonMessageDeserializer<LimitQueueItem>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
+                    .SetAlternativeExchange(_rabbitConfig.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
                     .Subscribe(ProcessMessage)
                     .CreateDefaultBinding()
                     .SetLogger(_log)

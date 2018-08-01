@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
-using JetBrains.Annotations;
-using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.EthereumCore.Contracts.Events;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
+using Lykke.RabbitMq.Mongo.Deduplicator;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -19,20 +17,22 @@ namespace Lykke.Job.TransactionHandler.Queues
         private const string HotWalletQueueName = "lykke.transactionhandler.ethereum.hotwallet.events";
 
         private readonly ILog _log;
-        private readonly IDeduplicator _deduplicator;
         private readonly ICqrsEngine _cqrsEngine;
+        private readonly AppSettings.TransactionHandlerSettings _settings;
         private readonly AppSettings.EthRabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
         private RabbitMqSubscriber<HotWalletEvent> _subscriberHotWallet;
 
-        public EthereumEventsQueue(AppSettings.EthRabbitMqSettings config, ILog log,
-            [NotNull] IDeduplicator deduplicator,
-            ICqrsEngine cqrsEngine)
+        public EthereumEventsQueue(
+            AppSettings.EthRabbitMqSettings config, 
+            ILog log,
+            ICqrsEngine cqrsEngine,
+            AppSettings.TransactionHandlerSettings settings)
         {
             _log = log;
             _rabbitConfig = config;
-            _deduplicator = deduplicator ?? throw new ArgumentNullException(nameof(deduplicator));
             _cqrsEngine = cqrsEngine;
+            _settings = settings;
         }
 
         public void Start()
@@ -57,6 +57,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                     _subscriber = new RabbitMqSubscriber<CoinEvent>(settings, resilentErrorHandlingStrategyEth)
                         .SetMessageDeserializer(new JsonMessageDeserializer<CoinEvent>())
                         .SetMessageReadStrategy(new MessageReadQueueStrategy())
+                        .SetAlternativeExchange(settings.ConnectionString)
+                        .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
                         .Subscribe(SendEventToCQRS)
                         .CreateDefaultBinding()
                         .SetLogger(_log)
@@ -94,6 +96,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                          resilentErrorHandlingStrategyEth)
                         .SetMessageDeserializer(new JsonMessageDeserializer<HotWalletEvent>())
                         .SetMessageReadStrategy(new MessageReadQueueStrategy())
+                        .SetAlternativeExchange(settings.ConnectionString)
+                        .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
                         .Subscribe(SendHotWalletEventToCQRS)
                         .CreateDefaultBinding()
                         .SetLogger(_log)
@@ -118,12 +122,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> SendEventToCQRS(CoinEvent @event)
         {
-            if (!await _deduplicator.EnsureNotDuplicateAsync(@event))
-            {
-                await _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(SendEventToCQRS), @event.ToJson(), "Duplicated message");
-                return false;
-            }
-
             _cqrsEngine.SendCommand(new ProcessEthCoinEventCommand
                 {
                     Additional = @event.Additional,
@@ -144,12 +142,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public async Task<bool> SendHotWalletEventToCQRS(HotWalletEvent @event)
         {
-            if (!await _deduplicator.EnsureNotDuplicateAsync(@event))
-            {
-                await _log.WriteWarningAsync(nameof(EthereumEventsQueue), nameof(SendHotWalletEventToCQRS), @event.ToJson(), "Duplicated message");
-                return false;
-            }
-
             _cqrsEngine.SendCommand(new ProcessHotWalletErc20EventCommand
                 {
                     Amount = @event.Amount,

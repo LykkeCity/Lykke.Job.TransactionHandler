@@ -35,11 +35,18 @@ namespace Lykke.Job.TransactionHandler.Services
             public string SagasRabbitMqConnStr { get; set; } 
             [Optional]
             public ChaosSettings ChaosKitty { get; set; }            
+            public MongoDeduplicatorSettings MongoDeduplicator { get; set; }            
         }
 
         public class ChaosSettings
         {
             public double StateOfChaos { get; set; }
+        }
+
+        public class MongoDeduplicatorSettings
+        {
+            public string ConnectionString { get; set; }
+            public string CollectionName { get; set; }
         }
 
         public class DbSettings
@@ -137,6 +144,7 @@ namespace Lykke.Job.TransactionHandler.Services
         public class RabbitMqSettings
         {
             public string ConnectionString { get; set; }
+            public string AlternateConnectionString { get; set; }
             public string ExchangeSwap { get; set; }
             public string ExchangeLimit { get; set; }
 
