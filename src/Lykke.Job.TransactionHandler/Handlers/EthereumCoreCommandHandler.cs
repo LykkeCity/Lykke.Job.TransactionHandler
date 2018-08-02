@@ -58,7 +58,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
             ISrvEmailsFacade srvEmailsFacade,
             IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             IPaymentTransactionsRepository paymentTransactionsRepository,
-            IWalletCredentialsRepository walletCredentialsRepository,
             ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             ITransferOperationsRepositoryClient transferEventsRepositoryClient,

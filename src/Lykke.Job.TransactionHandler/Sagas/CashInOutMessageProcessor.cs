@@ -151,7 +151,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Context = context.ToJson(),
                     Amount = Math.Abs(amount),
                     AssetId = message.AssetId,
-                    Multisig = walletCredentials.MultiSig
+                    Multisig = walletCredentials?.MultiSig
                 },
                 Context = context,
                 Message = message
@@ -182,7 +182,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                     Amount = Math.Abs(amount),
                     AssetId = message.AssetId,
                     Context = context.ToJson(),
-                    SourceAddress = walletCredentials.MultiSig,
+                    SourceAddress = walletCredentials?.MultiSig,
                     DestinationAddress = context.Address,
                     TransactionId = Guid.Parse(transactionId)
                 },
