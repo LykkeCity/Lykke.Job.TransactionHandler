@@ -183,8 +183,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
 
-            builder.RegisterType<PersistentDeduplicator>().As<IDeduplicator>().SingleInstance();
-
             builder.RegisterType<FeeLogService>().As<IFeeLogService>().SingleInstance();
 
             builder.RegisterType<FeeCalculationService>().As<IFeeCalculationService>().SingleInstance();

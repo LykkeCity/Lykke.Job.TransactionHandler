@@ -7,6 +7,7 @@ using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
+using Lykke.RabbitMq.Mongo.Deduplicator;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
@@ -24,16 +25,20 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<TransferQueueMessage> _subscriber;
         private readonly ICqrsEngine _cqrsEngine;
+        private readonly AppSettings.TransactionHandlerSettings _settings;
 
 
         public TransferQueue(
             [NotNull] AppSettings.RabbitMqSettings config,
             [NotNull] ILog log,
-            [NotNull] ICqrsEngine cqrsEngine)
+            [NotNull] ICqrsEngine cqrsEngine,
+            [NotNull] AppSettings.TransactionHandlerSettings settings
+            )
         {
             _rabbitConfig = config ?? throw new ArgumentNullException(nameof(config));
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
         public void Start()
@@ -58,6 +63,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                             next: new DeadQueueErrorHandlingStrategy(_log, settings)))
                     .SetMessageDeserializer(new JsonMessageDeserializer<TransferQueueMessage>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
+                    .SetAlternativeExchange(_rabbitConfig.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
                     .Subscribe(ProcessMessage)
                     .CreateDefaultBinding()
                     .SetLogger(_log)
