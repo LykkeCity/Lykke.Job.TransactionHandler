@@ -22,11 +22,13 @@ namespace Lykke.Job.TransactionHandler.Projections
         public EmailProjection(
             [NotNull] ILog log,
             [NotNull] IClientAccountClient clientAccountClient,
-            [NotNull] ISrvEmailsFacade srvEmailsFacade)
+            [NotNull] ISrvEmailsFacade srvEmailsFacade,
+            [NotNull] IPersonalDataService personalDataService)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _clientAccountClient = clientAccountClient ?? throw new ArgumentNullException(nameof(clientAccountClient));
             _srvEmailsFacade = srvEmailsFacade ?? throw new ArgumentNullException(nameof(srvEmailsFacade));
+            _personalDataService = personalDataService ?? throw new ArgumentNullException(nameof(personalDataService));
         }
 
         public async Task Handle(SolarCashOutCompletedEvent evt)
