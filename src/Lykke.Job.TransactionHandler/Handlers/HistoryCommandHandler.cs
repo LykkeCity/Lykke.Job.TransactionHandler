@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
@@ -26,7 +25,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(UpdateLimitOrdersCountCommand command, IEventPublisher eventPublisher)
         {
-            var activeLimitOrdersCount = (await _limitOrdersRepository.GetActiveOrdersAsync(command.ClientId)).Count();
+            var activeLimitOrdersCount = await _limitOrdersRepository.GetActiveOrdersCountAsync(command.ClientId);
             await _clientCacheRepository.UpdateLimitOrdersCount(command.ClientId, activeLimitOrdersCount);
 
             ChaosKitty.Meow();

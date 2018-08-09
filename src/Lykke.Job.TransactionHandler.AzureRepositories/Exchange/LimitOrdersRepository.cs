@@ -1,8 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
 {
@@ -134,11 +135,20 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
             return await _tableStorage.GetDataAsync(clientId, orderId);
         }
 
-        public async Task<IEnumerable<ILimitOrder>> GetActiveOrdersAsync(string clientId)
+        public async Task<int> GetActiveOrdersCountAsync(string clientId)
         {
             var partitionKey = LimitOrderEntity.ByClientIdActive.GeneratePartitionKey(clientId);
 
-            return await _tableStorage.GetDataAsync(partitionKey);
+            var count = 0;
+
+            await _tableStorage.ExecuteAsync(GetIdsOnly(partitionKey), entities => count += entities.Count());
+            return count;
+        }
+
+        private TableQuery<LimitOrderEntity> GetIdsOnly(string partition)
+        {
+            var filter = TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, partition);
+            return new TableQuery<LimitOrderEntity>().Where(filter).Select(new[] { "Id" });
         }
     }
 }
