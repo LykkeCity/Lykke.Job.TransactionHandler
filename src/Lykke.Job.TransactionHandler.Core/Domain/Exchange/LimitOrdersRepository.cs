@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
 {
@@ -13,6 +12,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
     {
         Task CreateOrUpdateAsync(ILimitOrder limitOrder);
         Task<ILimitOrder> GetOrderAsync(string clientId, string orderId);
-        Task<IEnumerable<ILimitOrder>> GetActiveOrdersAsync(string clientId);
+        Task<int> GetActiveOrdersCountAsync(string clientId);
     }
 }
