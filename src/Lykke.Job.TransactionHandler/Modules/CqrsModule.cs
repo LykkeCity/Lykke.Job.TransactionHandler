@@ -93,7 +93,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<OperationHistoryProjection>();
             builder.RegisterType<EmailProjection>();
             builder.RegisterType<OrdersProjection>();
-            builder.RegisterType<FeeProjection>();
 
             builder.RegisterType<ContextFactory>().As<IContextFactory>().SingleInstance();
             builder.RegisterType<ClientTradesFactory>().As<IClientTradesFactory>().SingleInstance();
@@ -126,14 +125,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningEvents(typeof(TradeCreatedEvent))
                         .From(BoundedContexts.Trades).On(defaultRoute)
                     .WithProjection(typeof(OrdersProjection), BoundedContexts.Trades),
-
-                Register.BoundedContext(BoundedContexts.Fee)
-                    .ListeningEvents(typeof(TradeCreatedEvent))
-                        .From(BoundedContexts.Trades).On(defaultRoute)
-                    .WithProjection(typeof(FeeProjection), BoundedContexts.Trades)
-                    .ListeningEvents(typeof(TransferOperationStateSavedEvent))
-                        .From(BoundedContexts.Operations).On(defaultRoute)
-                    .WithProjection(typeof(FeeProjection), BoundedContexts.Operations),
 
                 Register.Saga<TradeSaga>($"{BoundedContexts.TxHandler}.trade-saga")
                     .ListeningEvents(typeof(TradeCreatedEvent))

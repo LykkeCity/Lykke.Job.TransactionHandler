@@ -4,7 +4,6 @@ using Common;
 using Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core.Contracts;
-using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.TransactionHandler.Services;
@@ -24,7 +23,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private readonly ILog _log;
         private readonly ICqrsEngine _cqrsEngine;
-        private readonly IFeeLogService _feeLogService;
         private readonly AppSettings.TransactionHandlerSettings _settings;
 
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
@@ -34,14 +32,12 @@ namespace Lykke.Job.TransactionHandler.Queues
             AppSettings.RabbitMqSettings config,
             ILog log,
             ICqrsEngine cqrsEngine,
-			IFeeLogService feeLogService,
             AppSettings.TransactionHandlerSettings settings
             )
         {
             _rabbitConfig = config;
             _log = log;
             _cqrsEngine = cqrsEngine;
-            _feeLogService = feeLogService ?? throw new ArgumentException(nameof(feeLogService));
             _settings = settings;
         }
 
@@ -88,7 +84,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         private async Task ProcessMessage(TradeQueueItem queueMessage)
         {
-            await _feeLogService.WriteFeeInfoAsync(queueMessage);
             await _log.WriteInfoAsync(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.ToJson());
             
             _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
