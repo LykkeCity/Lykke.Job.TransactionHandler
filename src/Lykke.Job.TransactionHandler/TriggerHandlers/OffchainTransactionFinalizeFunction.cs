@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Core;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
@@ -13,7 +12,6 @@ using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
-using Lykke.Job.TransactionHandler.Core.Services.Quanta;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Resources;
 using Lykke.Job.TransactionHandler.Services.Notifications;
@@ -32,7 +30,6 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly ITransactionsRepository _transactionsRepository;
         private readonly ITransactionService _transactionService;
         private readonly ICashOperationsRepositoryClient _cashOperationsRepositoryClient;
-        private readonly ICashOutAttemptOperationsRepositoryClient _cashOutAttemptRepositoryClient;
         private readonly ITradeOperationsRepositoryClient _clientTradesRepositoryClient;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly IPersonalDataService _personalDataService;
@@ -50,8 +47,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
         private readonly IExchangeOperationsServiceClient _exchangeOperationsService;
         private readonly SrvSlackNotifications _srvSlackNotifications;
         private readonly ILog _log;
-
-        private readonly IQuantaService _quantaService;
+        
         private readonly IOperationsClient _operationsClient;
 
         public OffchainTransactionFinalizeFunction(
@@ -60,14 +56,12 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             IExchangeOperationsServiceClient exchangeOperationsService,
             SrvSlackNotifications srvSlackNotifications,
-            ICashOutAttemptOperationsRepositoryClient cashOutAttemptRepositoryClient,
             ISrvEmailsFacade srvEmailsFacade,
             ITradeOperationsRepositoryClient clientTradesRepositoryClient,
             IClientAccountClient clientAccountClient,
             IPersonalDataService personalDataService,
             IOffchainTransferRepository offchainTransferRepository,
             ITransferOperationsRepositoryClient transferEventsRepositoryClient,
-            IQuantaService quantaService,
             IMarginDataServiceResolver marginDataServiceResolver,
             IMarginTradingPaymentLogRepository marginTradingPaymentLog,
             IPaymentTransactionsRepository paymentTransactionsRepository,
@@ -81,14 +75,12 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
             _exchangeOperationsService = exchangeOperationsService;
             _srvSlackNotifications = srvSlackNotifications;
-            _cashOutAttemptRepositoryClient = cashOutAttemptRepositoryClient;
             _srvEmailsFacade = srvEmailsFacade;
             _clientTradesRepositoryClient = clientTradesRepositoryClient;
             _clientAccountClient = clientAccountClient;
             _personalDataService = personalDataService;
             _offchainTransferRepository = offchainTransferRepository;
             _transferEventsRepositoryClient = transferEventsRepositoryClient;
-            _quantaService = quantaService;
 
             _marginDataServiceResolver = marginDataServiceResolver;
             _marginTradingPaymentLog = marginTradingPaymentLog;
@@ -347,10 +339,6 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
                     await _log.WriteErrorAsync(nameof(OffchainTransactionFinalizeFunction), nameof(FinalizeSwap), $"Transfer: {transferId}", e);
                 }
             }
-        }
-        private Task PostQuantaCashOut(string address, double amount, string txId)
-        {
-            return _quantaService.SendCashOutRequest(txId, address, amount);
         }
     }
 

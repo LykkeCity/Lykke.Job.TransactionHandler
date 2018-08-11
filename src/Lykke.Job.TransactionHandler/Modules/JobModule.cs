@@ -43,7 +43,6 @@ using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email.Sender;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
-using Lykke.Job.TransactionHandler.Core.Services.Quanta;
 using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
@@ -53,7 +52,6 @@ using Lykke.Job.TransactionHandler.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.Job.TransactionHandler.Services.Offchain;
-using Lykke.Job.TransactionHandler.Services.Quanta;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
@@ -154,8 +152,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.Register<IAppNotifications>(x => new SrvAppNotifications(
                 _settings.AppNotifications.HubConnString,
                 _settings.AppNotifications.HubName));
-
-            builder.RegisterType<QuantaService>().As<IQuantaService>().SingleInstance();
 
             builder.Register<IEthereumCoreAPI>(x =>
             {
