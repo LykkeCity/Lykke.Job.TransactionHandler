@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
@@ -11,26 +10,22 @@ using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
-using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
     [UsedImplicitly]
     public class LimitOrderCommandHandler
     {
-        private readonly ILog _log;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly ILimitOrdersRepository _limitOrdersRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         readonly Dictionary<string, bool> _trusted = new Dictionary<string, bool>();
 
         public LimitOrderCommandHandler(
-            ILog log,
             IClientAccountClient clientAccountClient,
             ILimitOrdersRepository limitOrdersRepository,
             IAssetsServiceWithCache assetsServiceWithCache)
         {
-            _log = log;
             _clientAccountClient = clientAccountClient;
             _limitOrdersRepository = limitOrdersRepository;
             _assetsServiceWithCache = assetsServiceWithCache;
@@ -39,8 +34,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(ProcessLimitOrderCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(LimitOrderCommandHandler), JsonConvert.SerializeObject(command.LimitOrder, Formatting.Indented), "ProcessLimitOrderCommand");
-
             var clientId = command.LimitOrder.Order.ClientId;
 
             if (!_trusted.ContainsKey(clientId))

@@ -26,8 +26,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SolarCashOutCommand command, IEventPublisher eventPublisher)
         {
-            await _log.WriteInfoAsync(nameof(SolarCoinCommandHandler), nameof(Commands.SolarCashOutCommand), command.ToJson(), "");
-
             var slrAddress = new SolarCoinAddress(command.Address);
             
             await _solarCoinCommandProducer.ProduceCashOutCommand(command.TransactionId, slrAddress, command.Amount);

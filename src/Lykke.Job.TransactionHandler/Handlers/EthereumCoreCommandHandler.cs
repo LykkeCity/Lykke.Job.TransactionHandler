@@ -2,8 +2,6 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Lykke.Common.Log;
-using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;

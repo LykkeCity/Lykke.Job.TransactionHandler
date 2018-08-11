@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Common;
-using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
@@ -15,18 +13,15 @@ namespace Lykke.Job.TransactionHandler.Sagas
 {
     public class TransferSaga
     {
-        private readonly ILog _log;
         private readonly IClientAccountClient _clientAccountClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
 
         public TransferSaga(
-            [NotNull] ILog log,
             [NotNull] IClientAccountClient clientAccountClient,
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
             _clientAccountClient = clientAccountClient ?? throw new ArgumentNullException(nameof(clientAccountClient));
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
@@ -34,8 +29,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
         public async Task Handle(TransferOperationStateSavedEvent evt, ICommandSender sender)
         {
-            await _log.WriteInfoAsync(nameof(TransferSaga), nameof(TransferOperationStateSavedEvent), evt.ToJson());
-
             var transactionId = evt.TransactionId;
             var queueMessage = evt.QueueMessage;
             var amountNoFee = evt.AmountNoFee;
