@@ -13,13 +13,8 @@ namespace Lykke.Job.TransactionHandler.Queues
 {
     public sealed class CashInOutQueue : IQueueSubscriber
     {
-#if DEBUG
-        private const string QueueName = "transactions.cashinout-dev";
-        private const bool QueueDurable = false;
-#else
         private const string QueueName = "transactions.cashinout";
         private const bool QueueDurable = true;
-#endif
 
         private readonly ILog _log;
         private readonly CashInOutMessageProcessor _messageProcessor;
@@ -37,7 +32,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _rabbitConfig = config ?? throw new ArgumentNullException(nameof(config));
-            _settings = settings ?? throw  new ArgumentNullException(nameof(settings));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         }
 
         public void Start()

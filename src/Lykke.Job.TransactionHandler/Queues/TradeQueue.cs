@@ -13,13 +13,8 @@ namespace Lykke.Job.TransactionHandler.Queues
 {
     public sealed class TradeQueue : IQueueSubscriber
     {
-#if DEBUG
-        private const string QueueName = "transactions.trades-dev";
-        private const bool QueueDurable = false;
-#else
         private const string QueueName = "transactions.trades";
         private const bool QueueDurable = true;
-#endif
 
         private readonly ILog _log;
         private readonly ICqrsEngine _cqrsEngine;
@@ -85,7 +80,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private async Task ProcessMessage(TradeQueueItem queueMessage)
         {
             await _log.WriteInfoAsync(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.ToJson());
-            
+
             _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
             {
                 QueueMessage = queueMessage
