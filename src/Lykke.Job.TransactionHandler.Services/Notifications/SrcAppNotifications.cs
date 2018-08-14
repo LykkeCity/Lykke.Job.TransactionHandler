@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Common;
-using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Newtonsoft.Json;
 
@@ -48,14 +47,6 @@ namespace Lykke.Job.TransactionHandler.Services.Notifications
         public double Amount { get; set; }
         [JsonProperty("assetId")]
         public string AssetId { get; set; }
-    }
-
-    public class LimitOrderFieldsIos : IosFields
-    {
-        [JsonProperty("orderType")]
-        public OrderType OrderType { get; set; }
-        [JsonProperty("orderStatus")]
-        public OrderStatus OrderStatus { get; set; }
     }
 
     public class AssetsCreditedFieldsAndroid : AndroidPayloadFields
@@ -156,34 +147,6 @@ namespace Lykke.Job.TransactionHandler.Services.Notifications
             await SendIosNotificationAsync(notificationIds, apnsMessage);
             await SendAndroidNotificationAsync(notificationIds, gcmMessage);
         }
-
-        public async Task SendLimitOrderNotification(string[] notificationsIds, string message, OrderType orderType,
-            OrderStatus status)
-        {
-            var apnsMessage = new IosNotification
-            {
-                Aps = new LimitOrderFieldsIos()
-                {
-                    Alert = message,
-                    Type = NotificationType.LimitOrderEvent,
-                    OrderStatus = status,
-                    OrderType = orderType
-                }
-            };
-
-            var gcmMessage = new AndoridPayloadNotification
-            {
-                Data = new AndroidPayloadFields
-                {
-                    Entity = EventsAndEntities.GetEntity(NotificationType.LimitOrderEvent),
-                    Event = EventsAndEntities.GetEvent(NotificationType.LimitOrderEvent),
-                    Message = message,
-                }
-            };
-            await SendIosNotificationAsync(notificationsIds, apnsMessage);
-            await SendAndroidNotificationAsync(notificationsIds, gcmMessage);
-        }
-
 
         public async Task SendAssetsCreditedNotification(string[] notificationsIds, double amount, string assetId, string message)
         {
