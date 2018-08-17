@@ -1,12 +1,6 @@
-﻿using System.Threading.Tasks;
-
+﻿
 namespace Lykke.Job.TransactionHandler.Core.Services.MarginTrading
 {
-    public interface IMarginDataService
-    {
-        Task<OperationResult> DepositToAccount(string clientId, string accountId, double amount, MarginPaymentType paymentType);
-    }
-
     public enum MarginPaymentType
     {
         Transfer,
@@ -34,7 +28,5 @@ namespace Lykke.Job.TransactionHandler.Core.Services.MarginTrading
         }
 
         public string ErrorMessage { get; private set; }
-
-        public bool IsOk => string.IsNullOrEmpty(ErrorMessage);
     }
 }

@@ -169,7 +169,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.BoundedContext(BoundedContexts.Offchain)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand), typeof(CreateOffchainCashinRequestCommand))
+                    .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand))
                         .On(defaultRoute)
                     .WithCommandsHandler<OffchainCommandHandler>(),
                 
@@ -233,9 +233,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingCommands(typeof(TransferEthereumCommand))
                         .To(BoundedContexts.Ethereum).With(defaultPipeline)
                     .PublishingCommands(typeof(CompleteOperationCommand))
-                        .To(BoundedContexts.Operations).With(defaultPipeline)
-                    .PublishingCommands(typeof(CreateOffchainCashinRequestCommand))
-                        .To(BoundedContexts.Offchain).With(defaultPipeline),
+                        .To(BoundedContexts.Operations).With(defaultPipeline),
 
                 Register.Saga<EthereumCoreSaga>("ethereum-core-saga")
                     .ListeningEvents(typeof(CashinDetectedEvent),

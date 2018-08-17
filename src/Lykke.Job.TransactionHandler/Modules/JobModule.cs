@@ -1,5 +1,4 @@
-﻿using System;
-using Autofac;
+﻿using Autofac;
 using Autofac.Extensions.DependencyInjection;
 using AutoMapper;
 using AzureStorage.Blob;
@@ -15,6 +14,7 @@ using Lykke.Job.TransactionHandler.AzureRepositories.Clients;
 using Lykke.Job.TransactionHandler.AzureRepositories.Common;
 using Lykke.Job.TransactionHandler.AzureRepositories.Ethereum;
 using Lykke.Job.TransactionHandler.AzureRepositories.Exchange;
+using Lykke.Job.TransactionHandler.AzureRepositories.Fee;
 using Lykke.Job.TransactionHandler.AzureRepositories.MarginTrading;
 using Lykke.Job.TransactionHandler.AzureRepositories.Messages.Email;
 using Lykke.Job.TransactionHandler.AzureRepositories.Offchain;
@@ -24,8 +24,11 @@ using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
+using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
+using Lykke.Job.TransactionHandler.Core.Domain.Common;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
+using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Domain.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
@@ -35,7 +38,7 @@ using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
-using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
+using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email.Sender;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
@@ -43,25 +46,22 @@ using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
+using Lykke.Job.TransactionHandler.Services.Fee;
 using Lykke.Job.TransactionHandler.Services.Http;
-using Lykke.Job.TransactionHandler.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.Job.TransactionHandler.Services.Offchain;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
+using Lykke.Service.EthereumCore.Client;
 using Lykke.Service.ExchangeOperations.Client;
 using Lykke.Service.Operations.Client;
+using Lykke.Service.OperationsRepository.Client;
 using Lykke.Service.PersonalData.Client;
 using Lykke.Service.PersonalData.Contract;
 using Lykke.SettingsReader;
 using Microsoft.Extensions.DependencyInjection;
-using Lykke.Service.EthereumCore.Client;
-using Lykke.Service.OperationsRepository.Client;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
-using Lykke.Job.TransactionHandler.Core.Domain.Common;
-using Lykke.Job.TransactionHandler.Core.Services.Fee;
-using Lykke.Job.TransactionHandler.Services.Fee;
+using System;
 
 namespace Lykke.Job.TransactionHandler.Modules
 {
@@ -157,11 +157,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             }).SingleInstance();
 
             builder.RegisterType<SrvEthereumHelper>().As<ISrvEthereumHelper>().SingleInstance();
-
-            builder.RegisterType<MarginDataServiceResolver>()
-                .As<IMarginDataServiceResolver>()
-                .SingleInstance()
-                .WithParameter(TypedParameter.From(_settings.MarginTrading));
 
             builder.RegisterType<EmailSender>().As<IEmailSender>().SingleInstance();
             builder.RegisterType<SrvEmailsFacade>().As<ISrvEmailsFacade>().SingleInstance();
