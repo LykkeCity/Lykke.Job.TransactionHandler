@@ -8,6 +8,5 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Ethereum
         Task<EthereumCashinAggregate> GetOrAddAsync(string trHash, Func<EthereumCashinAggregate> newAggregateFactory);
         Task<EthereumCashinAggregate> GetAsync(string trHash);
         Task SaveAsync(EthereumCashinAggregate aggregate);
-        Task<EthereumCashinAggregate> TryGetAsync(string trHash);
     }
 }

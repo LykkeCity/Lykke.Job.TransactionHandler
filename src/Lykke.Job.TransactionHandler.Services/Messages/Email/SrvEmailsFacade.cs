@@ -1,7 +1,7 @@
-﻿using System.Threading.Tasks;
-using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
+﻿using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email.ContentGenerator.MessagesData;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email.Sender;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Services.Messages.Email
 {
@@ -36,34 +36,18 @@ namespace Lykke.Job.TransactionHandler.Services.Messages.Email
             await _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
 
-        public async Task SendTransferCompletedEmail(string partnerId, string email, string clientName, string assetId, decimal amountFiat,
-            decimal amountLkk,
-            decimal price, string srcHash)
-        {
-            var msgData = new TransferCompletedData
-            {
-                AssetId = assetId,
-                AmountFiat = amountFiat,
-                AmountLkk = amountLkk,
-                Price = price,
-                ClientName = clientName,
-                SrcBlockchainHash = srcHash
-            };
             await _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
 
-        public async Task SendDirectTransferCompletedEmail(string partnerId, string email, string clientName, string assetId,
-            decimal amount, string srcHash)
+        public Task SendSolarCashOutCompletedEmail(string partnerId, string email, string addressTo, decimal amount)
         {
-            var msgData = new DirectTransferCompletedData
+            var msgData = new SolarCashOutData
             {
-                AssetId = assetId,
-                Amount = amount,
-                ClientName = clientName,
-                SrcBlockchainHash = srcHash
+                AddressTo = addressTo,
+                Amount = amount
             };
 
-            await _emailSender.SendEmailAsync(partnerId, email, msgData);
+            return _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
     }
 }

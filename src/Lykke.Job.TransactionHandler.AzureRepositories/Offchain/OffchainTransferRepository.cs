@@ -68,23 +68,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
 
             return entity;
         }
-
-        public async Task<IOffchainTransfer> GetTransfer(string id)
-        {
-            return await _storage.GetDataAsync(OffchainTransferEntity.ByCommon.GeneratePartitionKey(), id);
-        }
-
-        public async Task CompleteTransfer(string transferId, bool? onchain = null)
-        {
-            await _storage.ReplaceAsync(OffchainTransferEntity.ByCommon.GeneratePartitionKey(), transferId,
-                entity =>
-                {
-                    entity.Completed = true;
-                    if (onchain != null)
-                        entity.Onchain = onchain.Value;
-                    return entity;
-                });
-        }
     }
 
 }

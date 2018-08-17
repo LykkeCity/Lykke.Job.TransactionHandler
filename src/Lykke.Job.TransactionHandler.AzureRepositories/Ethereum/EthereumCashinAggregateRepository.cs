@@ -5,8 +5,6 @@ using Lykke.Job.TransactionHandler.AzureRepositories.Ethereum.Entities;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.SettingsReader;
 using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum
@@ -65,18 +63,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum
             var entity = EthereumCashinAggregateEntity.FromDomain(aggregate);
 
             await _storage.ReplaceAsync(entity);
-        }
-
-        public async Task<EthereumCashinAggregate> TryGetAsync(string trHash)
-        {
-            var partitionKey = EthereumCashinAggregateEntity.GetPartitionKey(trHash);
-            var rowKey = EthereumCashinAggregateEntity.GetRowKey(trHash);
-
-            var entity = await _storage.GetDataAsync(
-                partitionKey,
-                rowKey);
-
-            return entity?.ToDomain();
         }
     }
 }

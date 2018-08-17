@@ -13,11 +13,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Blockchain
             {
                 return clientId;
             }
-
-            public static string GenerateRowKey(string assetId)
-            {
-                return assetId;
-            }
         }
 
 

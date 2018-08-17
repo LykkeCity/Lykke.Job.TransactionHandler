@@ -1,8 +1,8 @@
-﻿using System;
-using System.Threading.Tasks;
-using AzureStorage;
+﻿using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Microsoft.WindowsAzure.Storage.Table;
+using System;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
 {
@@ -51,13 +51,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
             RequestData = requestData;
             ContextData = contextData;
         }
-
-
-        internal void UpdateResponse(string resp, DateTime? dateTime)
-        {
-            ResponseData = resp;
-            ResponseDateTime = dateTime ?? DateTime.UtcNow;
-        }
     }
 
     public class TransactionsRepository : ITransactionsRepository
@@ -87,19 +80,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.BitCoin
             var partitionKey = BitCoinTransactionEntity.ByTransactionId.GeneratePartitionKey();
             var rowKey = BitCoinTransactionEntity.ByTransactionId.GenerateRowKey(transactionId);
             return await _tableStorage.GetDataAsync(partitionKey, rowKey);
-        }
-
-        public async Task<IBitcoinTransaction> SaveResponseAndHashAsync(string transactionId, string resp, string hash, DateTime? dateTime = null)
-        {
-            var partitionKey = BitCoinTransactionEntity.ByTransactionId.GeneratePartitionKey();
-            var rowKey = BitCoinTransactionEntity.ByTransactionId.GenerateRowKey(transactionId);
-
-            return await _tableStorage.MergeAsync(partitionKey, rowKey, entity =>
-            {
-                entity.UpdateResponse(resp, dateTime);
-                entity.BlockchainHash = hash;
-                return entity;
-            });
         }
 
         public async Task UpdateAsync(string transactionId, string requestData, string contextData, string response)

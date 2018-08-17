@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
+using System;
 using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Core.Services.AppNotifications
@@ -115,7 +116,5 @@ namespace Lykke.Job.TransactionHandler.Core.Services.AppNotifications
     public interface IAppNotifications
     {
         Task SendDataNotificationToAllDevicesAsync(string[] notificationIds, NotificationType type, string entity, string id = "");
-
-        Task SendAssetsCreditedNotification(string[] notificationsIds, double amount, string assetId, string message);
     }
 }

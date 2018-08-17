@@ -1,13 +1,12 @@
-﻿using System.Threading.Tasks;
-using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
+﻿using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.JobTriggers.Triggers.Attributes;
-using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
 using Lykke.Service.PersonalData.Contract;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.TriggerHandlers
 {
@@ -41,7 +40,7 @@ namespace Lykke.Job.TransactionHandler.TriggerHandlers
 
             if (tx == null)
                 return;
-            
+
             string hash = ev.Hash;
 
             switch (tx.CommandType)
