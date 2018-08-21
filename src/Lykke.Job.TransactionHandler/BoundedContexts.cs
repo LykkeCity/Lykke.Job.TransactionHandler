@@ -16,7 +16,6 @@
         public static readonly string Trades = "trades";
         public static readonly string Orders = "orders";
         public static readonly string Fee = "fee";
-        public static readonly string Push = "push";
         public static readonly string Transfers = "transfers";
     }
 }

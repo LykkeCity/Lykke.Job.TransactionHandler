@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 
 namespace Lykke.Job.TransactionHandler.Core.Services.AppNotifications
 {
@@ -117,9 +116,6 @@ namespace Lykke.Job.TransactionHandler.Core.Services.AppNotifications
     {
         Task SendDataNotificationToAllDevicesAsync(string[] notificationIds, NotificationType type, string entity, string id = "");
 
-        Task SendLimitOrderNotification(string[] notificationsIds, string message, OrderType orderType, OrderStatus status);
-
         Task SendAssetsCreditedNotification(string[] notificationsIds, double amount, string assetId, string message);
-
     }
 }
