@@ -28,8 +28,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.BitcoinCashOutCommand command)
         {
-            await _log.WriteInfoAsync(nameof(BitcoinCommandHandler), nameof(Commands.BitcoinCashOutCommand), command.ToJson(), "");
-
             var response = await _bitcoinApiClient.CashoutAsync(new CashoutModel
             {
                 Amount = command.Amount,
@@ -50,8 +48,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SegwitTransferCommand command)
         {
-            await _log.WriteInfoAsync(nameof(BitcoinCommandHandler), nameof(Commands.SegwitTransferCommand), command.ToJson(), "");
-
             var response = await _bitcoinApiClient.SegwitTransfer(Guid.Parse(command.Id), command.Address);
             if (response.HasError && response.Error.ErrorCode != ErrorCode.DuplicateTransactionId)
             {

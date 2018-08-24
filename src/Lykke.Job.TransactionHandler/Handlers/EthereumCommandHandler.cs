@@ -55,8 +55,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(ProcessEthereumCashoutCommand command)
         {
-            _log.WriteInfo(nameof(ProcessEthereumCashoutCommand), command, "");
-
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
             string errorMessage = null;
 
@@ -107,8 +105,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(TransferEthereumCommand command, IEventPublisher eventPublisher)
         {
-            _log.WriteInfo(nameof(TransferEthereumCommand), command, "");
-
             var txRequest = await _ethereumTransactionRequestRepository.GetAsync(command.TransactionId);
 
             // todo: udpate txRequest in separated command

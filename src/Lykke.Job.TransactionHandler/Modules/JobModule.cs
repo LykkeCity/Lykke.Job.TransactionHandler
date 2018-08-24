@@ -43,19 +43,15 @@ using Lykke.Job.TransactionHandler.Core.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email.Sender;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
-using Lykke.Job.TransactionHandler.Core.Services.Quanta;
 using Lykke.Job.TransactionHandler.Queues;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
-using Lykke.Job.TransactionHandler.AzureRepositories.Fee;
-using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Services.Http;
 using Lykke.Job.TransactionHandler.Services.MarginTrading;
 using Lykke.Job.TransactionHandler.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.Job.TransactionHandler.Services.Offchain;
-using Lykke.Job.TransactionHandler.Services.Quanta;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
 using Lykke.Service.ExchangeOperations.Client;
@@ -157,8 +153,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                 _settings.AppNotifications.HubConnString,
                 _settings.AppNotifications.HubName));
 
-            builder.RegisterType<QuantaService>().As<IQuantaService>().SingleInstance();
-
             builder.Register<IEthereumCoreAPI>(x =>
             {
                 var api = new EthereumCoreAPI(new Uri(_settings.Ethereum.EthereumCoreUrl));
@@ -182,8 +176,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
 
             builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
-
-            builder.RegisterType<FeeLogService>().As<IFeeLogService>().SingleInstance();
 
             builder.RegisterType<FeeCalculationService>().As<IFeeCalculationService>().SingleInstance();
         }
@@ -269,12 +261,6 @@ namespace Lykke.Job.TransactionHandler.Modules
               new EthererumPendingActionsRepository(
                   AzureTableStorage<EthererumPendingActionEntity>.Create(
                       _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "EthererumPendingActions", _log)));
-
-            builder.RegisterType<FeeLogRepository>()
-                .WithParameter(TypedParameter.From(AzureTableStorage<FeeLogEntryEntity>.Create(
-                    _dbSettingsManager.ConnectionString(x => x.FeeLogsConnString), "OperationsFeeLog", _log)))
-                .As<IFeeLogRepository>()
-                .SingleInstance();
 
             builder.RegisterInstance<IBlobRepository>(
                 new BlobRepository(

@@ -13,13 +13,8 @@ namespace Lykke.Job.TransactionHandler.Queues
 {
     public sealed class TransferQueue : IQueueSubscriber
     {
-#if DEBUG
-        private const string QueueName = "transactions.transfer-dev";
-        private const bool QueueDurable = false;
-#else
         private const string QueueName = "transactions.transfer";
         private const bool QueueDurable = true;
-#endif
 
         private readonly ILog _log;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;

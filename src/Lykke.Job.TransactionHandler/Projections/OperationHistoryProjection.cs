@@ -8,12 +8,10 @@ using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
-using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Events.LimitOrders;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Utils;
-using Lykke.Service.Assets.Client.Models;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.OperationsRepository.AutorestClient.Models;
 using Lykke.Service.OperationsRepository.Client.Abstractions.CashOperations;
@@ -31,7 +29,6 @@ namespace Lykke.Job.TransactionHandler.Projections
         private readonly Core.Services.BitCoin.ITransactionService _transactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IWalletCredentialsRepository _walletCredentialsRepository;
-        private readonly IFeeLogService _feeLogService;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
 
         public OperationHistoryProjection(
@@ -42,7 +39,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] Core.Services.BitCoin.ITransactionService transactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
-            [NotNull] IFeeLogService feeLogService,
             [NotNull] ILimitTradeEventsRepositoryClient limitTradeEventsRepositoryClient,
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository)
         {
@@ -54,7 +50,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
-            _feeLogService = feeLogService ?? throw new ArgumentNullException(nameof(feeLogService));
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
         }
 
@@ -293,16 +288,6 @@ namespace Lykke.Job.TransactionHandler.Projections
             else
             {
                 _log.WriteInfo(nameof(OperationHistoryProjection), null, $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Client trades are empty");
-            }
-
-            // Save fee logs
-            if (evt.LimitOrder.Trades != null && evt.LimitOrder.Trades.Any())
-            {
-                await _feeLogService.WriteFeeInfoAsync(evt.LimitOrder);
-            }
-            else
-            {
-                _log.WriteInfo(nameof(OperationHistoryProjection), null, $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Fee logs are empty, there are no trades.");
             }
 
             if (evt.IsTrustedClient)

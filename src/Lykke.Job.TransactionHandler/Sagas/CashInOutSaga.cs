@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Common;
-using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core;
@@ -9,7 +7,6 @@ using Lykke.Job.TransactionHandler.Core.Services.Fee;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Services;
-using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
 
@@ -17,18 +14,15 @@ namespace Lykke.Job.TransactionHandler.Sagas
 {
     public class CashInOutSaga
     {
-        private readonly ILog _log;
         private readonly Core.Services.BitCoin.ITransactionService _transactionService;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly IFeeCalculationService _feeCalculationService;
 
         public CashInOutSaga(
-            [NotNull] ILog log,
             [NotNull] Core.Services.BitCoin.ITransactionService transactionService,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IFeeCalculationService feeCalculationService)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _feeCalculationService =
@@ -37,10 +31,6 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
         public async Task Handle(CashoutTransactionStateSavedEvent evt, ICommandSender sender)
         {
-            await _log.WriteInfoAsync(nameof(CashInOutSaga), nameof(CashoutTransactionStateSavedEvent), evt.ToJson(), "");
-
-            ChaosKitty.Meow();
-
             var message = evt.Message;
             var transactionId = message.Id;
             var amountNoFee = await _feeCalculationService.GetAmountNoFeeAsync(message);

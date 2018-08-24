@@ -61,7 +61,6 @@ namespace Lykke.Job.TransactionHandler.Services
             public string OffchainConnString { get; set; }
             public string QuantaSrvConnString { get; set; }
             public string SolarCoinConnString { get; set; }
-            public string FeeLogsConnString { get; set; }
             public string IncomingMessagesConnString { get; set; }
         }
 

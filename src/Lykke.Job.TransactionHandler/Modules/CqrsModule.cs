@@ -46,22 +46,13 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
             var rabbitMqSettings = new RabbitMQ.Client.ConnectionFactory { Uri = _settings.TransactionHandlerJob.SagasRabbitMqConnStr };
-#if DEBUG
-            var virtualHost = "/debug";
-            var messagingEngine = new MessagingEngine(_log,
-                new TransportResolver(new Dictionary<string, TransportInfo>
-                {
-                    {"RabbitMq", new TransportInfo(rabbitMqSettings.Endpoint + virtualHost, rabbitMqSettings.UserName, rabbitMqSettings.Password, "None", "RabbitMq")}
-                }),
-                new RabbitMqTransportFactory());
-#else
+
             var messagingEngine = new MessagingEngine(_log,
                 new TransportResolver(new Dictionary<string, TransportInfo>
                 {
                     {"RabbitMq", new TransportInfo(rabbitMqSettings.Endpoint.ToString(), rabbitMqSettings.UserName, rabbitMqSettings.Password, "None", "RabbitMq")}
                 }),
                 new RabbitMqTransportFactory());
-#endif
 
             var defaultRetryDelay = _settings.TransactionHandlerJob.RetryDelayInMilliseconds;
             var longRetryDelay = defaultRetryDelay * 60;
@@ -93,7 +84,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<OperationHistoryProjection>();
             builder.RegisterType<EmailProjection>();
             builder.RegisterType<OrdersProjection>();
-            builder.RegisterType<FeeProjection>();
 
             builder.RegisterType<ContextFactory>().As<IContextFactory>().SingleInstance();
             builder.RegisterType<ClientTradesFactory>().As<IClientTradesFactory>().SingleInstance();
@@ -126,14 +116,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningEvents(typeof(TradeCreatedEvent))
                         .From(BoundedContexts.Trades).On(defaultRoute)
                     .WithProjection(typeof(OrdersProjection), BoundedContexts.Trades),
-
-                Register.BoundedContext(BoundedContexts.Fee)
-                    .ListeningEvents(typeof(TradeCreatedEvent))
-                        .From(BoundedContexts.Trades).On(defaultRoute)
-                    .WithProjection(typeof(FeeProjection), BoundedContexts.Trades)
-                    .ListeningEvents(typeof(TransferOperationStateSavedEvent))
-                        .From(BoundedContexts.Operations).On(defaultRoute)
-                    .WithProjection(typeof(FeeProjection), BoundedContexts.Operations),
 
                 Register.Saga<TradeSaga>($"{BoundedContexts.TxHandler}.trade-saga")
                     .ListeningEvents(typeof(TradeCreatedEvent))

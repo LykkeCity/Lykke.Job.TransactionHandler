@@ -14,14 +14,10 @@ namespace Lykke.Job.TransactionHandler.Queues
 {
     public sealed class LimitTradeQueue : IQueueSubscriber
     {
-#if DEBUG
-        private const string QueueName = "transactions.limit-trades-dev";
-        private const bool QueueDurable = false;
-#else
         private const string QueueName = "transactions.limit-trades";
         private const bool QueueDurable = true;
-#endif        
-        private readonly ILog _log;        
+
+        private readonly ILog _log;
         private readonly ICqrsEngine _cqrsEngine;
         private readonly AppSettings.TransactionHandlerSettings _settings;
 
@@ -30,13 +26,13 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public LimitTradeQueue(
             AppSettings.RabbitMqSettings config,
-            ILog log,            
+            ILog log,
             ICqrsEngine cqrsEngine,
             AppSettings.TransactionHandlerSettings settings
             )
         {
-            _rabbitConfig = config;            
-            _log = log;            
+            _rabbitConfig = config;
+            _log = log;
             _cqrsEngine = cqrsEngine;
             _settings = settings;
         }
