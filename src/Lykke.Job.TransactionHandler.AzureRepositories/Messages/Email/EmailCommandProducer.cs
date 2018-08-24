@@ -25,8 +25,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Messages.Email
             _queueExt.RegisterTypes(
                 QueueType.Create(new DirectTransferCompletedData().MessageId(), typeof(QueueRequestModel<SendEmailData<DirectTransferCompletedData>>))
             );
-            _queueExt.RegisterTypes(
-                QueueType.Create(new SolarCashOutData().MessageId(), typeof(QueueRequestModel<SendEmailData<SolarCashOutData>>)));
         }
 
         public Task ProduceSendEmailCommand<T>(string partnerId, string mailAddress, T msgData)

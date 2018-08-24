@@ -58,7 +58,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             var longRetryDelay = defaultRetryDelay * 60;
 
             builder.RegisterType<CashInOutMessageProcessor>();
-            builder.RegisterType<CashInOutSaga>();
             builder.RegisterType<ForwardWithdawalSaga>();
             builder.RegisterType<HistorySaga>();
             builder.RegisterType<TradeSaga>();
@@ -70,8 +69,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay))).SingleInstance();
             builder.RegisterType<EthereumCommandHandler>()
                 .WithParameter(TypedParameter.From(_settings.Ethereum))
-                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));
-            builder.RegisterType<SolarCoinCommandHandler>();
+                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));            
             builder.RegisterType<OffchainCommandHandler>();
             builder.RegisterType<OperationsCommandHandler>()
                 .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));
@@ -82,7 +80,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<EthereumCoreCommandHandler>();
 
             builder.RegisterType<OperationHistoryProjection>();
-            builder.RegisterType<EmailProjection>();
             builder.RegisterType<OrdersProjection>();
 
             builder.RegisterType<ContextFactory>().As<IContextFactory>().SingleInstance();
@@ -142,13 +139,13 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.BoundedContext(BoundedContexts.Bitcoin)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(BitcoinCashOutCommand), typeof(SegwitTransferCommand))
+                    .ListeningCommands(typeof(SegwitTransferCommand))
                         .On(defaultRoute)
                     .WithCommandsHandler<BitcoinCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.Ethereum)
                     .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(ProcessEthereumCashoutCommand), typeof(TransferEthereumCommand))
+                    .ListeningCommands(typeof(TransferEthereumCommand))
                         .On(defaultRoute)
                     .PublishingEvents(typeof(EthereumTransferSentEvent))
                         .With(defaultPipeline)
@@ -175,15 +172,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand), typeof(CreateOffchainCashinRequestCommand))
                         .On(defaultRoute)
                     .WithCommandsHandler<OffchainCommandHandler>(),
-
-                Register.BoundedContext(BoundedContexts.Solarcoin)
-                    .FailedCommandRetryDelay(defaultRetryDelay)
-                    .ListeningCommands(typeof(SolarCashOutCommand))
-                        .On(defaultRoute)
-                    .PublishingEvents(typeof(SolarCashOutCompletedEvent))
-                        .With(defaultPipeline)
-                    .WithCommandsHandler<SolarCoinCommandHandler>(),
-
+                
                 Register.BoundedContext(BoundedContexts.Operations)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(
@@ -224,23 +213,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .On(defaultPipeline)
                         .WithCommandsHandler<HistoryCommandHandler>(),
 
-                Register.BoundedContext(BoundedContexts.Email)
-                    .ListeningEvents(typeof(SolarCashOutCompletedEvent))
-                        .From(BoundedContexts.Solarcoin).On(defaultRoute)
-                    .WithProjection(typeof(EmailProjection), BoundedContexts.Solarcoin),
-
-                Register.Saga<CashInOutSaga>($"{BoundedContexts.TxHandler}.cash-out-saga")
-                    .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
-                        .From(BoundedContexts.Operations).On(defaultRoute)
-                    .PublishingCommands(typeof(BitcoinCashOutCommand))
-                        .To(BoundedContexts.Bitcoin).With(defaultPipeline)
-                    .PublishingCommands(typeof(ProcessEthereumCashoutCommand))
-                        .To(BoundedContexts.Ethereum).With(defaultPipeline)
-                    .PublishingCommands(typeof(SolarCashOutCommand))
-                        .To(BoundedContexts.Solarcoin).With(defaultPipeline)
-                    .PublishingCommands(typeof(BlockchainCashoutProcessor.Contract.Commands.StartCashoutCommand))
-                        .To(BlockchainCashoutProcessor.Contract.BlockchainCashoutProcessorBoundedContext.Name).With(defaultPipeline),
-
                 Register.Saga<ForwardWithdawalSaga>($"{BoundedContexts.TxHandler}.forward-withdrawal-saga")
                     .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
                         .From(BoundedContexts.Operations).On(defaultRoute)
@@ -277,7 +249,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.DefaultRouting
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
-                        .To(BoundedContexts.Offchain).With(defaultPipeline)
+                        .To(BoundedContexts.Offchain).With(defaultPipeline)                    
                     .PublishingCommands(typeof(SegwitTransferCommand))
                         .To(BoundedContexts.Bitcoin).With(defaultPipeline)
                     .PublishingCommands(typeof(SaveManualOperationStateCommand), typeof(SaveIssueOperationStateCommand), typeof(SaveCashoutOperationStateCommand))

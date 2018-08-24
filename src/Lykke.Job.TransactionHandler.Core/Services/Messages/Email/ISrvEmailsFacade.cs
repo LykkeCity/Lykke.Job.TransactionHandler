@@ -12,7 +12,5 @@ namespace Lykke.Job.TransactionHandler.Core.Services.Messages.Email
             decimal amountLkk, decimal price, string srcHash);
 
         Task SendDirectTransferCompletedEmail(string partnerId, string email, string clientName, string assetId, decimal amount, string srcHash);
-
-        Task SendSolarCashOutCompletedEmail(string partnerId, string email, string addressTo, decimal amount);
     }
 }

@@ -21,7 +21,6 @@ using Lykke.Job.TransactionHandler.AzureRepositories.Messages.Email;
 using Lykke.Job.TransactionHandler.AzureRepositories.Offchain;
 using Lykke.Job.TransactionHandler.AzureRepositories.PaymentSystems;
 using Lykke.Job.TransactionHandler.AzureRepositories.Quanta;
-using Lykke.Job.TransactionHandler.AzureRepositories.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
@@ -34,7 +33,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Domain.Quanta;
-using Lykke.Job.TransactionHandler.Core.Domain.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
@@ -250,10 +248,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterInstance<IQuantaCommandProducer>(
                 new SrvQuantaCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.QuantaSrvConnString), "quanta-out")));
-
-            builder.RegisterInstance<ISrvSolarCoinCommandProducer>(
-                new SrvSolarCoinCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.SolarCoinConnString), "solar-out")));
-
+            
             builder.RegisterInstance(new BitcoinTransactionContextBlobStorage(AzureBlobStorage.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString))))
                 .As<IBitcoinTransactionContextBlobStorage>();
 

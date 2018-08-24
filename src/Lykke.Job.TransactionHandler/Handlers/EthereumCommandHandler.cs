@@ -53,56 +53,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
             _retryTimeout = retryTimeout;
         }
 
-        public async Task<CommandHandlingResult> Handle(ProcessEthereumCashoutCommand command)
-        {
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
-            string errorMessage = null;
-
-            if (asset.Type == AssetType.Erc20Token)
-            {
-                var response = await _srvEthereumHelper.HotWalletCashoutAsync(
-                    command.TransactionId,
-                    _settings.HotwalletAddress,
-                    command.Address,
-                    Math.Abs(command.Amount),
-                    asset);
-
-                if (response.HasError && 
-                    response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists && 
-                    response.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
-                    errorMessage = response.Error.ToJson();
-            }
-            else
-            {
-                var transactionId = Guid.Parse(command.TransactionId);
-                var address = _settings.HotwalletAddress;
-
-                var response = await _srvEthereumHelper.SendCashOutAsync(
-                    transactionId,
-                    string.Empty,
-                    asset,
-                    address,
-                    command.Address,
-                    Math.Abs(command.Amount));
-
-                if (response.HasError && 
-                    response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists &&
-                    response.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
-                    errorMessage = response.Error.ToJson();
-            }
-
-            ChaosKitty.Meow();
-
-            if (errorMessage != null)
-            {
-                await _ethClientEventLogs.WriteEvent(command.ClientId, Event.Error, new { Request = command.TransactionId, Error = errorMessage }.ToJson());
-                _log.WriteError(nameof(ProcessEthereumCashoutCommand), command, new Exception(errorMessage));
-                return CommandHandlingResult.Fail(_retryTimeout);
-            }
-
-            return CommandHandlingResult.Ok();
-        }
-
         public async Task<CommandHandlingResult> Handle(TransferEthereumCommand command, IEventPublisher eventPublisher)
         {
             var txRequest = await _ethereumTransactionRequestRepository.GetAsync(command.TransactionId);
