@@ -17,8 +17,7 @@
     <PackageReference Include="Lykke.Job.EthereumCore.Contracts" Version="1.1.7" />
     <PackageReference Include="Lykke.JobTriggers" Version="2.2.0" />
     <PackageReference Include="Lykke.Logs" Version="5.1.0" />
-    <PackageReference Include="Lykke.MatchingEngineConnector" Version="6.0.3" />
-    <PackageReference Include="Lykke.MatchingEngineConnector.Abstractions" Version="6.0.3" />
+    <PackageReference Include="Lykke.MatchingEngineConnector" Version="8.3.0" />
     <PackageReference Include="Lykke.Messaging" Version="5.1.0" />
     <PackageReference Include="Lykke.Messaging.RabbitMq" Version="2.1.0" />
     <PackageReference Include="Lykke.RabbitMqBroker" Version="7.2.0" />
