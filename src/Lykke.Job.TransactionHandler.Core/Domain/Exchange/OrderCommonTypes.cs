@@ -97,7 +97,22 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
         /// <summary>
         /// Invalid volume accuracy
         /// </summary>
-        InvalidVolumeAccuracy
+        InvalidVolumeAccuracy,
+
+        /// <summary>
+        /// Invalid volume
+        /// </summary>
+        InvalidVolume,
+
+        /// <summary>
+        /// Invalid order value
+        /// </summary>
+        InvalidValue,
+
+        /// <summary>
+        /// Too high price deviation
+        /// </summary>
+        TooHighPriceDeviation
     }
 
     public interface IOrderBase

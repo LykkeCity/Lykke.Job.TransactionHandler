@@ -8,7 +8,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
-using Lykke.MatchingEngine.Connector.Abstractions.Models;
 using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.Assets.Client.Models;
@@ -24,6 +23,7 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Events.EthereumCore;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 using Lykke.Job.TransactionHandler.Utils;
+using Lykke.MatchingEngine.Connector.Models.Api;
 using Lykke.Service.PersonalData.Contract;
 
 namespace Lykke.Job.TransactionHandler.Handlers
