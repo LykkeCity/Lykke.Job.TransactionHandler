@@ -2,7 +2,6 @@
 using Lykke.Service.PersonalData.Settings;
 using Lykke.SettingsReader.Attributes;
 using System;
-using System.Linq;
 using System.Net;
 
 namespace Lykke.Job.TransactionHandler.Services
@@ -53,11 +52,8 @@ namespace Lykke.Job.TransactionHandler.Services
             public string BitCoinQueueConnectionString { get; set; }
             public string ClientPersonalInfoConnString { get; set; }
             public string BalancesInfoConnString { get; set; }
-            public string LwEthLogsConnString { get; set; }
             public string HMarketOrdersConnString { get; set; }
             public string OffchainConnString { get; set; }
-            public string SolarCoinConnString { get; set; }
-            public string FeeLogsConnString { get; set; }
         }
 
         public class AssetsCacheSettings
@@ -97,23 +93,6 @@ namespace Lykke.Job.TransactionHandler.Services
         public class BitcoinCoreSettings
         {
             public string BitcoinCoreApiUrl { get; set; }
-        }
-
-        public class SlackIntegrationSettings
-        {
-            public class Channel
-            {
-                public string Type { get; set; }
-                public string WebHookUrl { get; set; }
-            }
-
-            public string Env { get; set; }
-            public Channel[] Channels { get; set; }
-
-            public string GetChannelWebHook(string type)
-            {
-                return Channels.FirstOrDefault(x => x.Type == type)?.WebHookUrl;
-            }
         }
 
         public class EthereumSettings
