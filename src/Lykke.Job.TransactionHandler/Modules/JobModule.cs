@@ -13,11 +13,9 @@ using Lykke.Job.TransactionHandler.AzureRepositories.CashOperations;
 using Lykke.Job.TransactionHandler.AzureRepositories.Clients;
 using Lykke.Job.TransactionHandler.AzureRepositories.Ethereum;
 using Lykke.Job.TransactionHandler.AzureRepositories.Exchange;
-using Lykke.Job.TransactionHandler.AzureRepositories.Fee;
 using Lykke.Job.TransactionHandler.AzureRepositories.Messages.Email;
 using Lykke.Job.TransactionHandler.AzureRepositories.Offchain;
 using Lykke.Job.TransactionHandler.AzureRepositories.PaymentSystems;
-using Lykke.Job.TransactionHandler.AzureRepositories.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
@@ -25,11 +23,9 @@ using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
-using Lykke.Job.TransactionHandler.Core.Domain.Fee;
 using Lykke.Job.TransactionHandler.Core.Domain.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
-using Lykke.Job.TransactionHandler.Core.Domain.SolarCoin;
 using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
@@ -218,9 +214,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                     AzureTableStorage<PaymentTransactionEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "PaymentTransactions", _log),
                     AzureTableStorage<AzureMultiIndex>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "PaymentTransactions", _log)));
 
-            builder.RegisterInstance<ISrvSolarCoinCommandProducer>(
-                new SrvSolarCoinCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.SolarCoinConnString), "solar-out")));
-
             builder.RegisterInstance(new BitcoinTransactionContextBlobStorage(AzureBlobStorage.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString))))
                 .As<IBitcoinTransactionContextBlobStorage>();
 
@@ -228,12 +221,6 @@ namespace Lykke.Job.TransactionHandler.Modules
               new EthererumPendingActionsRepository(
                   AzureTableStorage<EthererumPendingActionEntity>.Create(
                       _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "EthererumPendingActions", _log)));
-
-            builder.RegisterType<FeeLogRepository>()
-                .WithParameter(TypedParameter.From(AzureTableStorage<FeeLogEntryEntity>.Create(
-                    _dbSettingsManager.ConnectionString(x => x.FeeLogsConnString), "OperationsFeeLog", _log)))
-                .As<IFeeLogRepository>()
-                .SingleInstance();
 
             builder.RegisterInstance<IClientCommentsRepository>(
                 new ClientCommentsRepository(AzureTableStorage<ClientCommentEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "ClientComments", _log)));

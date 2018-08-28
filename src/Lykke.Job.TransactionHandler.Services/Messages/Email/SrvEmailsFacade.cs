@@ -35,19 +35,5 @@ namespace Lykke.Job.TransactionHandler.Services.Messages.Email
 
             await _emailSender.SendEmailAsync(partnerId, email, msgData);
         }
-
-            await _emailSender.SendEmailAsync(partnerId, email, msgData);
-        }
-
-        public Task SendSolarCashOutCompletedEmail(string partnerId, string email, string addressTo, decimal amount)
-        {
-            var msgData = new SolarCashOutData
-            {
-                AddressTo = addressTo,
-                Amount = amount
-            };
-
-            return _emailSender.SendEmailAsync(partnerId, email, msgData);
-        }
     }
 }
