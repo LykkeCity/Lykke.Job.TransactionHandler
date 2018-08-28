@@ -179,10 +179,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new ClientCacheRepository(
                     AzureTableStorage<ClientCacheEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "ClientCache", _log)));
 
-            builder.RegisterInstance<IEthClientEventLogs>(
-                new EthClientEventLogs(
-                    AzureTableStorage<EthClientEventRecord>.Create(_dbSettingsManager.ConnectionString(x => x.LwEthLogsConnString), "EthClientEventLogs", _log)));
-
             builder.RegisterInstance<IEthereumTransactionRequestRepository>(
                 new EthereumTransactionRequestRepository(
                     AzureTableStorage<EthereumTransactionReqEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "EthereumTxRequest", _log)));
