@@ -10,7 +10,6 @@ using Common.Log;
 using Lykke.Bitcoin.Api.Client;
 using Lykke.Job.TransactionHandler.AzureRepositories.BitCoin;
 using Lykke.Job.TransactionHandler.AzureRepositories.Blockchain;
-using Lykke.Job.TransactionHandler.AzureRepositories.CashOperations;
 using Lykke.Job.TransactionHandler.AzureRepositories.ChronoBank;
 using Lykke.Job.TransactionHandler.AzureRepositories.Clients;
 using Lykke.Job.TransactionHandler.AzureRepositories.Common;
@@ -23,7 +22,6 @@ using Lykke.Job.TransactionHandler.AzureRepositories.PaymentSystems;
 using Lykke.Job.TransactionHandler.AzureRepositories.Quanta;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
-using Lykke.Job.TransactionHandler.Core.Domain.CashOperations;
 using Lykke.Job.TransactionHandler.Core.Domain.ChronoBank;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
@@ -191,10 +189,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance<IBcnClientCredentialsRepository>(
                 new BcnClientCredentialsRepository(
                     AzureTableStorage<BcnCredentialsRecordEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "BcnClientCredentials", _log)));
-
-            builder.RegisterInstance<IForwardWithdrawalRepository>(
-                new ForwardWithdrawalRepository(
-                    AzureTableStorage<ForwardWithdrawalEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BalancesInfoConnString), "ForwardWithdrawal", _log)));
 
             builder.RegisterInstance<IChronoBankCommandProducer>(
                 new SrvChronoBankCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ChronoBankSrvConnString), "chronobank-out")));
