@@ -92,7 +92,10 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.RegisterInstance(_settings.Ethereum).SingleInstance();
 
-            _services.RegisterAssetsClient(AssetServiceSettings.Create(new Uri(_settings.Assets.ServiceUrl), _jobSettings.AssetsCache.ExpirationPeriod));
+            _services.RegisterAssetsClient(
+                AssetServiceSettings.Create(new Uri(_settings.Assets.ServiceUrl), _jobSettings.AssetsCache.ExpirationPeriod),
+                _log,
+                true);
 
             Mapper.Initialize(cfg =>
             {

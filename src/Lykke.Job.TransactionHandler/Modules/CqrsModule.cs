@@ -19,6 +19,7 @@ using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Messaging;
 using Lykke.Messaging.RabbitMq;
+using Lykke.Messaging.Serialization;
 using Lykke.SettingsReader;
 
 namespace Lykke.Job.TransactionHandler.Modules
@@ -97,7 +98,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     true,
                     Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver(
                         "RabbitMq",
-                        "messagepack",
+                        SerializationFormat.MessagePack,
                         environment: "lykke",
                         exclusiveQueuePostfix: _settings.TransactionHandlerJob.QueuePostfix)),
 
