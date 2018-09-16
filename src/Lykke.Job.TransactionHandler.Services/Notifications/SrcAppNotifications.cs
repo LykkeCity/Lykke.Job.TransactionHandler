@@ -1,9 +1,10 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
 using Common;
+using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Newtonsoft.Json;
+using System;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Services.Notifications
 {
@@ -146,38 +147,6 @@ namespace Lykke.Job.TransactionHandler.Services.Notifications
 
             await SendIosNotificationAsync(notificationIds, apnsMessage);
             await SendAndroidNotificationAsync(notificationIds, gcmMessage);
-        }
-
-        public async Task SendAssetsCreditedNotification(string[] notificationsIds, double amount, string assetId, string message)
-        {
-            var apnsMessage = new IosNotification
-            {
-                Aps = new AssetsCreditedFieldsIos
-                {
-                    Alert = message,
-                    Amount = amount,
-                    AssetId = assetId,
-                    Type = NotificationType.AssetsCredited
-                }
-            };
-
-            var gcmMessage = new AndoridPayloadNotification
-            {
-                Data = new AssetsCreditedFieldsAndroid
-                {
-                    Entity = EventsAndEntities.GetEntity(NotificationType.AssetsCredited),
-                    Event = EventsAndEntities.GetEvent(NotificationType.AssetsCredited),
-                    BalanceItem = new AssetsCreditedFieldsAndroid.BalanceItemModel
-                    {
-                        AssetId = assetId,
-                        Amount = amount,
-                    },
-                    Message = message,
-                }
-            };
-
-            await SendIosNotificationAsync(notificationsIds, apnsMessage);
-            await SendAndroidNotificationAsync(notificationsIds, gcmMessage);
         }
 
         private async Task SendIosNotificationAsync(string[] notificationIds, IIosNotification notification)

@@ -1,7 +1,7 @@
-﻿using System;
-using System.Threading.Tasks;
-using AzureStorage;
+﻿using AzureStorage;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
+using System;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
 {
@@ -56,32 +56,6 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Offchain
                 item.RowKey = id;
 
                 return item;
-            }
-        }
-
-        public static class Archieved
-        {
-            public static string GeneratePartition()
-            {
-                return "Archieved";
-            }
-
-            public static OffchainRequestEntity Create(IOffchainRequest request)
-            {
-                return new OffchainRequestEntity
-                {
-                    RowKey = request.RequestId,
-                    PartitionKey = GeneratePartition(),
-                    TransferId = request.TransferId,
-                    ClientId = request.ClientId,
-                    AssetId = request.AssetId,
-                    Type = request.Type,
-                    CreateDt = request.CreateDt == DateTime.MinValue ? DateTime.UtcNow : request.CreateDt,
-                    TryCount = request.TryCount,
-                    TransferType = request.TransferType,
-                    ServerLock = request.ServerLock,
-                    StartProcessing = request.StartProcessing
-                };
             }
         }
 

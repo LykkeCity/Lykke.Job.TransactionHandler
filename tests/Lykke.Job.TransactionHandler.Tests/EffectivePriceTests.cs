@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Lykke.Job.TransactionHandler.Core.Contracts;
-using Lykke.Job.TransactionHandler.Services;
+﻿using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Service.Assets.Client.Models;
+using System.Collections.Generic;
 using Xunit;
 
 namespace Lykke.Job.TransactionHandler.Tests

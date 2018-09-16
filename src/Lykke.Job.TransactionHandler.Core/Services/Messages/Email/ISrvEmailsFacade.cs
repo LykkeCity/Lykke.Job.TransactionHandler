@@ -7,10 +7,5 @@ namespace Lykke.Job.TransactionHandler.Core.Services.Messages.Email
         Task SendNoRefundDepositDoneMail(string partnerId, string email, decimal amount, string assetBcnId);
 
         Task SendNoRefundOCashOutMail(string partnerId, string email, decimal amount, string assetId, string bcnHash);
-
-        Task SendTransferCompletedEmail(string partnerId, string email, string clientName, string assetId, decimal amountFiat,
-            decimal amountLkk, decimal price, string srcHash);
-
-        Task SendDirectTransferCompletedEmail(string partnerId, string email, string clientName, string assetId, decimal amount, string srcHash);
     }
 }

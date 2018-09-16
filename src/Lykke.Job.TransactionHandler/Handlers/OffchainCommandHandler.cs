@@ -33,20 +33,5 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             return CommandHandlingResult.Ok();
         }
-
-        public async Task<CommandHandlingResult> Handle(CreateOffchainCashinRequestCommand command)
-        {
-            await _offchainRequestService.CreateOffchainRequestAndNotify(
-                    transactionId: command.Id,
-                    clientId: command.ClientId,
-                    assetId: command.AssetId,
-                    amount: command.Amount,
-                    orderId: null,
-                    type: OffchainTransferType.CashinToClient);
-
-            ChaosKitty.Meow();
-
-            return CommandHandlingResult.Ok();
-        }
     }
 }

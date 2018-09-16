@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using Common;
-using Newtonsoft.Json;
 
 namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
 {
@@ -40,34 +37,8 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Offchain
         string BlockchainHash { get; set; }
     }
 
-    public class OffchainTransferAdditionalData
-    {
-        public List<string> ChildTransfers { get; set; } = new List<string>();
-    }
-
-    public static class OffchainTransferExtenstions
-    {
-        public static OffchainTransferAdditionalData GetAdditionalData(this IOffchainTransfer transfer)
-        {
-            if (string.IsNullOrWhiteSpace(transfer.AdditionalDataJson))
-                return new OffchainTransferAdditionalData();
-
-            return JsonConvert.DeserializeObject<OffchainTransferAdditionalData>(transfer.AdditionalDataJson);
-        }
-
-        public static void SetAdditionalData(this IOffchainTransfer transfer, OffchainTransferAdditionalData model)
-        {
-            transfer.AdditionalDataJson = model.ToJson();
-        }
-    }
-
     public interface IOffchainTransferRepository
     {
         Task<IOffchainTransfer> CreateTransfer(string transactionId, string clientId, string assetId, decimal amount, OffchainTransferType type, string externalTransferId, string orderId, bool channelClosing = false);
-
-        Task<IOffchainTransfer> GetTransfer(string id);
-
-        Task CompleteTransfer(string transferId, bool? onchain = null);
-        
     }
 }

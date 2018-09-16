@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using Common;
+﻿using Common;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
@@ -14,7 +12,8 @@ using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
-using Lykke.Service.Assets.Client.Models;
+using System;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -23,7 +22,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
     {
         private readonly ILog _log;
         private readonly ISrvEthereumHelper _srvEthereumHelper;
-        private readonly IEthClientEventLogs _ethClientEventLogs;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly AppSettings.EthereumSettings _settings;
         private readonly TimeSpan _retryTimeout;
@@ -34,7 +32,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         public EthereumCommandHandler(
             [NotNull] ILog log,
             [NotNull] ISrvEthereumHelper srvEthereumHelper,
-            [NotNull] IEthClientEventLogs ethClientEventLogs,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
@@ -44,7 +41,6 @@ namespace Lykke.Job.TransactionHandler.Handlers
         {
             _log = log.CreateComponentScope(nameof(EthereumCommandHandler));
             _srvEthereumHelper = srvEthereumHelper ?? throw new ArgumentNullException(nameof(srvEthereumHelper));
-            _ethClientEventLogs = ethClientEventLogs ?? throw new ArgumentNullException(nameof(ethClientEventLogs));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository ?? throw new ArgumentNullException(nameof(bcnClientCredentialsRepository));
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));

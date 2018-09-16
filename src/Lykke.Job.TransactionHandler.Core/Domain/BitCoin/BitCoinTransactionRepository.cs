@@ -34,7 +34,6 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.BitCoin
         Task<bool> TryCreateAsync(string transactionId, string commandType, string requestData, string contextData, string response, string blockchainHash = null);
         Task CreateOrUpdateAsync(string transactionId, string commandType);
         Task<IBitcoinTransaction> FindByTransactionIdAsync(string transactionId);
-        Task<IBitcoinTransaction> SaveResponseAndHashAsync(string transactionId, string resp, string hash, DateTime? dateTime = null);
         Task UpdateAsync(string transactionId, string requestData, string contextData, string response);
     }
 }

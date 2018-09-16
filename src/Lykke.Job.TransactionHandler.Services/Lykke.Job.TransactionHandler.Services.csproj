@@ -4,14 +4,13 @@
     <Version>1.0.1</Version>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Lykke.Bitcoin.Api.Client" Version="1.0.22" />
-    <PackageReference Include="Lykke.Common" Version="7.0.3" />
-    <PackageReference Include="Lykke.Service.ClientAccount.Client" Version="2.0.1" />
-    <PackageReference Include="Lykke.Service.EthereumCore.Client" Version="1.1.11" />
-    <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.97" />
-    <PackageReference Include="Lykke.Service.PersonalData" Version="1.1.1" />
-    <PackageReference Include="Lykke.SettingsReader" Version="2.4.1" />
-    <PackageReference Include="NetJSON" Version="1.2.5" />
+    <PackageReference Include="Lykke.Bitcoin.Api.Client" Version="1.0.23" />
+    <PackageReference Include="Lykke.Common" Version="7.0.4" />
+    <PackageReference Include="Lykke.Service.ClientAccount.Client" Version="2.2.3" />
+    <PackageReference Include="Lykke.Service.EthereumCore.Client" Version="1.1.12" />
+    <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.98" />
+    <PackageReference Include="Lykke.Service.PersonalData" Version="2.0.3" />
+    <PackageReference Include="Lykke.SettingsReader" Version="4.0.1" />
     <PackageReference Include="RestSharp.NetCore" Version="105.2.3" />
     <PackageReference Include="System.ComponentModel" Version="4.3.0" />
   </ItemGroup>

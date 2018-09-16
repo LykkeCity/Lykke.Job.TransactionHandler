@@ -1,54 +1,26 @@
-﻿using System;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Events;
-using Lykke.Service.Assets.Client;
-using Lykke.Service.Assets.Client.Models;
-using Lykke.Service.ClientAccount.Client;
+using System;
+using System.Threading.Tasks;
 
 namespace Lykke.Job.TransactionHandler.Sagas
 {
     public class TransferSaga
     {
-        private readonly IClientAccountClient _clientAccountClient;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
-        private readonly IAssetsServiceWithCache _assetsServiceWithCache;
 
         public TransferSaga(
-            [NotNull] IClientAccountClient clientAccountClient,
-            [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
-            [NotNull] IAssetsServiceWithCache assetsServiceWithCache)
+            [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository)
         {
-            _clientAccountClient = clientAccountClient ?? throw new ArgumentNullException(nameof(clientAccountClient));
             _ethereumTransactionRequestRepository = ethereumTransactionRequestRepository ?? throw new ArgumentNullException(nameof(ethereumTransactionRequestRepository));
-            _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
         }
 
         public async Task Handle(TransferOperationStateSavedEvent evt, ICommandSender sender)
         {
             var transactionId = evt.TransactionId;
-            var queueMessage = evt.QueueMessage;
-            var amountNoFee = evt.AmountNoFee;
-
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(queueMessage.AssetId);
-
-            if (!(await _clientAccountClient.IsTrustedAsync(queueMessage.ToClientid)).Value
-                && asset.Blockchain == Blockchain.Bitcoin
-                && !asset.IsTrusted)
-            {
-                sender.SendCommand(
-                    new CreateOffchainCashinRequestCommand
-                    {
-                        Id = transactionId,
-                        ClientId = queueMessage.ToClientid,
-                        Amount = (decimal)amountNoFee,
-                        AssetId = queueMessage.AssetId
-                    },
-                    BoundedContexts.Offchain);
-            }
 
             // handling of ETH transfers to trusted wallets if it is ETH transfer
             var ethTxRequest = await _ethereumTransactionRequestRepository.GetAsync(Guid.Parse(transactionId));

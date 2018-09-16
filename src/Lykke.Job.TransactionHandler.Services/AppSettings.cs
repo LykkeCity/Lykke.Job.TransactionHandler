@@ -1,9 +1,8 @@
-﻿using System;
-using System.Linq;
-using System.Net;
-using Lykke.Service.OperationsRepository.Client;
+﻿using Lykke.Service.OperationsRepository.Client;
 using Lykke.Service.PersonalData.Settings;
 using Lykke.SettingsReader.Attributes;
+using System;
+using System.Net;
 
 namespace Lykke.Job.TransactionHandler.Services
 {
@@ -11,12 +10,10 @@ namespace Lykke.Job.TransactionHandler.Services
     {
         public TransactionHandlerSettings TransactionHandlerJob { get; set; }
         public SlackNotificationsSettings SlackNotifications { get; set; }
-        public SlackIntegrationSettings SlackIntegration { get; set; }
         public AssetsSettings Assets { get; set; }
         public ClientAccountSettings ClientAccountClient { get; set; }
         public EthereumSettings Ethereum { get; set; }
         public BitcoinCoreSettings BitCoinCore { get; set; }
-        public MarginTradingSettings MarginTrading { get; set; }
         public MatchingEngineSettings MatchingEngineClient { get; set; }
         public NotificationsSettings AppNotifications { get; set; }
         public RabbitMqSettings RabbitMq { get; set; }
@@ -32,10 +29,10 @@ namespace Lykke.Job.TransactionHandler.Services
             public ServiceSettings Services { get; set; }
             public string QueuePostfix { get; set; }
             public long RetryDelayInMilliseconds { get; set; }
-            public string SagasRabbitMqConnStr { get; set; } 
+            public string SagasRabbitMqConnStr { get; set; }
             [Optional]
-            public ChaosSettings ChaosKitty { get; set; }            
-            public MongoDeduplicatorSettings MongoDeduplicator { get; set; }            
+            public ChaosSettings ChaosKitty { get; set; }
+            public MongoDeduplicatorSettings MongoDeduplicator { get; set; }
         }
 
         public class ChaosSettings
@@ -55,13 +52,8 @@ namespace Lykke.Job.TransactionHandler.Services
             public string BitCoinQueueConnectionString { get; set; }
             public string ClientPersonalInfoConnString { get; set; }
             public string BalancesInfoConnString { get; set; }
-            public string ChronoBankSrvConnString { get; set; }
-            public string LwEthLogsConnString { get; set; }
             public string HMarketOrdersConnString { get; set; }
             public string OffchainConnString { get; set; }
-            public string QuantaSrvConnString { get; set; }
-            public string SolarCoinConnString { get; set; }
-            public string IncomingMessagesConnString { get; set; }
         }
 
         public class AssetsCacheSettings
@@ -98,34 +90,9 @@ namespace Lykke.Job.TransactionHandler.Services
             }
         }
 
-        public class MarginTradingSettings
-        {
-            public string ApiKey { get; set; }
-            public string DemoApiKey { get; set; }
-            public string ApiRootUrl { get; set; }
-            public string DemoApiRootUrl { get; set; }
-        }
-
         public class BitcoinCoreSettings
         {
             public string BitcoinCoreApiUrl { get; set; }
-        }
-
-        public class SlackIntegrationSettings
-        {
-            public class Channel
-            {
-                public string Type { get; set; }
-                public string WebHookUrl { get; set; }
-            }
-
-            public string Env { get; set; }
-            public Channel[] Channels { get; set; }
-
-            public string GetChannelWebHook(string type)
-            {
-                return Channels.FirstOrDefault(x => x.Type == type)?.WebHookUrl;
-            }
         }
 
         public class EthereumSettings
@@ -149,7 +116,6 @@ namespace Lykke.Job.TransactionHandler.Services
 
             public string ExchangeCashOperation { get; set; }
             public string ExchangeTransfer { get; set; }
-            public string ExchangeSwapOperation { get; set; }
         }
 
         public class SlackNotificationsSettings
