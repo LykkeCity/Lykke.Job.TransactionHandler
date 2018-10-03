@@ -20,6 +20,8 @@ using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Messaging;
 using Lykke.Messaging.RabbitMq;
 using Lykke.Messaging.Serialization;
+using Lykke.Service.PushNotifications.Contract;
+using Lykke.Service.PushNotifications.Contract.Commands;
 using Lykke.SettingsReader;
 
 namespace Lykke.Job.TransactionHandler.Modules
@@ -42,7 +44,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 ChaosKitty.StateOfChaos = _settings.TransactionHandlerJob.ChaosKitty.StateOfChaos;
             }
 
-            Messaging.Serialization.MessagePackSerializerFactory.Defaults.FormatterResolver = MessagePack.Resolvers.ContractlessStandardResolver.Instance;
+            MessagePackSerializerFactory.Defaults.FormatterResolver = MessagePack.Resolvers.ContractlessStandardResolver.Instance;
 
             builder.Register(context => new AutofacDependencyResolver(context)).As<IDependencyResolver>().SingleInstance();
 
@@ -92,7 +94,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 const string defaultRoute = "self";
 
                 return new CqrsEngine(_log,
-                    ctx.Resolve<IDependencyResolver>(),
+                    new AutofacDependencyResolver(ctx.Resolve<IComponentContext>()),
                     messagingEngine,
                     new DefaultEndpointProvider(),
                     true,
@@ -172,7 +174,9 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand))
                         .On(defaultRoute)
-                    .WithCommandsHandler<OffchainCommandHandler>(),
+                    .WithCommandsHandler<OffchainCommandHandler>()
+                    .PublishingCommands(typeof(DataNotificationCommand))
+                    .To(PushNotificationsBoundedContext.Name).With(defaultPipeline),
                 
                 Register.BoundedContext(BoundedContexts.Operations)
                     .FailedCommandRetryDelay(defaultRetryDelay)

@@ -25,7 +25,6 @@ using Lykke.Job.TransactionHandler.Core.Domain.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Services;
-using Lykke.Job.TransactionHandler.Core.Services.AppNotifications;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.Fee;
@@ -38,7 +37,6 @@ using Lykke.Job.TransactionHandler.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Services.Fee;
 using Lykke.Job.TransactionHandler.Services.Messages.Email;
-using Lykke.Job.TransactionHandler.Services.Notifications;
 using Lykke.Job.TransactionHandler.Services.Offchain;
 using Lykke.Service.Assets.Client;
 using Lykke.Service.ClientAccount.Client;
@@ -131,10 +129,6 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             var exchangeOperationsService = new ExchangeOperationsServiceClient(_jobSettings.ExchangeOperationsServiceUrl);
             builder.RegisterInstance(exchangeOperationsService).As<IExchangeOperationsServiceClient>().SingleInstance();
-
-            builder.Register<IAppNotifications>(x => new SrvAppNotifications(
-                _settings.AppNotifications.HubConnString,
-                _settings.AppNotifications.HubName));
 
             builder.Register<IEthereumCoreAPI>(x =>
             {

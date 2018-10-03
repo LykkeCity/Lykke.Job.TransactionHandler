@@ -15,7 +15,6 @@ namespace Lykke.Job.TransactionHandler.Services
         public EthereumSettings Ethereum { get; set; }
         public BitcoinCoreSettings BitCoinCore { get; set; }
         public MatchingEngineSettings MatchingEngineClient { get; set; }
-        public NotificationsSettings AppNotifications { get; set; }
         public RabbitMqSettings RabbitMq { get; set; }
         public EthRabbitMqSettings EthRabbitMq { get; set; }
         public PersonalDataServiceClientSettings PersonalDataServiceSettings { get; set; }
@@ -59,12 +58,6 @@ namespace Lykke.Job.TransactionHandler.Services
         public class AssetsCacheSettings
         {
             public TimeSpan ExpirationPeriod { get; set; }
-        }
-
-        public class NotificationsSettings
-        {
-            public string HubConnString { get; set; }
-            public string HubName { get; set; }
         }
 
         public class MatchingEngineSettings

@@ -138,7 +138,8 @@ namespace Lykke.Job.TransactionHandler
             {
                 // NOTE: Job not yet receive and process IsAlive requests here
 
-                var cqrs = ApplicationContainer.Resolve<ICqrsEngine>(); // bootstrap
+                var cqrs = ApplicationContainer.Resolve<ICqrsEngine>();
+                cqrs.Start();
 
                 StartSubscribers();
 
