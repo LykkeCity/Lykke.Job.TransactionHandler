@@ -66,7 +66,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
             catch (Exception ex)
             {
-                _log.WriteErrorAsync(nameof(CashInOutQueue), nameof(Start), null, ex).Wait();
+                _log.WriteError(nameof(CashInOutQueue), nameof(Start), ex);
                 throw;
             }
         }

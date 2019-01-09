@@ -93,7 +93,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 const string defaultPipeline = "commands";
                 const string defaultRoute = "self";
 
-                return new CqrsEngine(_log,
+                var engine = new CqrsEngine(_log,
                     new AutofacDependencyResolver(ctx.Resolve<IComponentContext>()),
                     messagingEngine,
                     new DefaultEndpointProvider(),
@@ -262,8 +262,12 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingCommands(typeof(SaveTransferOperationStateCommand))
                         .To(BoundedContexts.Operations).With(defaultPipeline)
                 );
+                engine.StartPublishers();
+                return engine;
             })
-            .As<ICqrsEngine>().SingleInstance();
+            .As<ICqrsEngine>()
+            .AutoActivate()
+            .SingleInstance();
         }
     }
 }

@@ -67,7 +67,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
             catch (Exception ex)
             {
-                _log.WriteErrorAsync(nameof(TradeQueue), nameof(Start), null, ex).Wait();
+                _log.WriteError(nameof(TradeQueue), nameof(Start), ex);
                 throw;
             }
         }
@@ -77,14 +77,16 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        private async Task ProcessMessage(TradeQueueItem queueMessage)
+        private Task ProcessMessage(TradeQueueItem queueMessage)
         {
-            await _log.WriteInfoAsync(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.ToJson());
+            _log.WriteInfo(nameof(TradeQueue), nameof(ProcessMessage), queueMessage.ToJson());
 
             _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
             {
                 QueueMessage = queueMessage
             }, BoundedContexts.TxHandler, BoundedContexts.Trades);
+
+            return Task.CompletedTask;
         }
 
         public void Dispose()

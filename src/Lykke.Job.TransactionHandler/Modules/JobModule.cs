@@ -127,8 +127,7 @@ namespace Lykke.Job.TransactionHandler.Modules
         {
             builder.RegisterType<OffchainRequestService>().As<IOffchainRequestService>();
 
-            var exchangeOperationsService = new ExchangeOperationsServiceClient(_jobSettings.ExchangeOperationsServiceUrl);
-            builder.RegisterInstance(exchangeOperationsService).As<IExchangeOperationsServiceClient>().SingleInstance();
+            builder.RegisterExchangeOperationsClient(_jobSettings.ExchangeOperationsServiceUrl);
 
             builder.Register<IEthereumCoreAPI>(x =>
             {

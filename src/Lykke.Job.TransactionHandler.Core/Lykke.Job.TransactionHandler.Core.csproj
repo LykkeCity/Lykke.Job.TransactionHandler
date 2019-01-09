@@ -4,7 +4,7 @@
     <Version>1.0.1</Version>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Lykke.Common" Version="7.0.4" />
+    <PackageReference Include="Lykke.Common" Version="7.3.1" />
     <PackageReference Include="Lykke.Service.Assets.Client" Version="4.4.0" />
     <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.98" />
     <PackageReference Include="MessagePack" Version="1.7.3.4" />

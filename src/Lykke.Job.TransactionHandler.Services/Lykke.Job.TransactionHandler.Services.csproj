@@ -5,15 +5,15 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Lykke.Bitcoin.Api.Client" Version="1.0.23" />
-    <PackageReference Include="Lykke.Common" Version="7.0.4" />
+    <PackageReference Include="Lykke.Common" Version="7.3.1" />
     <PackageReference Include="Lykke.Service.ClientAccount.Client" Version="2.2.3" />
     <PackageReference Include="Lykke.Service.EthereumCore.Client" Version="1.1.12" />
     <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="1.0.98" />
-    <PackageReference Include="Lykke.Service.PersonalData" Version="2.0.3" />
-    <PackageReference Include="Lykke.Service.PushNotifications.Contract" Version="1.1.0" />
-    <PackageReference Include="Lykke.SettingsReader" Version="4.1.1" />
+    <PackageReference Include="Lykke.Service.PersonalData" Version="2.1.1" />
+    <PackageReference Include="Lykke.Service.PushNotifications.Contract" Version="1.2.0" />
+    <PackageReference Include="Lykke.SettingsReader" Version="4.2.0" />
     <PackageReference Include="System.ComponentModel" Version="4.3.0" />
-    <PackageReference Include="Lykke.Cqrs" Version="6.1.1" />
+    <PackageReference Include="Lykke.Cqrs" Version="8.1.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Lykke.Job.TransactionHandler.Core\Lykke.Job.TransactionHandler.Core.csproj" />
