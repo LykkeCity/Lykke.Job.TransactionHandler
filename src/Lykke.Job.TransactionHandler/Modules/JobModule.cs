@@ -142,7 +142,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<SrvEmailsFacade>().As<ISrvEmailsFacade>().SingleInstance();
 
             builder.RegisterType<TransactionService>().As<ITransactionService>().SingleInstance();
-            builder.RegisterType<NotificationsService>().As<INotificationsService>().SingleInstance();
 
             builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
 

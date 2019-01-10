@@ -20,8 +20,7 @@ using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Messaging;
 using Lykke.Messaging.RabbitMq;
 using Lykke.Messaging.Serialization;
-using Lykke.Service.PushNotifications.Contract;
-using Lykke.Service.PushNotifications.Contract.Commands;
+using Lykke.Service.PushNotifications.Contract.Events;
 using Lykke.SettingsReader;
 
 namespace Lykke.Job.TransactionHandler.Modules
@@ -90,11 +89,12 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             builder.Register(ctx =>
             {
-                const string defaultPipeline = "commands";
+                const string commandsRoute = "commands";
+                const string eventsRoute = "events";
                 const string defaultRoute = "self";
 
                 var engine = new CqrsEngine(_log,
-                    new AutofacDependencyResolver(ctx.Resolve<IComponentContext>()),
+                    new AutofacDependencyResolver(ctx),
                     messagingEngine,
                     new DefaultEndpointProvider(),
                     true,
@@ -109,7 +109,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningCommands(typeof(CreateTradeCommand), typeof(CreateTransactionCommand))
                         .On(defaultRoute)
                     .PublishingEvents(typeof(TradeCreatedEvent))
-                        .With(defaultPipeline)
+                        .With(eventsRoute)
                     .WithCommandsHandler<TradeCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.Orders)
@@ -121,15 +121,15 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningEvents(typeof(TradeCreatedEvent))
                         .From(BoundedContexts.Trades).On(defaultRoute)
                     .PublishingCommands(typeof(CreateTransactionCommand))
-                        .To(BoundedContexts.Trades).With(defaultPipeline),
+                        .To(BoundedContexts.Trades).With(commandsRoute),
 
                 Register.BoundedContext(BoundedContexts.TxHandler)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(ProcessLimitOrderCommand))
-                        .On(defaultPipeline)
+                        .On(commandsRoute)
                         .WithLoopback()
                     .PublishingEvents(typeof(LimitOrderExecutedEvent))
-                        .With("events")
+                        .With(eventsRoute)
                     .WithCommandsHandler<LimitOrderCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.ForwardWithdrawal)
@@ -137,7 +137,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningCommands(typeof(SetLinkedCashInOperationCommand))
                         .On(defaultRoute)
                     .PublishingEvents(typeof(ForwardWithdawalLinkedEvent))
-                        .With(defaultPipeline)
+                        .With(eventsRoute)
                     .WithCommandsHandler<ForwardWithdrawalCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.Bitcoin)
@@ -151,7 +151,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningCommands(typeof(TransferEthereumCommand))
                         .On(defaultRoute)
                     .PublishingEvents(typeof(EthereumTransferSentEvent))
-                        .With(defaultPipeline)
+                        .With(eventsRoute)
                     .WithCommandsHandler<EthereumCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.EthereumCommands)
@@ -166,7 +166,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .PublishingEvents(typeof(CashinDetectedEvent),
                                       typeof(EthCashinEnrolledToMatchingEngineEvent),
                                       typeof(EthCashinSavedInHistoryEvent))
-                        .With(defaultPipeline)
+                        .With(eventsRoute)
                     .WithCommandsHandler<EthereumCoreCommandHandler>()
                     .ProcessingOptions(defaultRoute).MultiThreaded(4).QueueCapacity(1024),
 
@@ -175,9 +175,9 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand))
                         .On(defaultRoute)
                     .WithCommandsHandler<OffchainCommandHandler>()
-                    .PublishingCommands(typeof(DataNotificationCommand))
-                    .To(PushNotificationsBoundedContext.Name).With(defaultPipeline),
-                
+                    .PublishingEvents(typeof(DataNotificationEvent))
+                    .With(eventsRoute),
+
                 Register.BoundedContext(BoundedContexts.Operations)
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(
@@ -192,7 +192,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                             typeof(ManualTransactionStateSavedEvent),
                             typeof(IssueTransactionStateSavedEvent),
                             typeof(CashoutTransactionStateSavedEvent))
-                        .With(defaultPipeline)
+                        .With(eventsRoute)
                     .WithCommandsHandler<OperationsCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.OperationsHistory)
@@ -215,20 +215,20 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .WithProjection(typeof(OperationHistoryProjection), BoundedContexts.TxHandler)
                         .ProcessingOptions(defaultRoute).MultiThreaded(4).QueueCapacity(1024)
                     .ListeningCommands(typeof(UpdateLimitOrdersCountCommand))
-                        .On(defaultPipeline)
+                        .On(commandsRoute)
                         .WithCommandsHandler<HistoryCommandHandler>(),
 
                 Register.Saga<ForwardWithdawalSaga>($"{BoundedContexts.TxHandler}.forward-withdrawal-saga")
                     .ListeningEvents(typeof(CashoutTransactionStateSavedEvent))
                         .From(BoundedContexts.Operations).On(defaultRoute)
                     .PublishingCommands(typeof(SetLinkedCashInOperationCommand))
-                        .To(BoundedContexts.ForwardWithdrawal).With(defaultPipeline),
+                        .To(BoundedContexts.ForwardWithdrawal).With(commandsRoute),
 
                 Register.Saga<HistorySaga>("history-saga")
                     .ListeningEvents(typeof(LimitOrderExecutedEvent))
                         .From(BoundedContexts.TxHandler).On("events")
                     .PublishingCommands(typeof(UpdateLimitOrdersCountCommand))
-                        .To(BoundedContexts.OperationsHistory).With(defaultPipeline),
+                        .To(BoundedContexts.OperationsHistory).With(commandsRoute),
 
                 Register.Saga<TransferSaga>("transfers-saga")
                     .ListeningEvents(typeof(TransferOperationStateSavedEvent))
@@ -236,9 +236,9 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .ListeningEvents(typeof(EthereumTransferSentEvent))
                         .From(BoundedContexts.Ethereum).On(defaultRoute)
                     .PublishingCommands(typeof(TransferEthereumCommand))
-                        .To(BoundedContexts.Ethereum).With(defaultPipeline)
+                        .To(BoundedContexts.Ethereum).With(commandsRoute)
                     .PublishingCommands(typeof(CompleteOperationCommand))
-                        .To(BoundedContexts.Operations).With(defaultPipeline),
+                        .To(BoundedContexts.Operations).With(commandsRoute),
 
                 Register.Saga<EthereumCoreSaga>("ethereum-core-saga")
                     .ListeningEvents(typeof(CashinDetectedEvent),
@@ -247,20 +247,20 @@ namespace Lykke.Job.TransactionHandler.Modules
                         .From(BoundedContexts.EthereumCommands).On(defaultRoute)
                     .PublishingCommands(typeof(EnrollEthCashinToMatchingEngineCommand),
                                         typeof(SaveEthInHistoryCommand))
-                        .To(BoundedContexts.EthereumCommands).With(defaultPipeline)
+                        .To(BoundedContexts.EthereumCommands).With(commandsRoute)
                         .ProcessingOptions(defaultRoute).MultiThreaded(4).QueueCapacity(1024),
 
                 Register.DefaultRouting
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
-                        .To(BoundedContexts.Offchain).With(defaultPipeline)                    
+                        .To(BoundedContexts.Offchain).With(commandsRoute)                    
                     .PublishingCommands(typeof(SegwitTransferCommand))
-                        .To(BoundedContexts.Bitcoin).With(defaultPipeline)
+                        .To(BoundedContexts.Bitcoin).With(commandsRoute)
                     .PublishingCommands(typeof(SaveManualOperationStateCommand), typeof(SaveIssueOperationStateCommand), typeof(SaveCashoutOperationStateCommand))
-                        .To(BoundedContexts.Operations).With(defaultPipeline)
+                        .To(BoundedContexts.Operations).With(commandsRoute)
                     .PublishingCommands(typeof(CreateTradeCommand))
-                        .To(BoundedContexts.Trades).With(defaultPipeline)
+                        .To(BoundedContexts.Trades).With(commandsRoute)
                     .PublishingCommands(typeof(SaveTransferOperationStateCommand))
-                        .To(BoundedContexts.Operations).With(defaultPipeline)
+                        .To(BoundedContexts.Operations).With(commandsRoute)
                 );
                 engine.StartPublishers();
                 return engine;
