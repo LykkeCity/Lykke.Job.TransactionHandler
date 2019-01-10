@@ -164,10 +164,6 @@ namespace Lykke.Job.TransactionHandler.Modules
                 new BcnClientCredentialsRepository(
                     AzureTableStorage<BcnCredentialsRecordEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "BcnClientCredentials", _log)));
 
-            builder.RegisterInstance<IClientSettingsRepository>(
-                new ClientSettingsRepository(
-                    AzureTableStorage<ClientSettingsEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "TraderSettings", _log)));
-
             builder.RegisterInstance<IClientCacheRepository>(
                 new ClientCacheRepository(
                     AzureTableStorage<ClientCacheEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "ClientCache", _log)));

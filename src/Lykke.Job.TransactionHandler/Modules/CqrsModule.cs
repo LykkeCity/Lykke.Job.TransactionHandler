@@ -20,7 +20,6 @@ using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Messaging;
 using Lykke.Messaging.RabbitMq;
 using Lykke.Messaging.Serialization;
-using Lykke.Service.PushNotifications.Contract.Events;
 using Lykke.SettingsReader;
 
 namespace Lykke.Job.TransactionHandler.Modules
@@ -174,9 +173,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                     .FailedCommandRetryDelay(defaultRetryDelay)
                     .ListeningCommands(typeof(CreateOffchainCashoutRequestCommand))
                         .On(defaultRoute)
-                    .WithCommandsHandler<OffchainCommandHandler>()
-                    .PublishingEvents(typeof(DataNotificationEvent))
-                    .With(eventsRoute),
+                    .WithCommandsHandler<OffchainCommandHandler>(),
 
                 Register.BoundedContext(BoundedContexts.Operations)
                     .FailedCommandRetryDelay(defaultRetryDelay)
