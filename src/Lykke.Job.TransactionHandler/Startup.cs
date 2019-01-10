@@ -74,7 +74,7 @@ namespace Lykke.Job.TransactionHandler
 
                 builder.RegisterModule(new JobModule(appSettings.CurrentValue, appSettings.Nested(x => x.TransactionHandlerJob.Db), Log));
                 builder.RegisterModule(new CqrsModule(appSettings, Log));
-                builder.RegisterModule(new MatchingEngineModule(appSettings.Nested(x => x.MatchingEngineClient)));
+                builder.RegisterModule(new MatchingEngineModule(appSettings.Nested(x => x.MatchingEngineClient), Log));
 
                 if (string.IsNullOrWhiteSpace(appSettings.CurrentValue.TransactionHandlerJob.Db.BitCoinQueueConnectionString))
                 {
@@ -96,7 +96,7 @@ namespace Lykke.Job.TransactionHandler
             }
             catch (Exception ex)
             {
-                Log?.WriteFatalErrorAsync(nameof(Startup), nameof(ConfigureServices), "", ex).Wait();
+                Log?.WriteFatalError(nameof(Startup), nameof(ConfigureServices), ex);
                 throw;
             }
         }
@@ -121,13 +121,13 @@ namespace Lykke.Job.TransactionHandler
                 });
                 app.UseStaticFiles();
 
-                appLifetime.ApplicationStarted.Register(() => StartApplication().Wait());
-                appLifetime.ApplicationStopping.Register(() => StopApplication().Wait());
-                appLifetime.ApplicationStopped.Register(() => CleanUp().Wait());
+                appLifetime.ApplicationStarted.Register(() => StartApplication().GetAwaiter().GetResult());
+                appLifetime.ApplicationStopping.Register(() => StopApplication().GetAwaiter().GetResult());
+                appLifetime.ApplicationStopped.Register(CleanUp);
             }
             catch (Exception ex)
             {
-                Log?.WriteFatalErrorAsync(nameof(Startup), nameof(ConfigureServices), "", ex).Wait();
+                Log?.WriteFatalError(nameof(Startup), nameof(ConfigureServices), ex);
                 throw;
             }
         }
@@ -139,18 +139,19 @@ namespace Lykke.Job.TransactionHandler
                 // NOTE: Job not yet receive and process IsAlive requests here
 
                 var cqrs = ApplicationContainer.Resolve<ICqrsEngine>();
-                cqrs.Start();
+                cqrs.StartSubscribers();
+                cqrs.StartProcesses();
 
                 StartSubscribers();
 
                 _triggerHost = new TriggerHost(new AutofacServiceProvider(ApplicationContainer));
                 _triggerHostTask = _triggerHost.Start();
 
-                await Log.WriteMonitorAsync("", "", "Started");
+                Log.WriteMonitor("", "", "Started");
             }
             catch (Exception ex)
             {
-                await Log.WriteFatalErrorAsync(nameof(Startup), nameof(StartApplication), "", ex);
+                Log.WriteFatalError(nameof(Startup), nameof(StartApplication), ex);
                 throw;
             }
         }
@@ -168,24 +169,18 @@ namespace Lykke.Job.TransactionHandler
             }
             catch (Exception ex)
             {
-                if (Log != null)
-                {
-                    await Log.WriteFatalErrorAsync(nameof(Startup), nameof(StopApplication), "", ex);
-                }
+                Log?.WriteFatalError(nameof(Startup), nameof(StopApplication), ex);
                 throw;
             }
         }
 
-        private async Task CleanUp()
+        private void CleanUp()
         {
             try
             {
                 // NOTE: Job can't receive and process IsAlive requests here, so you can destroy all resources
 
-                if (Log != null)
-                {
-                    await Log.WriteMonitorAsync("", "", "Terminating");
-                }
+                Log?.WriteMonitor("", "", "Terminating");
 
                 ApplicationContainer.Dispose();
             }
@@ -193,7 +188,7 @@ namespace Lykke.Job.TransactionHandler
             {
                 if (Log != null)
                 {
-                    await Log.WriteFatalErrorAsync(nameof(Startup), nameof(CleanUp), "", ex);
+                    Log.WriteFatalError(nameof(Startup), nameof(CleanUp), ex);
                     (Log as IDisposable)?.Dispose();
                 }
                 throw;

@@ -43,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
             {
-                await _log.WriteInfoAsync(nameof(TradeSaga), nameof(TradeCommandHandler), queueMessage.ToJson(),
+                _log.WriteInfo($"{nameof(TradeSaga)}:{nameof(TradeCommandHandler)}", queueMessage.ToJson(),
                     "Message processing being aborted, due to order status is not matched");
 
                 return CommandHandlingResult.Ok();

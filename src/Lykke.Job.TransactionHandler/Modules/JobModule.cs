@@ -127,8 +127,7 @@ namespace Lykke.Job.TransactionHandler.Modules
         {
             builder.RegisterType<OffchainRequestService>().As<IOffchainRequestService>();
 
-            var exchangeOperationsService = new ExchangeOperationsServiceClient(_jobSettings.ExchangeOperationsServiceUrl);
-            builder.RegisterInstance(exchangeOperationsService).As<IExchangeOperationsServiceClient>().SingleInstance();
+            builder.RegisterExchangeOperationsClient(_jobSettings.ExchangeOperationsServiceUrl);
 
             builder.Register<IEthereumCoreAPI>(x =>
             {
@@ -143,7 +142,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterType<SrvEmailsFacade>().As<ISrvEmailsFacade>().SingleInstance();
 
             builder.RegisterType<TransactionService>().As<ITransactionService>().SingleInstance();
-            builder.RegisterType<NotificationsService>().As<INotificationsService>().SingleInstance();
 
             builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient, _log);
 
@@ -165,10 +163,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance<IBcnClientCredentialsRepository>(
                 new BcnClientCredentialsRepository(
                     AzureTableStorage<BcnCredentialsRecordEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "BcnClientCredentials", _log)));
-
-            builder.RegisterInstance<IClientSettingsRepository>(
-                new ClientSettingsRepository(
-                    AzureTableStorage<ClientSettingsEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "TraderSettings", _log)));
 
             builder.RegisterInstance<IClientCacheRepository>(
                 new ClientCacheRepository(

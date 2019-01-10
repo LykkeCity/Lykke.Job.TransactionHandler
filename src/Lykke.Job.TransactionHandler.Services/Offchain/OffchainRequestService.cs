@@ -8,24 +8,25 @@ namespace Lykke.Job.TransactionHandler.Services.Offchain
     {
         private readonly IOffchainRequestRepository _offchainRequestRepository;
         private readonly IOffchainTransferRepository _offchainTransferRepository;
-        private readonly INotificationsService _notificationsService;
 
         public OffchainRequestService(
             IOffchainRequestRepository offchainRequestRepository,
-            IOffchainTransferRepository offchainTransferRepository,
-            INotificationsService notificationsService)
+            IOffchainTransferRepository offchainTransferRepository)
         {
             _offchainRequestRepository = offchainRequestRepository;
             _offchainTransferRepository = offchainTransferRepository;
-            _notificationsService = notificationsService;
         }
 
-        public async Task CreateOffchainRequestAndNotify(string transactionId, string clientId, string assetId, decimal amount,
-            string orderId, OffchainTransferType type)
+        public async Task CreateOffchainRequestAndNotify(
+            string transactionId,
+            string clientId,
+            string assetId,
+            decimal amount,
+            string orderId,
+            OffchainTransferType type)
         {
             await _offchainTransferRepository.CreateTransfer(transactionId, clientId, assetId, amount, type, null, orderId);
             await _offchainRequestRepository.CreateRequest(transactionId, clientId, assetId, RequestType.RequestTransfer, type, null);
-            await _notificationsService.OffchainNotifyUser(clientId);
         }
     }
 }

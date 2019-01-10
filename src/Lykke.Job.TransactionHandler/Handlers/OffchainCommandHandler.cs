@@ -13,13 +13,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
     {
         private readonly IOffchainRequestService _offchainRequestService;
 
-        public OffchainCommandHandler(
-            [NotNull] IOffchainRequestService offchainRequestService)
+        public OffchainCommandHandler([NotNull] IOffchainRequestService offchainRequestService)
         {
             _offchainRequestService = offchainRequestService ?? throw new ArgumentNullException(nameof(offchainRequestService));
         }
 
-        public async Task<CommandHandlingResult> Handle(CreateOffchainCashoutRequestCommand command)
+        public async Task<CommandHandlingResult> Handle(CreateOffchainCashoutRequestCommand command, IEventPublisher eventPublisher)
         {
             await _offchainRequestService.CreateOffchainRequestAndNotify(
                 transactionId: command.Id,

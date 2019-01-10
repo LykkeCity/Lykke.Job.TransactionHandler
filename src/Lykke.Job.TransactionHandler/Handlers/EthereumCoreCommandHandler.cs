@@ -24,6 +24,7 @@ using Lykke.Job.TransactionHandler.Events.EthereumCore;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.MatchingEngine.Connector.Models.Api;
+using Lykke.Service.ExchangeOperations.Client.Models;
 using Lykke.Service.PersonalData.Contract;
 
 namespace Lykke.Job.TransactionHandler.Handlers
@@ -380,9 +381,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                                 asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing));
                     if (pt == null)
                     {
-                        await
-                            _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), hash,
-                                "Transaction already handled");
+                        _log.WriteWarning($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}", hash, "Transaction already handled");
                         return; //if was handled previously
                     }
 
@@ -401,19 +400,24 @@ namespace Lykke.Job.TransactionHandler.Handlers
                         UserId = transactionHandlerUserId
                     };
 
-                    var exResult = await _exchangeOperationsServiceClient.ManualCashInAsync(clientId, assetId,
-                            (double)amount, "auto redeem", commentText);
+                    var exResult = await _exchangeOperationsServiceClient.ExchangeOperations.ManualCashInAsync(
+                        new ManualCashInRequestModel
+                        {
+                            ClientId = clientId,
+                            AssetId = assetId,
+                            Amount = (double)amount,
+                            UserId = "auto redeem",
+                            Comment = commentText,
+                        });
 
                     if (!exResult.IsOk())
                     {
-                        await
-                            _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout),
-                            (new
-                            {
+                        _log.WriteWarning($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}",
+                            new {
                                 ExchangeServiceResponse = exResult,
                                 QueueMessage = queueMessage
-                            }).ToJson(),
-                                "ME operation failed");
+                            }.ToJson(),
+                            "ME operation failed");
                     }
 
                     await _clientCommentsRepository.AddClientCommentAsync(newComment);
@@ -423,13 +427,13 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 }
                 catch (Exception e)
                 {
-                    await _log.WriteErrorAsync(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), queueMessage.ToJson(), e);
+                    _log.WriteErrorAsync($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}", queueMessage.ToJson(), e);
                     throw;
                 }
             }
             else
             {
-                await _log.WriteWarningAsync(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), queueMessage.ToJson());
+                _log.WriteWarning(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), queueMessage.ToJson());
             }
         }
 

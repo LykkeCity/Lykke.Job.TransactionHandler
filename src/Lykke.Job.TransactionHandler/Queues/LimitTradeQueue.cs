@@ -63,7 +63,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             }
             catch (Exception ex)
             {
-                _log.WriteErrorAsync(nameof(LimitTradeQueue), nameof(Start), null, ex).Wait();
+                _log.WriteError(nameof(LimitTradeQueue), nameof(Start), ex);
                 throw;
             }
         }
@@ -73,9 +73,9 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriber?.Stop();
         }
 
-        private async Task ProcessMessage(LimitQueueItem tradeItem)
+        private Task ProcessMessage(LimitQueueItem tradeItem)
         {
-            await _log.WriteInfoAsync(nameof(LimitTradeQueue), nameof(ProcessMessage), tradeItem.ToJson());
+            _log.WriteInfo(nameof(LimitTradeQueue), nameof(ProcessMessage), tradeItem.ToJson());
 
             foreach (var limitOrderWithTrades in tradeItem.Orders)
             {
@@ -86,6 +86,8 @@ namespace Lykke.Job.TransactionHandler.Queues
 
                 _cqrsEngine.SendCommand(command, BoundedContexts.TxHandler, BoundedContexts.TxHandler);
             }
+
+            return Task.CompletedTask;
         }
 
         public void Dispose()

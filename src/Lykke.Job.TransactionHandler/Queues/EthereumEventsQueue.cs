@@ -66,7 +66,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 }
                 catch (Exception ex)
                 {
-                    _log.WriteErrorAsync(nameof(EthereumEventsQueue), nameof(Start), null, ex).Wait();
+                    _log.WriteError(nameof(EthereumEventsQueue), nameof(Start), ex);
                     throw;
                 }
             }
@@ -105,7 +105,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 }
                 catch (Exception ex)
                 {
-                    _log.WriteErrorAsync(nameof(EthereumEventsQueue), nameof(Start), null, ex).Wait();
+                    _log.WriteError(nameof(EthereumEventsQueue), nameof(Start), ex);
                     throw;
                 }
             }
@@ -120,7 +120,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             _subscriberHotWallet?.Stop();
         }
 
-        public async Task<bool> SendEventToCQRS(CoinEvent @event)
+        public Task<bool> SendEventToCQRS(CoinEvent @event)
         {
             _cqrsEngine.SendCommand(new ProcessEthCoinEventCommand
                 {
@@ -137,10 +137,10 @@ namespace Lykke.Job.TransactionHandler.Queues
                 BoundedContexts.EthereumCommands,
                 BoundedContexts.EthereumCommands);
 
-            return true;
+            return Task.FromResult(true);
         }
 
-        public async Task<bool> SendHotWalletEventToCQRS(HotWalletEvent @event)
+        public Task<bool> SendHotWalletEventToCQRS(HotWalletEvent @event)
         {
             _cqrsEngine.SendCommand(new ProcessHotWalletErc20EventCommand
                 {
@@ -156,7 +156,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                 BoundedContexts.EthereumCommands,
                 BoundedContexts.EthereumCommands);
 
-            return true;
+            return Task.FromResult(true);
         }
 
         public void Dispose()

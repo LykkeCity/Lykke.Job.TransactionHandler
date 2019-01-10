@@ -55,7 +55,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
         public async Task ProcessMessage(CashInOutQueueMessage message)
         {
-            await _log.WriteInfoAsync(nameof(CashInOutMessageProcessor), nameof(ProcessMessage), message.ToJson());
+            _log.WriteInfo(nameof(CashInOutMessageProcessor), nameof(ProcessMessage), message.ToJson());
 
             ChaosKitty.Meow();
 
@@ -64,7 +64,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             {
                 if (_cashOperationsRepositoryClient.GetAsync(message.ClientId, message.Id) == null)
                 {
-                    await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(CashInOutQueueMessage), message.ToJson(), "unknown transaction");
+                    _log.WriteWarning($"{nameof(CashInOutQueue)}:{nameof(CashInOutQueueMessage)}", message.ToJson(), "unknown transaction");
                     return;
                 }
 
@@ -85,7 +85,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                         ProcessManualUpdate(message);
                         break;
                     default:
-                        await _log.WriteWarningAsync(nameof(CashInOutQueue), nameof(CashInOutQueueMessage), message.ToJson(), $"Unknown command type (value = [{transaction.CommandType}])");
+                        _log.WriteWarning($"{nameof(CashInOutQueue)}:{nameof(CashInOutQueueMessage)}", message.ToJson(), $"Unknown command type (value = [{transaction.CommandType}])");
                         break;
                 }
             }
@@ -128,7 +128,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
             if (!isClientTrusted.Value && !asset.IsTrusted)
             {
-                await _log.WriteWarningAsync(nameof(CashInOutMessageProcessor), nameof(ProcessIssue), message.ToJson(), "Client and asset are not trusted.");
+                _log.WriteWarning($"{nameof(CashInOutMessageProcessor)}:{nameof(ProcessIssue)}", message.ToJson(), "Client and asset are not trusted.");
                 return;
             }
 

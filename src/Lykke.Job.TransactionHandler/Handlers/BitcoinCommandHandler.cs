@@ -31,7 +31,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var response = await _bitcoinApiClient.SegwitTransfer(Guid.Parse(command.Id), command.Address);
             if (response.HasError && response.Error.ErrorCode != ErrorCode.DuplicateTransactionId)
             {
-                await _log.WriteErrorAsync(nameof(BitcoinCommandHandler), nameof(Commands.SegwitTransferCommand), command.ToJson(), new Exception(response.ToJson()));
+                _log.WriteError($"{nameof(BitcoinCommandHandler)}:{nameof(Commands.SegwitTransferCommand)}", command.ToJson(), new Exception(response.ToJson()));
                 return CommandHandlingResult.Fail(_retryTimeout);
             }
 
