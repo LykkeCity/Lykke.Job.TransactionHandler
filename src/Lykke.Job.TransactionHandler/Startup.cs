@@ -37,7 +37,6 @@ namespace Lykke.Job.TransactionHandler
         {
             typeof(CashInOutQueue),
             typeof(EthereumEventsQueue),
-            typeof(LimitTradeQueue),
             typeof(TradeQueue),
             typeof(TransferQueue)
         };
