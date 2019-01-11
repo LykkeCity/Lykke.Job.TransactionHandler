@@ -1,8 +1,8 @@
-﻿using Lykke.Service.OperationsRepository.Client;
+﻿using System;
+using System.Net;
+using Lykke.Service.OperationsRepository.Client;
 using Lykke.Service.PersonalData.Settings;
 using Lykke.SettingsReader.Attributes;
-using System;
-using System.Net;
 
 namespace Lykke.Job.TransactionHandler.Services
 {
@@ -50,7 +50,6 @@ namespace Lykke.Job.TransactionHandler.Services
             public string LogsConnString { get; set; }
             public string BitCoinQueueConnectionString { get; set; }
             public string ClientPersonalInfoConnString { get; set; }
-            public string BalancesInfoConnString { get; set; }
             public string HMarketOrdersConnString { get; set; }
             public string OffchainConnString { get; set; }
         }
@@ -104,9 +103,10 @@ namespace Lykke.Job.TransactionHandler.Services
         {
             public string ConnectionString { get; set; }
             public string AlternateConnectionString { get; set; }
+            public string EventsExchange { get; set; }
+
             public string ExchangeSwap { get; set; }
             public string ExchangeLimit { get; set; }
-
             public string ExchangeCashOperation { get; set; }
             public string ExchangeTransfer { get; set; }
         }
