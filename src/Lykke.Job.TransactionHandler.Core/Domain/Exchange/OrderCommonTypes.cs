@@ -9,110 +9,71 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
 
     public enum OrderStatus
     {
-        /// <summary>
-        /// Initial status, limit order in order book
-        /// </summary>
+        /// <summary>Initial status, limit order in order book</summary>
         InOrderBook,
 
-        /// <summary>
-        /// Partially matched
-        /// </summary>
+        /// <summary>Partially matched</summary>
         Processing,
 
-        /// <summary>
-        /// Stop limit order pending
-        /// </summary>
+        /// <summary>Stop limit order pending</summary>
         Pending,
 
-        /// <summary>
-        /// Fully matched
-        /// </summary>
+        /// <summary>Fully matched</summary>
         Matched,
 
-        /// <summary>
-        /// Not enough funds on account
-        /// </summary>
+        /// <summary>Not enough funds on account</summary>
         NotEnoughFunds,
 
-        /// <summary>
-        /// Reserved volume greater than balance
-        /// </summary>
+        /// <summary>Reserved volume greater than balance</summary>
         ReservedVolumeGreaterThanBalance,
 
-        /// <summary>
-        /// No liquidity
-        /// </summary>
+        /// <summary>No liquidity</summary>
         NoLiquidity,
 
-        /// <summary>
-        /// Unknown asset
-        /// </summary>
+        /// <summary>Unknown asset</summary>
         UnknownAsset,
 
-        /// <summary>
-        /// Disabled asset
-        /// </summary>
+        /// <summary>Disabled asset</summary>
         DisabledAsset,
 
-        /// <summary>
-        /// Cancelled
-        /// </summary>
+        /// <summary>Cancelled</summary>
         Cancelled,
 
-        /// <summary>
-        /// Lead to negative spread
-        /// </summary>
+        /// <summary>Lead to negative spread</summary>
         LeadToNegativeSpread,
 
-        /// <summary>
-        /// Invalid fee
-        /// </summary>
+        /// <summary>Invalid fee</summary>
         InvalidFee,
 
-        /// <summary>
-        /// Too small volume
-        /// </summary>
+        /// <summary>Too small volume</summary>
         TooSmallVolume,
 
-        /// <summary>
-        /// Invalid price
-        /// </summary>
+        /// <summary>Invalid price</summary>
         InvalidPrice,
 
-        /// <summary>
-        /// Previous order is not found (by oldUid)
-        /// </summary>
+        /// <summary>Previous order is not found (by oldUid)</summary>
         NotFoundPrevious,
 
-        /// <summary>
-        /// Replaced
-        /// </summary>
+        /// <summary>Replaced</summary>
         Replaced,
 
-        /// <summary>
-        /// Invalid price accuracy
-        /// </summary>
+        /// <summary>Invalid price accuracy</summary>
         InvalidPriceAccuracy,
 
-        /// <summary>
-        /// Invalid volume accuracy
-        /// </summary>
+        /// <summary>Invalid volume accuracy</summary>
         InvalidVolumeAccuracy,
 
-        /// <summary>
-        /// Invalid volume
-        /// </summary>
+        /// <summary>Invalid volume</summary>
         InvalidVolume,
 
-        /// <summary>
-        /// Invalid order value
-        /// </summary>
+        /// <summary>Invalid order value</summary>
         InvalidValue,
 
-        /// <summary>
-        /// Too high price deviation
-        /// </summary>
-        TooHighPriceDeviation
+        /// <summary>Too high price deviation</summary>
+        TooHighPriceDeviation,
+
+        /// <summary>Executed</summary>
+        Executed,
     }
 
     public interface IOrderBase
