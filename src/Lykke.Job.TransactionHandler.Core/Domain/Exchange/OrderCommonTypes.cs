@@ -74,6 +74,9 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
 
         /// <summary>Executed</summary>
         Executed,
+
+        /// <summary>PartiallyMatched</summary>
+        PartiallyMatched,
     }
 
     public interface IOrderBase
