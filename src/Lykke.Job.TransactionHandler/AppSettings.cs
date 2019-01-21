@@ -1,10 +1,10 @@
-﻿using Lykke.Service.OperationsRepository.Client;
+﻿using System;
+using System.Net;
+using Lykke.Service.OperationsRepository.Client;
 using Lykke.Service.PersonalData.Settings;
 using Lykke.SettingsReader.Attributes;
-using System;
-using System.Net;
 
-namespace Lykke.Job.TransactionHandler.Services
+namespace Lykke.Job.TransactionHandler
 {
     public class AppSettings
     {
@@ -50,7 +50,6 @@ namespace Lykke.Job.TransactionHandler.Services
             public string LogsConnString { get; set; }
             public string BitCoinQueueConnectionString { get; set; }
             public string ClientPersonalInfoConnString { get; set; }
-            public string BalancesInfoConnString { get; set; }
             public string HMarketOrdersConnString { get; set; }
             public string OffchainConnString { get; set; }
         }
