@@ -300,7 +300,10 @@ namespace Lykke.Job.TransactionHandler.Projections
 
             foreach (var operation in aggregated.Where(x => x.ClientId == evt.LimitOrder.Order.ClientId))
             {
-                var trade = evt.Trades.FirstOrDefault(x => x.ClientId == operation.ClientId && x.AssetId == operation.AssetId && Math.Abs(x.Amount - (double)operation.Amount) < 0.00000001);
+                var trade = evt.Trades?.FirstOrDefault(x =>
+                    x.ClientId == operation.ClientId
+                    && x.AssetId == operation.AssetId
+                    && Math.Abs(x.Amount - (double)operation.Amount) < 0.00000001);
 
                 contextData.Operations.Add(new SwapOffchainContextData.Operation()
                 {
