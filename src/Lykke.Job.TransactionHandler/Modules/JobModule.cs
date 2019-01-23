@@ -221,7 +221,6 @@ namespace Lykke.Job.TransactionHandler.Modules
             builder.RegisterInstance(_settings.RabbitMq);
             builder.RegisterType<CashInOutQueue>().SingleInstance();
             builder.RegisterType<TransferQueue>().SingleInstance();
-            builder.RegisterType<LimitTradeQueue>().SingleInstance();
             builder.RegisterType<TradeQueue>().SingleInstance();
             builder.RegisterType<EthereumEventsQueue>().SingleInstance();
         }
