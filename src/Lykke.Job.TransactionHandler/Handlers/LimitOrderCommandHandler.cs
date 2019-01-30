@@ -67,8 +67,13 @@ namespace Lykke.Job.TransactionHandler.Handlers
             // workaround: ME sends wrong status
             if (status == OrderStatus.Processing && !tradesWerePerformed)
                 status = OrderStatus.InOrderBook;
+            else if (status == OrderStatus.PartiallyMatched && !tradesWerePerformed)
+                status = OrderStatus.Placed;
 
-            if (status == OrderStatus.Processing || status == OrderStatus.Matched || status == OrderStatus.Cancelled)
+            if (status == OrderStatus.Processing
+                || status == OrderStatus.PartiallyMatched // new version of Processing
+                || status == OrderStatus.Matched
+                || status == OrderStatus.Cancelled)
             {
                 limitOrderExecutedEvent.Trades = await CreateTrades(command.LimitOrder);
             }
