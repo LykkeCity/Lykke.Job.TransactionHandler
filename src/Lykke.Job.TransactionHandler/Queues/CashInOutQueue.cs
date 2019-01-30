@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Sagas;
-using Lykke.Job.TransactionHandler.Services;
 using Lykke.MatchingEngine.Connector.Models.Events;
 using Lykke.MatchingEngine.Connector.Models.Events.Common;
 using Lykke.RabbitMq.Mongo.Deduplicator;
@@ -17,16 +15,13 @@ namespace Lykke.Job.TransactionHandler.Queues
 {
     public sealed class CashInOutQueue : IQueueSubscriber
     {
-        private const string OldQueueName = "transactions.cashinout";
         private const bool QueueDurable = true;
 
         private readonly ILog _log;
         private readonly CashInOutMessageProcessor _messageProcessor;
         private readonly AppSettings.TransactionHandlerSettings _settings;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
-        private readonly ConcurrentDictionary<string, bool> _alreadyProcessed = new ConcurrentDictionary<string, bool>();
 
-        private RabbitMqSubscriber<CashInOutQueueMessage> _oldSubscriber;
         private RabbitMqSubscriber<CashInEvent> _cashinSubscriber;
         private RabbitMqSubscriber<CashOutEvent> _cashoutSubscriber;
 
@@ -44,16 +39,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public void Start()
         {
-            var oldSettings = new RabbitMqSubscriptionSettings
-            {
-                ConnectionString = _rabbitConfig.ConnectionString,
-                QueueName = OldQueueName,
-                ExchangeName = _rabbitConfig.ExchangeCashOperation,
-                DeadLetterExchangeName = $"{_rabbitConfig.ExchangeCashOperation}.dlx",
-                RoutingKey = "",
-                IsDurable = QueueDurable
-            };
-
             var cashinSettings = new RabbitMqSubscriptionSettings
             {
                 ConnectionString = _rabbitConfig.ConnectionString,
@@ -76,19 +61,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             try
             {
-                _oldSubscriber = new RabbitMqSubscriber<CashInOutQueueMessage>(
-                        oldSettings,
-                        new ResilientErrorHandlingStrategy(_log, oldSettings,
-                            retryTimeout: TimeSpan.FromSeconds(20),
-                            retryNum: 3,
-                            next: new DeadQueueErrorHandlingStrategy(_log, oldSettings)))
-                    .SetMessageDeserializer(new JsonMessageDeserializer<CashInOutQueueMessage>())
-                    .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .Subscribe(ProcessOldMessage)
-                    .CreateDefaultBinding()
-                    .SetLogger(_log)
-                    .Start();
-
                 _cashinSubscriber = new RabbitMqSubscriber<CashInEvent>(
                         cashinSettings,
                         new ResilientErrorHandlingStrategy(_log, cashinSettings,
@@ -128,7 +100,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public void Stop()
         {
-            _oldSubscriber?.Stop();
             _cashinSubscriber?.Stop();
             _cashoutSubscriber?.Stop();
         }
@@ -138,37 +109,14 @@ namespace Lykke.Job.TransactionHandler.Queues
             Stop();
         }
 
-        private async Task ProcessOldMessage(CashInOutQueueMessage message)
-        {
-            if (!_alreadyProcessed.TryAdd(message.Id, true))
-            {
-                _alreadyProcessed.TryRemove(message.Id, out _);
-                return;
-            }
-
-            await _messageProcessor.ProcessMessage(message);
-        }
-
         private async Task ProcessCashinMessage(CashInEvent cashinEvent)
         {
-            if (!_alreadyProcessed.TryAdd(cashinEvent.Header.MessageId, true))
-            {
-                _alreadyProcessed.TryRemove(cashinEvent.Header.MessageId, out _);
-                return;
-            }
-
             var message = ToOld(cashinEvent);
             await _messageProcessor.ProcessMessage(message);
         }
 
         private async Task ProcessCashoutMessage(CashOutEvent cashoutEvent)
         {
-            if (!_alreadyProcessed.TryAdd(cashoutEvent.Header.MessageId, true))
-            {
-                _alreadyProcessed.TryRemove(cashoutEvent.Header.MessageId, out _);
-                return;
-            }
-
             var message = ToOld(cashoutEvent);
             await _messageProcessor.ProcessMessage(message);
         }
