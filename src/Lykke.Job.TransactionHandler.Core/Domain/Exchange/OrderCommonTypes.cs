@@ -80,6 +80,9 @@ namespace Lykke.Job.TransactionHandler.Core.Domain.Exchange
 
         /// <summary>Placed</summary>
         Placed,
+
+        /// <summary>Rejected</summary>
+        Rejected,
     }
 
     public interface IOrderBase
