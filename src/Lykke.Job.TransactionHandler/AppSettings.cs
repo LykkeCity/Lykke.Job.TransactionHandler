@@ -102,6 +102,7 @@ namespace Lykke.Job.TransactionHandler
         public class RabbitMqSettings
         {
             public string ConnectionString { get; set; }
+            public string NewMeRabbitConnString { get; set; }
             public string AlternateConnectionString { get; set; }
             public string EventsExchange { get; set; }
 
