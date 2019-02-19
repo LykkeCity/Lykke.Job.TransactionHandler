@@ -74,7 +74,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var settings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _rabbitConfig.ConnectionString,
+                ConnectionString = _rabbitConfig.NewMeRabbitConnString,
                 QueueName = $"{_rabbitConfig.EventsExchange}.orders.txhandler",
                 ExchangeName = _rabbitConfig.EventsExchange,
                 RoutingKey = ((int)MessageType.Order).ToString(),

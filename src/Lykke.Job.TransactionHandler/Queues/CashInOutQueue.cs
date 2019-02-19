@@ -56,7 +56,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var cashinSettings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _rabbitConfig.ConnectionString,
+                ConnectionString = _rabbitConfig.NewMeRabbitConnString,
                 QueueName = $"{_rabbitConfig.EventsExchange}.cashin.txhandler",
                 ExchangeName = _rabbitConfig.EventsExchange,
                 RoutingKey = ((int)MessageType.CashIn).ToString(),
@@ -66,7 +66,7 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var cashoutSettings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _rabbitConfig.ConnectionString,
+                ConnectionString = _rabbitConfig.NewMeRabbitConnString,
                 QueueName = $"{_rabbitConfig.EventsExchange}.cashout.txhandler",
                 ExchangeName = _rabbitConfig.EventsExchange,
                 RoutingKey = ((int)MessageType.CashOut).ToString(),
