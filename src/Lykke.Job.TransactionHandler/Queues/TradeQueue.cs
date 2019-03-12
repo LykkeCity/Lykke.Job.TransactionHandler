@@ -379,13 +379,13 @@ namespace Lykke.Job.TransactionHandler.Queues
             string quotingAssetId)
         {
             bool isPairStartsWithBase = false;
-            if (assetPairId.StartsWith(baseAssetId) && !assetPairId.EndsWith(quotingAssetId)
-                || assetPairId.EndsWith(quotingAssetId) && !assetPairId.StartsWith(baseAssetId))
+            if (assetPairId.StartsWith(baseAssetId) && !assetPairId.EndsWith(baseAssetId)
+                || assetPairId.EndsWith(quotingAssetId) && !assetPairId.StartsWith(quotingAssetId))
             {
                 isPairStartsWithBase = true;
             }
-            else if (assetPairId.StartsWith(quotingAssetId) && !assetPairId.EndsWith(baseAssetId)
-                || assetPairId.EndsWith(baseAssetId) && !assetPairId.StartsWith(quotingAssetId))
+            else if (assetPairId.StartsWith(quotingAssetId) && !assetPairId.EndsWith(quotingAssetId)
+                || assetPairId.EndsWith(baseAssetId) && !assetPairId.StartsWith(baseAssetId))
             {
                 isPairStartsWithBase = false;
             }

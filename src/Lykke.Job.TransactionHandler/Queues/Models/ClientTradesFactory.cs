@@ -32,7 +32,9 @@ namespace Lykke.Job.TransactionHandler.Queues.Models
 
             marketAssetRecord.ClientId = limitAssetRecord.ClientId = clientId;
 
-            marketAssetRecord.Amount = marketVolume * -1;
+            marketAssetRecord.Amount = marketVolume;
+            if (Math.Sign(marketVolume) == Math.Sign(limitVolume))
+                marketAssetRecord.Amount *= -1;
             marketAssetRecord.AssetId = trade.MarketAsset;
 
             limitAssetRecord.Amount = limitVolume;

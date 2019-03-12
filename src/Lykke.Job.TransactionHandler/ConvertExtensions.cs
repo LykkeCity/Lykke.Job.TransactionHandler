@@ -31,7 +31,9 @@ namespace Lykke.Job.TransactionHandler
             depositAssetRecord.Amount = oppositeLimitVolume;
             depositAssetRecord.AssetId = trade.OppositeAsset;
 
-            withdrawAssetRecord.Amount = -1 * limitVolume;
+            withdrawAssetRecord.Amount = limitVolume;
+            if (Math.Sign(limitVolume) == Math.Sign(oppositeLimitVolume))
+                withdrawAssetRecord.Amount *= -1;
             withdrawAssetRecord.AssetId = trade.Asset;
 
             foreach (var t in item.Trades)
@@ -112,9 +114,9 @@ namespace Lykke.Job.TransactionHandler
                 return usedTrades[0].Price;
 
             if (assetPair.QuotingAssetId == trades[0].Asset)
-                return (volume / oppositeVolume).TruncateDecimalPlaces(assetPair.Accuracy, isBuy);
+                return Math.Abs((volume / oppositeVolume).TruncateDecimalPlaces(assetPair.Accuracy, isBuy));
 
-            return (oppositeVolume / volume).TruncateDecimalPlaces(assetPair.Accuracy, isBuy);
+            return Math.Abs((oppositeVolume / volume).TruncateDecimalPlaces(assetPair.Accuracy, isBuy));
         }
 
         class CommonTrade
