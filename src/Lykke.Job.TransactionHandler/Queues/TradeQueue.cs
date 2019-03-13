@@ -122,6 +122,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                     .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
                     .Subscribe(ProcessMessage)
                     .CreateDefaultBinding()
+                    .SetPrefetchCount(300)
                     .SetLogger(_log)
                     .Start();
             }
