@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using AzureStorage;
@@ -116,8 +117,11 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
 
         public async Task CreateOrUpdateAsync(ILimitOrder limitOrder)
         {
-            await _tableStorage.InsertOrMergeAsync(LimitOrderEntity.ByDate.Create(limitOrder));
-            await _tableStorage.InsertOrMergeAsync(LimitOrderEntity.ByClientId.Create(limitOrder));
+            var tasks = new List<Task>
+            {
+                _tableStorage.InsertOrMergeAsync(LimitOrderEntity.ByDate.Create(limitOrder)),
+                _tableStorage.InsertOrMergeAsync(LimitOrderEntity.ByClientId.Create(limitOrder)),
+            };
 
             var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), limitOrder.Status);
             if (status == OrderStatus.InOrderBook
@@ -125,12 +129,14 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
                 || status == OrderStatus.Processing
                 || status == OrderStatus.PartiallyMatched) // new version of Processing
             {
-                await _tableStorage.InsertOrMergeAsync(LimitOrderEntity.ByClientIdActive.Create(limitOrder));
+                tasks.Add(_tableStorage.InsertOrMergeAsync(LimitOrderEntity.ByClientIdActive.Create(limitOrder)));
             }
             else
             {
-                await _tableStorage.DeleteIfExistAsync(LimitOrderEntity.ByClientIdActive.GeneratePartitionKey(limitOrder.ClientId), limitOrder.Id);
+                tasks.Add(_tableStorage.DeleteIfExistAsync(LimitOrderEntity.ByClientIdActive.GeneratePartitionKey(limitOrder.ClientId), limitOrder.Id));
             }
+
+            await Task.WhenAll(tasks).ConfigureAwait(false);
         }
 
         public async Task<ILimitOrder> GetOrderAsync(string clientId, string orderId)
