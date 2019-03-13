@@ -136,7 +136,7 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Exchange
                 tasks.Add(_tableStorage.DeleteIfExistAsync(LimitOrderEntity.ByClientIdActive.GeneratePartitionKey(limitOrder.ClientId), limitOrder.Id));
             }
 
-            await Task.WhenAll(tasks).ConfigureAwait(false);
+            await Task.WhenAll(tasks);
         }
 
         public async Task<ILimitOrder> GetOrderAsync(string clientId, string orderId)
