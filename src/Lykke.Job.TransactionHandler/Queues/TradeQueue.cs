@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Common;
@@ -8,7 +7,6 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
-using Lykke.Job.TransactionHandler.Services;
 using Lykke.MatchingEngine.Connector.Models.Events;
 using Lykke.MatchingEngine.Connector.Models.Events.Common;
 using Lykke.RabbitMq.Mongo.Deduplicator;
@@ -20,8 +18,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 {
     public sealed class TradeQueue : IQueueSubscriber
     {
-        private const string OldMoQueueName = "transactions.trades";
-        private const string OldLoQueueName = "transactions.limit-trades";
         private const bool QueueDurable = true;
 
         private readonly ILog _log;
@@ -29,10 +25,7 @@ namespace Lykke.Job.TransactionHandler.Queues
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         private readonly AppSettings.TransactionHandlerSettings _settings;
         private readonly AppSettings.RabbitMqSettings _rabbitConfig;
-        private readonly ConcurrentDictionary<string, bool> _alreadyProcessedOrders = new ConcurrentDictionary<string, bool>();
 
-        private RabbitMqSubscriber<TradeQueueItem> _oldMoSubscriber;
-        private RabbitMqSubscriber<LimitQueueItem> _oldLoSubscriber;
         private RabbitMqSubscriber<ExecutionEvent> _subscriber;
 
         public TradeQueue(
@@ -52,26 +45,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public void Start()
         {
-            var oldMoSettings = new RabbitMqSubscriptionSettings
-            {
-                ConnectionString = _rabbitConfig.ConnectionString,
-                QueueName = OldMoQueueName,
-                ExchangeName = _rabbitConfig.ExchangeSwap,
-                DeadLetterExchangeName = $"{_rabbitConfig.ExchangeSwap}.dlx",
-                RoutingKey = "",
-                IsDurable = QueueDurable
-            };
-
-            var oldLoSettings = new RabbitMqSubscriptionSettings
-            {
-                ConnectionString = _rabbitConfig.ConnectionString,
-                QueueName = OldLoQueueName,
-                ExchangeName = _rabbitConfig.ExchangeLimit,
-                DeadLetterExchangeName = $"{_rabbitConfig.ExchangeLimit}.dlx",
-                RoutingKey = "",
-                IsDurable = QueueDurable
-            };
-
             var settings = new RabbitMqSubscriptionSettings
             {
                 ConnectionString = _rabbitConfig.NewMeRabbitConnString,
@@ -84,32 +57,6 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             try
             {
-                _oldMoSubscriber = new RabbitMqSubscriber<TradeQueueItem>(
-                        oldMoSettings,
-                        new ResilientErrorHandlingStrategy(_log, oldMoSettings,
-                            retryTimeout: TimeSpan.FromSeconds(20),
-                            retryNum: 3,
-                            next: new DeadQueueErrorHandlingStrategy(_log, oldMoSettings)))
-                    .SetMessageDeserializer(new JsonMessageDeserializer<TradeQueueItem>())
-                    .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .Subscribe(ProcessMoMessage)
-                    .CreateDefaultBinding()
-                    .SetLogger(_log)
-                    .Start();
-
-                _oldLoSubscriber = new RabbitMqSubscriber<LimitQueueItem>(
-                        oldLoSettings,
-                        new ResilientErrorHandlingStrategy(_log, oldMoSettings,
-                            retryTimeout: TimeSpan.FromSeconds(20),
-                            retryNum: 3,
-                            next: new DeadQueueErrorHandlingStrategy(_log, oldMoSettings)))
-                    .SetMessageDeserializer(new JsonMessageDeserializer<LimitQueueItem>())
-                    .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .Subscribe(ProcessLoMessage)
-                    .CreateDefaultBinding()
-                    .SetLogger(_log)
-                    .Start();
-
                 _subscriber = new RabbitMqSubscriber<ExecutionEvent>(
                         settings,
                         new ResilientErrorHandlingStrategy(_log, settings,
@@ -135,55 +82,12 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         public void Stop()
         {
-            _oldMoSubscriber?.Stop();
-            _oldLoSubscriber?.Stop();
             _subscriber?.Stop();
         }
 
         public void Dispose()
         {
             Stop();
-        }
-
-        private Task ProcessMoMessage(TradeQueueItem queueMessage)
-        {
-            _log.WriteInfo(nameof(TradeQueue), nameof(ProcessMoMessage), queueMessage.ToJson());
-
-            if (!_alreadyProcessedOrders.TryAdd(queueMessage.Order.Id, true))
-            {
-                _alreadyProcessedOrders.TryRemove(queueMessage.Order.Id, out _);
-                return Task.CompletedTask;
-            }
-
-            _cqrsEngine.SendCommand(new Commands.CreateTradeCommand
-            {
-                QueueMessage = queueMessage
-            }, BoundedContexts.TxHandler, BoundedContexts.Trades);
-
-            return Task.CompletedTask;
-        }
-
-        private Task ProcessLoMessage(LimitQueueItem tradeItem)
-        {
-            _log.WriteInfo(nameof(TradeQueue), nameof(ProcessLoMessage), tradeItem.ToJson());
-
-            foreach (var limitOrderWithTrades in tradeItem.Orders)
-            {
-                if (!_alreadyProcessedOrders.TryAdd(limitOrderWithTrades.Order.Id, true))
-                {
-                    _alreadyProcessedOrders.TryRemove(limitOrderWithTrades.Order.Id, out _);
-                    continue;
-                }
-
-                var command = new ProcessLimitOrderCommand
-                {
-                    LimitOrder = limitOrderWithTrades
-                };
-
-                _cqrsEngine.SendCommand(command, BoundedContexts.TxHandler, BoundedContexts.TxHandler);
-            }
-
-            return Task.CompletedTask;
         }
 
         private Task ProcessMessage(ExecutionEvent evt)
@@ -195,12 +99,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                 switch (order.OrderType)
                 {
                     case OrderType.Market:
-                        if (!_alreadyProcessedOrders.TryAdd(order.ExternalId, true))
-                        {
-                            _alreadyProcessedOrders.TryRemove(order.ExternalId, out _);
-                            break;
-                        }
-
                         var marketOrder = ToOldMarketOrder(order);
                         _cqrsEngine.SendCommand(
                             new Commands.CreateTradeCommand { QueueMessage = marketOrder },
@@ -209,12 +107,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                         break;
                     case OrderType.Limit:
                     case OrderType.StopLimit:
-                        if (!_alreadyProcessedOrders.TryAdd(order.ExternalId, true))
-                        {
-                            _alreadyProcessedOrders.TryRemove(order.ExternalId, out _);
-                            break;
-                        }
-
                         var limitOrder = ToOldLimitOrder(order);
                         _cqrsEngine.SendCommand(
                             new ProcessLimitOrderCommand { LimitOrder = limitOrder },
