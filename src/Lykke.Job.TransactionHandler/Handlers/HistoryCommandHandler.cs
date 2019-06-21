@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
@@ -15,9 +16,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly ILimitOrdersRepository _limitOrdersRepository;
         private readonly IClientCacheRepository _clientCacheRepository;
 
-        public HistoryCommandHandler(ILog log, ILimitOrdersRepository limitOrdersRepository, IClientCacheRepository clientCacheRepository)
+        public HistoryCommandHandler(ILogFactory logFactory, ILimitOrdersRepository limitOrdersRepository, IClientCacheRepository clientCacheRepository)
         {
-            _log = log;
+            _log = logFactory.CreateLog(this);
             _limitOrdersRepository = limitOrdersRepository;
             _clientCacheRepository = clientCacheRepository;
         }
@@ -30,7 +31,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             ChaosKitty.Meow();
 
-            _log.WriteInfo(nameof(UpdateLimitOrdersCountCommand), null, $"Client {command.ClientId}. Limit orders cache updated: {activeLimitOrdersCount} active orders");
+            _log.Info(nameof(UpdateLimitOrdersCountCommand), $"Client {command.ClientId}. Limit orders cache updated: {activeLimitOrdersCount} active orders");
 
             return CommandHandlingResult.Ok();
         }

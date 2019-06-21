@@ -6,6 +6,7 @@ using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.SettingsReader;
 using System;
 using System.Threading.Tasks;
+using Lykke.Common.Log;
 
 namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum
 {
@@ -13,12 +14,12 @@ namespace Lykke.Job.TransactionHandler.AzureRepositories.Ethereum
     {
         private readonly INoSQLTableStorage<EthereumCashinAggregateEntity> _storage;
 
-        public static IEthereumCashinAggregateRepository Create(IReloadingManager<string> connectionString, ILog log)
+        public static IEthereumCashinAggregateRepository Create(IReloadingManager<string> connectionString, ILogFactory logFactory)
         {
             var storage = AzureTableStorage<EthereumCashinAggregateEntity>.Create(
                 connectionString,
                 "EthereumCashinAggregate",
-                log);
+                logFactory);
 
             return new EthereumCashinAggregateRepository(storage);
         }

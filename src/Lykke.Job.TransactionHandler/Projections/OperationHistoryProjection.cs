@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
@@ -32,7 +33,7 @@ namespace Lykke.Job.TransactionHandler.Projections
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
 
         public OperationHistoryProjection(
-            [NotNull] ILog log,
+            [NotNull] ILogFactory logFactory,
             [NotNull] ITradeOperationsRepositoryClient clientTradesRepository,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] ITransferOperationsRepositoryClient transferEventsRepositoryClient,
@@ -43,7 +44,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository)
         {
             _limitTradeEventsRepositoryClient = limitTradeEventsRepositoryClient;
-            _log = log.CreateComponentScope(nameof(OperationHistoryProjection));
+            _log = logFactory.CreateLog(this);
             _clientTradesRepository = clientTradesRepository ?? throw new ArgumentNullException(nameof(clientTradesRepository));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
             _transferEventsRepositoryClient = transferEventsRepositoryClient ?? throw new ArgumentNullException(nameof(transferEventsRepositoryClient));
@@ -125,8 +126,8 @@ namespace Lykke.Job.TransactionHandler.Projections
             var response = await _transferEventsRepositoryClient.RegisterAsync(operation);
             if (response.Id != operation.Id)
             {
-                _log.WriteWarning(nameof(RegisterOperation), operation.ToJson(),
-                    $"Unexpected response from Operations Service: {response.ToJson()}");
+                _log.Warning($"Unexpected response from Operations Service: {response.ToJson()}",
+                    context: operation.ToJson());
             }
 
             ChaosKitty.Meow();
@@ -283,11 +284,11 @@ namespace Lykke.Job.TransactionHandler.Projections
 
                 await _clientTradesRepository.SaveAsync(clientTrades);
 
-                _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(clientTrades, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit trade {evt.LimitOrder.Order.Id}. Client trades saved");
+                _log.Info(nameof(OperationHistoryProjection), $"Client {evt.LimitOrder.Order.ClientId}. Limit trade {evt.LimitOrder.Order.Id}. Client trades saved", JsonConvert.SerializeObject(clientTrades, Formatting.Indented));
             }
             else
             {
-                _log.WriteInfo(nameof(OperationHistoryProjection), null, $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Client trades are empty");
+                _log.Info(nameof(OperationHistoryProjection), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Client trades are empty");
             }
 
             if (evt.IsTrustedClient)
@@ -318,7 +319,7 @@ namespace Lykke.Job.TransactionHandler.Projections
             await _transactionService.CreateOrUpdateAsync(evt.LimitOrder.Order.Id);
             await _transactionService.SetTransactionContext(evt.LimitOrder.Order.Id, contextData);
 
-            _log.WriteInfo(nameof(LimitOrderExecutedEvent), JsonConvert.SerializeObject(contextData, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.");
+            _log.Info(nameof(LimitOrderExecutedEvent), $"Client {evt.LimitOrder.Order.ClientId}. Limit order {evt.LimitOrder.Order.Id}. Context updated.", JsonConvert.SerializeObject(contextData, Formatting.Indented));
 
             // Save limit trade events
             if (Enum.TryParse(typeof(OrderStatus), evt.LimitOrder.Order.Status, out var status))
@@ -339,13 +340,13 @@ namespace Lykke.Job.TransactionHandler.Projections
                             await CreateEvent(evt.LimitOrder, OrderStatus.InOrderBook);
                         break;
                     default:
-                        _log.WriteInfo(nameof(LimitOrderExecutedEvent), JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected");
+                        _log.Info(nameof(LimitOrderExecutedEvent), $"Client {evt.LimitOrder.Order.ClientId}. Order {evt.LimitOrder.Order.Id}: Rejected", JsonConvert.SerializeObject(evt.LimitOrder, Formatting.Indented));
                         break;
                 }
             }
             else
             {
-                _log.WriteWarning(nameof(LimitOrderExecutedEvent), evt.LimitOrder.Order.Status, "Not supported order status by Lykke.Service.OperationsRepository.");
+                _log.Warning(nameof(LimitOrderExecutedEvent), "Not supported order status by Lykke.Service.OperationsRepository.", context: evt.LimitOrder.Order.Status);
             }
         }
 
@@ -371,7 +372,7 @@ namespace Lykke.Job.TransactionHandler.Projections
 
             await _limitTradeEventsRepositoryClient.CreateAsync(insertRequest);
 
-            _log.WriteInfo(nameof(OperationHistoryProjection), JsonConvert.SerializeObject(insertRequest, Formatting.Indented), $"Client {order.ClientId}. Limit trade {order.Id}. State has changed -> {status}");
+            _log.Info(nameof(OperationHistoryProjection), $"Client {order.ClientId}. Limit trade {order.Id}. State has changed -> {status}", JsonConvert.SerializeObject(insertRequest, Formatting.Indented));
         }
 
         private async Task RegisterOperation(CashInOutOperation operation)
@@ -379,8 +380,8 @@ namespace Lykke.Job.TransactionHandler.Projections
             var operationId = await _cashOperationsRepositoryClient.RegisterAsync(operation);
             if (operationId != operation.Id)
             {
-                _log.WriteWarning(nameof(RegisterOperation), operation.ToJson(),
-                    $"Unexpected response from Operations Service: {operationId}");
+                _log.Warning($"Unexpected response from Operations Service: {operationId}",
+                    context: operation.ToJson());
             }
 
             ChaosKitty.Meow();

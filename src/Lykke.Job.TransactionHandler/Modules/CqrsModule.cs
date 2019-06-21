@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Autofac;
-using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Cqrs.Configuration;
 using Lykke.Job.TransactionHandler.Commands;
@@ -15,7 +15,7 @@ using Lykke.Job.TransactionHandler.Projections;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.Job.TransactionHandler.Sagas.Services;
-using Lykke.Job.TransactionHandler.Services;
+using Lykke.Job.TransactionHandler.Settings;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Messaging;
 using Lykke.Messaging.RabbitMq;
@@ -27,12 +27,10 @@ namespace Lykke.Job.TransactionHandler.Modules
     public class CqrsModule : Module
     {
         private readonly AppSettings _settings;
-        private readonly ILog _log;
 
-        public CqrsModule(IReloadingManager<AppSettings> settingsManager, ILog log)
+        public CqrsModule(IReloadingManager<AppSettings> appSettings)
         {
-            _settings = settingsManager.CurrentValue;
-            _log = log;
+            _settings = appSettings.CurrentValue;
         }
 
         protected override void Load(ContainerBuilder builder)
@@ -48,12 +46,23 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             var rabbitMqSettings = new RabbitMQ.Client.ConnectionFactory { Uri = _settings.TransactionHandlerJob.SagasRabbitMqConnStr };
 
-            var messagingEngine = new MessagingEngine(_log,
-                new TransportResolver(new Dictionary<string, TransportInfo>
-                {
-                    {"RabbitMq", new TransportInfo(rabbitMqSettings.Endpoint.ToString(), rabbitMqSettings.UserName, rabbitMqSettings.Password, "None", "RabbitMq")}
-                }),
-                new RabbitMqTransportFactory());
+            builder.Register(ctx =>
+            {
+                var logFactory = ctx.Resolve<ILogFactory>();
+                return new MessagingEngine(
+                    logFactory,
+                    new TransportResolver(new Dictionary<string, TransportInfo>
+                    {
+                        {
+                            "RabbitMq",
+                            new TransportInfo(
+                                rabbitMqSettings.Endpoint.ToString(),
+                                rabbitMqSettings.UserName,
+                                rabbitMqSettings.Password, "None", "RabbitMq")
+                        }
+                    }),
+                    new RabbitMqTransportFactory(logFactory));
+            });
 
             var defaultRetryDelay = _settings.TransactionHandlerJob.RetryDelayInMilliseconds;
             var longRetryDelay = defaultRetryDelay * 60;
@@ -70,7 +79,7 @@ namespace Lykke.Job.TransactionHandler.Modules
                 .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay))).SingleInstance();
             builder.RegisterType<EthereumCommandHandler>()
                 .WithParameter(TypedParameter.From(_settings.Ethereum))
-                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));            
+                .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));
             builder.RegisterType<OffchainCommandHandler>();
             builder.RegisterType<OperationsCommandHandler>()
                 .WithParameter(TypedParameter.From(TimeSpan.FromMilliseconds(longRetryDelay)));
@@ -92,9 +101,10 @@ namespace Lykke.Job.TransactionHandler.Modules
                 const string eventsRoute = "events";
                 const string defaultRoute = "self";
 
-                var engine = new CqrsEngine(_log,
-                    new AutofacDependencyResolver(ctx),
-                    messagingEngine,
+                var engine = new CqrsEngine(
+                    ctx.Resolve<ILogFactory>(),
+                    ctx.Resolve<IDependencyResolver>(),
+                    ctx.Resolve<MessagingEngine>(),
                     new DefaultEndpointProvider(),
                     true,
                     Register.DefaultEndpointResolver(new RabbitMqConventionEndpointResolver(
@@ -249,7 +259,7 @@ namespace Lykke.Job.TransactionHandler.Modules
 
                 Register.DefaultRouting
                     .PublishingCommands(typeof(CreateOffchainCashoutRequestCommand))
-                        .To(BoundedContexts.Offchain).With(commandsRoute)                    
+                        .To(BoundedContexts.Offchain).With(commandsRoute)
                     .PublishingCommands(typeof(SegwitTransferCommand))
                         .To(BoundedContexts.Bitcoin).With(commandsRoute)
                     .PublishingCommands(typeof(SaveManualOperationStateCommand), typeof(SaveIssueOperationStateCommand), typeof(SaveCashoutOperationStateCommand))

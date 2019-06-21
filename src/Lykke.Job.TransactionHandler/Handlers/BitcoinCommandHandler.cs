@@ -5,6 +5,7 @@ using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Bitcoin.Api.Client.BitcoinApi;
 using Lykke.Bitcoin.Api.Client.BitcoinApi.Models;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Utils;
 
@@ -17,11 +18,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly TimeSpan _retryTimeout;
 
         public BitcoinCommandHandler(
-            [NotNull] ILog log,
+            [NotNull] ILogFactory logFactory,
             [NotNull] IBitcoinApiClient bitcoinApiClient,
             TimeSpan retryTimeout)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = logFactory.CreateLog(this) ?? throw new ArgumentNullException(nameof(logFactory));
             _bitcoinApiClient = bitcoinApiClient ?? throw new ArgumentNullException(nameof(bitcoinApiClient));
             _retryTimeout = retryTimeout;
         }
@@ -31,7 +32,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var response = await _bitcoinApiClient.SegwitTransfer(Guid.Parse(command.Id), command.Address);
             if (response.HasError && response.Error.ErrorCode != ErrorCode.DuplicateTransactionId)
             {
-                _log.WriteError($"{nameof(BitcoinCommandHandler)}:{nameof(Commands.SegwitTransferCommand)}", command.ToJson(), new Exception(response.ToJson()));
+                _log.Error($"{nameof(BitcoinCommandHandler)}:{nameof(Commands.SegwitTransferCommand)}", new Exception(response.ToJson()), context: command.ToJson());
                 return CommandHandlingResult.Fail(_retryTimeout);
             }
 

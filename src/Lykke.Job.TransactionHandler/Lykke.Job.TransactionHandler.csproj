@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
     <Version>1.0.1</Version>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <ItemGroup>
     <None Update="Dockerfile">
@@ -10,16 +11,16 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Lykke.Common.ApiLibrary" Version="1.12.0" />
     <PackageReference Include="Lykke.Job.BlockchainCashoutProcessor.Contract" Version="2.2.0" />
     <PackageReference Include="Lykke.Contracts" Version="1.0.51" />
     <PackageReference Include="Lykke.Job.EthereumCore.Contracts" Version="1.2.0" />
     <PackageReference Include="Lykke.JobTriggers" Version="2.2.0" />
-    <PackageReference Include="Lykke.Logs" Version="7.2.1" />
-    <PackageReference Include="Lykke.MatchingEngineConnector" Version="8.5.0" />
+    <PackageReference Include="Lykke.Logs" Version="7.3.0" />
+    <PackageReference Include="Lykke.MatchingEngineConnector" Version="8.6.0" />
     <PackageReference Include="Lykke.Messaging.RabbitMq" Version="2.2.0" />
-    <PackageReference Include="Lykke.RabbitMqBroker" Version="7.8.1" />
-    <PackageReference Include="Lykke.RabbitMq.Mongo" Version="1.0.1" />
+    <PackageReference Include="Lykke.RabbitMqBroker" Version="7.10.0" />
+    <PackageReference Include="Lykke.RabbitMq.Mongo" Version="1.0.2" />
+    <PackageReference Include="Lykke.Sdk" Version="5.14.0" />
     <PackageReference Include="Lykke.Service.Assets.Client" Version="4.4.0" />
     <PackageReference Include="Lykke.Service.ExchangeOperations.Client" Version="2.0.5" />
     <PackageReference Include="Lykke.Service.ExchangeOperations.Contracts" Version="1.0.6" />
@@ -27,11 +28,11 @@
     <PackageReference Include="Lykke.Service.PersonalData" Version="2.1.1" />
     <PackageReference Include="Lykke.Service.Operations.Client" Version="2.11.0" />
     <PackageReference Include="Lykke.Service.PushNotifications.Contract" Version="1.4.0" />
-    <PackageReference Include="Lykke.SettingsReader" Version="4.3.0" />
+    <PackageReference Include="Lykke.SettingsReader" Version="5.2.0" />
     <PackageReference Include="Lykke.SlackNotification.AzureQueue" Version="2.0.5" />
-    <PackageReference Include="Microsoft.AspNetCore.Diagnostics" Version="2.1.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.1.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.1.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Server.Kestrel" Version="2.2.0" />
     <PackageReference Include="RabbitMQ.Client" Version="4.1.3" />
   </ItemGroup>
   <ItemGroup>

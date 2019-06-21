@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
@@ -16,10 +17,10 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private readonly IEthereumCashinAggregateRepository _ethereumCashinAggregateRepository;
 
         public EthereumCoreSaga(
-            [NotNull] ILog log,
+            [NotNull] ILogFactory logFactory,
             [NotNull] IEthereumCashinAggregateRepository ethereumCashinAggregateRepository)
         {
-            _log = log.CreateComponentScope(nameof(EthereumCoreSaga)) ?? throw new ArgumentNullException(nameof(log));
+            _log = logFactory.CreateLog(this) ?? throw new ArgumentNullException(nameof(logFactory));
             _ethereumCashinAggregateRepository = ethereumCashinAggregateRepository;
         }
 
@@ -30,7 +31,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             {
                 sw.Start();
 
-                _log.WriteInfo(evt.TransactionHash, evt, "Eth Cashin startetd");
+                _log.Info(evt.TransactionHash, "Eth Cashin startetd", evt);
 
                 var aggregate = await _ethereumCashinAggregateRepository.GetOrAddAsync(evt.TransactionHash, () =>
                                     new EthereumCashinAggregate(evt.TransactionHash, evt.ClientId, evt.AssetId,
@@ -52,12 +53,12 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(CashinDetectedEvent), evt, e);
+                _log.Error(nameof(CashinDetectedEvent), e, context: evt);
                 throw;
             }
             finally
             {
-                _log.WriteInfo(nameof(CashinDetectedEvent), evt, $"Eth Cashin start completed in {sw.ElapsedMilliseconds}");
+                _log.Info(nameof(CashinDetectedEvent), $"Eth Cashin start completed in {sw.ElapsedMilliseconds}", evt);
                 sw.Stop();
             }
         }
@@ -68,7 +69,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             try
             {
                 sw.Start();
-                _log.WriteInfo(evt.TransactionHash, evt, "Cashin Enrolled To ME");
+                _log.Info(evt.TransactionHash, "Cashin Enrolled To ME", evt);
 
                 var aggregate = await _ethereumCashinAggregateRepository.GetAsync(evt.TransactionHash);
 
@@ -89,12 +90,12 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(EthCashinEnrolledToMatchingEngineEvent), evt, e);
+                _log.Error(nameof(EthCashinEnrolledToMatchingEngineEvent), e, context: evt);
                 throw;
             }
             finally
             {
-                _log.WriteInfo(nameof(EthCashinEnrolledToMatchingEngineEvent), evt, $"Cashin Enrolled To ME in {sw.ElapsedMilliseconds}");
+                _log.Info(nameof(EthCashinEnrolledToMatchingEngineEvent), $"Cashin Enrolled To ME in {sw.ElapsedMilliseconds}", evt);
                 sw.Stop();
             }
         }
@@ -105,7 +106,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             try
             {
                 sw.Start();
-                _log.WriteInfo(evt.TransactionHash, evt, "Cashin save history start");
+                _log.Info(evt.TransactionHash, "Cashin save history start", evt);
 
                 var aggregate = await _ethereumCashinAggregateRepository.GetAsync(evt.TransactionHash);
 
@@ -116,12 +117,12 @@ namespace Lykke.Job.TransactionHandler.Sagas
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(EthCashinSavedInHistoryEvent), evt, e);
+                _log.Error(nameof(EthCashinSavedInHistoryEvent), e, context: evt);
                 throw;
             }
             finally
             {
-                _log.WriteInfo(nameof(EthCashinSavedInHistoryEvent), evt, $"Cashin save history completed in {sw.ElapsedMilliseconds}");
+                _log.Info(nameof(EthCashinSavedInHistoryEvent), $"Cashin save history completed in {sw.ElapsedMilliseconds}", evt);
                 sw.Stop();
             }
         }

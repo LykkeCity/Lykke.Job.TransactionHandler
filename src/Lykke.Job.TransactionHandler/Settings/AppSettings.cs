@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Net;
+using JetBrains.Annotations;
+using Lykke.Sdk.Settings;
 using Lykke.Service.OperationsRepository.Client;
 using Lykke.Service.PersonalData.Settings;
 using Lykke.SettingsReader.Attributes;
 
-namespace Lykke.Job.TransactionHandler
+namespace Lykke.Job.TransactionHandler.Settings
 {
-    public class AppSettings
+    [UsedImplicitly(ImplicitUseTargetFlags.WithMembers)]
+    public class AppSettings : BaseAppSettings
     {
         public TransactionHandlerSettings TransactionHandlerJob { get; set; }
-        public SlackNotificationsSettings SlackNotifications { get; set; }
         public AssetsSettings Assets { get; set; }
         public ClientAccountSettings ClientAccountClient { get; set; }
         public EthereumSettings Ethereum { get; set; }
@@ -110,18 +112,6 @@ namespace Lykke.Job.TransactionHandler
             public string ExchangeLimit { get; set; }
             public string ExchangeCashOperation { get; set; }
             public string ExchangeTransfer { get; set; }
-        }
-
-        public class SlackNotificationsSettings
-        {
-            public AzureQueueSettings AzureQueue { get; set; }
-        }
-
-        public class AzureQueueSettings
-        {
-            public string ConnectionString { get; set; }
-
-            public string QueueName { get; set; }
         }
 
         public class AssetsSettings

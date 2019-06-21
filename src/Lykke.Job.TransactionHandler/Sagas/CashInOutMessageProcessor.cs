@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands;
 using Lykke.Job.TransactionHandler.Core;
@@ -32,7 +33,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private readonly IBitcoinCashinRepository _bitcoinCashinTypeRepository;
 
         public CashInOutMessageProcessor(
-            [NotNull] ILog log,
+            [NotNull] ILogFactory logFactory,
             [NotNull] ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             [NotNull] ITransactionsRepository transactionsRepository,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
@@ -42,7 +43,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             [NotNull] ICqrsEngine cqrsEngine,
             [NotNull] IBitcoinCashinRepository bitcoinCashinRepository)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = logFactory.CreateLog(this) ?? throw new ArgumentNullException(nameof(logFactory));
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient ?? throw new ArgumentNullException(nameof(cashOperationsRepositoryClient));
             _transactionsRepository = transactionsRepository ?? throw new ArgumentNullException(nameof(transactionsRepository));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
@@ -55,7 +56,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
 
         public async Task ProcessMessage(CashInOutQueueMessage message)
         {
-            _log.WriteInfo(nameof(CashInOutMessageProcessor), nameof(ProcessMessage), message.ToJson());
+            _log.Info(message: "Processing message", message.ToJson());
 
             ChaosKitty.Meow();
 
@@ -64,7 +65,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             {
                 if (_cashOperationsRepositoryClient.GetAsync(message.ClientId, message.Id) == null)
                 {
-                    _log.WriteWarning($"{nameof(CashInOutQueue)}:{nameof(CashInOutQueueMessage)}", message.ToJson(), "unknown transaction");
+                    _log.Warning($"{nameof(CashInOutQueue)}:{nameof(CashInOutQueueMessage)}", "unknown transaction", context: message.ToJson());
                     return;
                 }
 
@@ -85,7 +86,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
                         ProcessManualUpdate(message);
                         break;
                     default:
-                        _log.WriteWarning($"{nameof(CashInOutQueue)}:{nameof(CashInOutQueueMessage)}", message.ToJson(), $"Unknown command type (value = [{transaction.CommandType}])");
+                        _log.Warning($"{nameof(CashInOutQueue)}:{nameof(CashInOutQueueMessage)}", $"Unknown command type (value = [{transaction.CommandType}])", context: message.ToJson());
                         break;
                 }
             }
@@ -128,7 +129,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
             var asset = await _assetsServiceWithCache.TryGetAssetAsync(message.AssetId);
             if (!isClientTrusted.Value && !asset.IsTrusted)
             {
-                _log.WriteWarning($"{nameof(CashInOutMessageProcessor)}:{nameof(ProcessIssue)}", message.ToJson(), "Client and asset are not trusted.");
+                _log.Warning($"{nameof(CashInOutMessageProcessor)}:{nameof(ProcessIssue)}", "Client and asset are not trusted.", context: message.ToJson());
                 return;
             }
 
@@ -164,7 +165,7 @@ namespace Lykke.Job.TransactionHandler.Sagas
         private async Task ProcessCashOut(CashInOutQueueMessage message)
         {
             var walletCredentials = await _walletCredentialsRepository.GetAsync(message.ClientId);
-            
+
             var amount = message.Amount.ParseAnyDecimal();
             var transactionId = message.Id;
             var context = await _transactionService.GetTransactionContext<CashOutContextData>(transactionId);
