@@ -1,38 +1,43 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Autofac;
 using Common.Log;
-using Lykke.Job.TransactionHandler.Services;
+using Lykke.Common.Log;
 using Lykke.RabbitMqBroker;
 using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.EthereumCore.Contracts.Events;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
+using Lykke.Job.TransactionHandler.Settings;
 using Lykke.RabbitMq.Mongo.Deduplicator;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public sealed class EthereumEventsQueue : IQueueSubscriber
+    public sealed class EthereumEventsQueue : IStartable, IDisposable
     {
         private const string QueueName = "lykke.transactionhandler.ethereum.events";
         private const string HotWalletQueueName = "lykke.transactionhandler.ethereum.hotwallet.events";
 
         private readonly ILog _log;
+        private readonly MongoDeduplicatorSettings _deduplicatorSettings;
+        private readonly EthRabbitMqSettings _rabbitMqSettings;
+        private readonly ILogFactory _logFactory;
         private readonly ICqrsEngine _cqrsEngine;
-        private readonly AppSettings.TransactionHandlerSettings _settings;
-        private readonly AppSettings.EthRabbitMqSettings _rabbitConfig;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
         private RabbitMqSubscriber<HotWalletEvent> _subscriberHotWallet;
 
         public EthereumEventsQueue(
-            AppSettings.EthRabbitMqSettings config, 
-            ILog log,
-            ICqrsEngine cqrsEngine,
-            AppSettings.TransactionHandlerSettings settings)
+            MongoDeduplicatorSettings deduplicatorSettings,
+            EthRabbitMqSettings rabbitMqSettings,
+            ILogFactory logFactory,
+            ICqrsEngine cqrsEngine
+            )
         {
-            _log = log;
-            _rabbitConfig = config;
+            _deduplicatorSettings = deduplicatorSettings;
+            _rabbitMqSettings = rabbitMqSettings;
+            _logFactory = logFactory;
+            _log = logFactory.CreateLog(this);
             _cqrsEngine = cqrsEngine;
-            _settings = settings;
         }
 
         public void Start()
@@ -40,33 +45,33 @@ namespace Lykke.Job.TransactionHandler.Queues
             {
                 var settings = new RabbitMqSubscriptionSettings
                 {
-                    ConnectionString = _rabbitConfig.ConnectionString,
+                    ConnectionString = _rabbitMqSettings.ConnectionString,
                     QueueName = QueueName,
-                    ExchangeName = _rabbitConfig.ExchangeEthereumEvents,
-                    DeadLetterExchangeName = $"{_rabbitConfig.ExchangeEthereumEvents}.dlx",
+                    ExchangeName = _rabbitMqSettings.ExchangeEthereumEvents,
+                    DeadLetterExchangeName = $"{_rabbitMqSettings.ExchangeEthereumEvents}.dlx",
                     RoutingKey = "",
                     IsDurable = true
                 };
 
                 try
                 {
-                    var resilentErrorHandlingStrategyEth = new ResilientErrorHandlingStrategy(_log, settings,
+                    var resilentErrorHandlingStrategyEth = new ResilientErrorHandlingStrategy(_logFactory, settings,
                         retryTimeout: TimeSpan.FromSeconds(10),
                         retryNum: 10,
-                        next: new DeadQueueErrorHandlingStrategy(_log, settings)); 
-                    _subscriber = new RabbitMqSubscriber<CoinEvent>(settings, resilentErrorHandlingStrategyEth)
+                        next: new DeadQueueErrorHandlingStrategy(_logFactory, settings));
+
+                    _subscriber = new RabbitMqSubscriber<CoinEvent>(_logFactory, settings, resilentErrorHandlingStrategyEth)
                         .SetMessageDeserializer(new JsonMessageDeserializer<CoinEvent>())
                         .SetMessageReadStrategy(new MessageReadQueueStrategy())
                         .SetAlternativeExchange(settings.ConnectionString)
-                        .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
-                        .Subscribe(SendEventToCQRS)
+                        .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
+                        .Subscribe(SendEventToCqrs)
                         .CreateDefaultBinding()
-                        .SetLogger(_log)
                         .Start();
                 }
                 catch (Exception ex)
                 {
-                    _log.WriteError(nameof(EthereumEventsQueue), nameof(Start), ex);
+                    _log.Error(ex);
                     throw;
                 }
             }
@@ -74,10 +79,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             #region HotWallet
 
             {
-                string exchangeName = $"{_rabbitConfig.ExchangeEthereumEvents}.hotwallet";
+                string exchangeName = $"{_rabbitMqSettings.ExchangeEthereumEvents}.hotwallet";
                 var settings = new RabbitMqSubscriptionSettings
                 {
-                    ConnectionString = _rabbitConfig.ConnectionString,
+                    ConnectionString = _rabbitMqSettings.ConnectionString,
                     QueueName = HotWalletQueueName,
                     ExchangeName = exchangeName,
                     DeadLetterExchangeName = $"{exchangeName}.dlx",
@@ -85,27 +90,26 @@ namespace Lykke.Job.TransactionHandler.Queues
                     IsDurable = true
                 };
 
-                var resilentErrorHandlingStrategyEth = new ResilientErrorHandlingStrategy(_log, settings,
+                var resilentErrorHandlingStrategyEth = new ResilientErrorHandlingStrategy(_logFactory, settings,
                       retryTimeout: TimeSpan.FromSeconds(10),
                       retryNum: 10,
-                      next: new DeadQueueErrorHandlingStrategy(_log, settings));
+                      next: new DeadQueueErrorHandlingStrategy(_logFactory, settings));
 
                 try
                 {
-                    _subscriberHotWallet = new RabbitMqSubscriber<HotWalletEvent>(settings,
+                    _subscriberHotWallet = new RabbitMqSubscriber<HotWalletEvent>(_logFactory, settings,
                          resilentErrorHandlingStrategyEth)
                         .SetMessageDeserializer(new JsonMessageDeserializer<HotWalletEvent>())
                         .SetMessageReadStrategy(new MessageReadQueueStrategy())
                         .SetAlternativeExchange(settings.ConnectionString)
-                        .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
-                        .Subscribe(SendHotWalletEventToCQRS)
+                        .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
+                        .Subscribe(SendHotWalletEventToCqrs)
                         .CreateDefaultBinding()
-                        .SetLogger(_log)
                         .Start();
                 }
                 catch (Exception ex)
                 {
-                    _log.WriteError(nameof(EthereumEventsQueue), nameof(Start), ex);
+                    _log.Error(ex);
                     throw;
                 }
             }
@@ -114,13 +118,13 @@ namespace Lykke.Job.TransactionHandler.Queues
 
         }
 
-        public void Stop()
+        public void Dispose()
         {
             _subscriber?.Stop();
             _subscriberHotWallet?.Stop();
         }
 
-        public Task<bool> SendEventToCQRS(CoinEvent @event)
+        private Task<bool> SendEventToCqrs(CoinEvent @event)
         {
             _cqrsEngine.SendCommand(new ProcessEthCoinEventCommand
                 {
@@ -140,7 +144,7 @@ namespace Lykke.Job.TransactionHandler.Queues
             return Task.FromResult(true);
         }
 
-        public Task<bool> SendHotWalletEventToCQRS(HotWalletEvent @event)
+        private Task<bool> SendHotWalletEventToCqrs(HotWalletEvent @event)
         {
             _cqrsEngine.SendCommand(new ProcessHotWalletErc20EventCommand
                 {
@@ -157,11 +161,6 @@ namespace Lykke.Job.TransactionHandler.Queues
                 BoundedContexts.EthereumCommands);
 
             return Task.FromResult(true);
-        }
-
-        public void Dispose()
-        {
-            Stop();
         }
     }
 }

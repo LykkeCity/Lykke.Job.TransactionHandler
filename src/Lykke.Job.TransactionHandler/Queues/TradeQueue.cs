@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Common;
+using Autofac;
 using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Settings;
 using Lykke.MatchingEngine.Connector.Models.Events;
 using Lykke.MatchingEngine.Connector.Models.Events.Common;
 using Lykke.RabbitMq.Mongo.Deduplicator;
@@ -16,83 +18,80 @@ using Lykke.Service.Assets.Client;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public sealed class TradeQueue : IQueueSubscriber
+    public sealed class TradeQueue : IStartable, IDisposable
     {
         private const bool QueueDurable = true;
 
         private readonly ILog _log;
+        private readonly MongoDeduplicatorSettings _deduplicatorSettings;
+        private readonly RabbitMqSettings _rabbitMqSettings;
+        private readonly ILogFactory _logFactory;
         private readonly ICqrsEngine _cqrsEngine;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-        private readonly AppSettings.TransactionHandlerSettings _settings;
-        private readonly AppSettings.RabbitMqSettings _rabbitConfig;
 
         private RabbitMqSubscriber<ExecutionEvent> _subscriber;
 
         public TradeQueue(
-            AppSettings.RabbitMqSettings config,
-            ILog log,
+            MongoDeduplicatorSettings deduplicatorSettings,
+            RabbitMqSettings rabbitMqSettings,
+            ILogFactory logFactory,
             ICqrsEngine cqrsEngine,
-            IAssetsServiceWithCache assetsServiceWithCache,
-            AppSettings.TransactionHandlerSettings settings
+            IAssetsServiceWithCache assetsServiceWithCache
             )
         {
-            _rabbitConfig = config;
-            _log = log;
+            _deduplicatorSettings = deduplicatorSettings;
+            _rabbitMqSettings = rabbitMqSettings;
+            _logFactory = logFactory;
+            _log = logFactory.CreateLog(this);
             _cqrsEngine = cqrsEngine;
             _assetsServiceWithCache = assetsServiceWithCache;
-            _settings = settings;
         }
 
         public void Start()
         {
             var settings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _rabbitConfig.NewMeRabbitConnString,
-                QueueName = $"{_rabbitConfig.EventsExchange}.orders.txhandler",
-                ExchangeName = _rabbitConfig.EventsExchange,
+                ConnectionString = _rabbitMqSettings.NewMeRabbitConnString,
+                QueueName = $"{_rabbitMqSettings.EventsExchange}.orders.txhandler",
+                ExchangeName = _rabbitMqSettings.EventsExchange,
                 RoutingKey = ((int)MessageType.Order).ToString(),
                 IsDurable = QueueDurable
             };
+
             settings.DeadLetterExchangeName = $"{settings.QueueName}.dlx";
 
             try
             {
-                _subscriber = new RabbitMqSubscriber<ExecutionEvent>(
+                _subscriber = new RabbitMqSubscriber<ExecutionEvent>(_logFactory,
                         settings,
-                        new ResilientErrorHandlingStrategy(_log, settings,
+                        new ResilientErrorHandlingStrategy(_logFactory, settings,
                             retryTimeout: TimeSpan.FromSeconds(20),
                             retryNum: 3,
-                            next: new DeadQueueErrorHandlingStrategy(_log, settings)))
+                            next: new DeadQueueErrorHandlingStrategy(_logFactory, settings)))
                     .SetMessageDeserializer(new ProtobufMessageDeserializer<ExecutionEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .SetAlternativeExchange(_rabbitConfig.AlternateConnectionString)
-                    .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
+                    .SetAlternativeExchange(_rabbitMqSettings.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                     .Subscribe(ProcessMessage)
                     .CreateDefaultBinding()
                     .SetPrefetchCount(300)
-                    .SetLogger(_log)
                     .Start();
             }
             catch (Exception ex)
             {
-                _log.WriteError(nameof(TradeQueue), nameof(Start), ex);
+                _log.Error(ex);
                 throw;
             }
         }
 
-        public void Stop()
+        public void Dispose()
         {
             _subscriber?.Stop();
         }
 
-        public void Dispose()
-        {
-            Stop();
-        }
-
         private Task ProcessMessage(ExecutionEvent evt)
         {
-            _log.WriteInfo(nameof(TradeQueue), nameof(ProcessMessage), evt.ToJson());
+            _log.Info("Processing execution event", evt);
 
             foreach (var order in evt.Orders)
             {

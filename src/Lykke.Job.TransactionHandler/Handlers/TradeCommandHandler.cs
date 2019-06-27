@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
@@ -12,6 +12,7 @@ using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Sagas;
 using Lykke.Job.TransactionHandler.Sagas.Services;
 using Lykke.Job.TransactionHandler.Utils;
+using MongoDB.Bson;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -24,12 +25,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly ILog _log;
 
         public TradeCommandHandler(
-            [NotNull] ILog log,
+            [NotNull] ILogFactory logFactory,
             [NotNull] ITransactionsRepository transactionsRepository,
             [NotNull] ITransactionService transactionService,
             [NotNull] IContextFactory contextFactory)
         {
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = logFactory.CreateLog(this) ?? throw new ArgumentNullException(nameof(logFactory));
             _transactionsRepository = transactionsRepository ?? throw new ArgumentNullException(nameof(transactionsRepository));
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -43,8 +44,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
             {
-                _log.WriteInfo($"{nameof(TradeSaga)}:{nameof(TradeCommandHandler)}", queueMessage.ToJson(),
-                    "Message processing being aborted, due to order status is not matched");
+                _log.Info($"{nameof(TradeSaga)}:{nameof(TradeCommandHandler)}", "Message processing being aborted, due to order status is not matched",
+                    queueMessage.ToJson());
 
                 return CommandHandlingResult.Ok();
             }

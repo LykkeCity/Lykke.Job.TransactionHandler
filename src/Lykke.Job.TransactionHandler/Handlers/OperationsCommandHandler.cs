@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
@@ -25,14 +26,14 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly IOperationsClient _operationsClient;
 
         public OperationsCommandHandler(
-            [NotNull] ILog log,
+            [NotNull] ILogFactory logFactory,
             [NotNull] ITransactionsRepository transactionsRepository,
             [NotNull] ITransactionService transactionService,
             [NotNull] IWalletCredentialsRepository walletCredentialsRepository,
             [NotNull] IFeeCalculationService feeCalculationService,
             [NotNull] IOperationsClient operationsClient)
         {
-            _log = log.CreateComponentScope(nameof(OperationsCommandHandler)) ?? throw new ArgumentNullException(nameof(log));
+            _log = logFactory.CreateLog(this) ?? throw new ArgumentNullException(nameof(logFactory));
             _transactionsRepository = transactionsRepository ?? throw new ArgumentNullException(nameof(transactionsRepository));
             _transactionService = transactionService ?? throw new ArgumentNullException(nameof(transactionService));
             _walletCredentialsRepository = walletCredentialsRepository ?? throw new ArgumentNullException(nameof(walletCredentialsRepository));
@@ -73,7 +74,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var transaction = await _transactionsRepository.FindByTransactionIdAsync(transactionId);
             if (transaction == null)
             {
-                _log.WriteError(nameof(Commands.SaveManualOperationStateCommand), command, new Exception($"unknown transaction {transactionId}"));
+                _log.Error(nameof(Commands.SaveManualOperationStateCommand), new Exception($"unknown transaction {transactionId}"), context: command);
                 return CommandHandlingResult.Ok();
             }
 

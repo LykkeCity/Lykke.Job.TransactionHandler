@@ -9,11 +9,12 @@ using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Events;
 using Lykke.Job.TransactionHandler.Queues.Models;
-using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using System;
 using System.Threading.Tasks;
+using Lykke.Common.Log;
+using Lykke.Job.TransactionHandler.Settings;
 
 namespace Lykke.Job.TransactionHandler.Handlers
 {
@@ -23,23 +24,23 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly ILog _log;
         private readonly ISrvEthereumHelper _srvEthereumHelper;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-        private readonly AppSettings.EthereumSettings _settings;
+        private readonly EthereumSettings _settings;
         private readonly TimeSpan _retryTimeout;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
         private readonly ITransactionService _transactionService;
 
         public EthereumCommandHandler(
-            [NotNull] ILog log,
+            [NotNull] ILogFactory logFactory,
             [NotNull] ISrvEthereumHelper srvEthereumHelper,
             [NotNull] IAssetsServiceWithCache assetsServiceWithCache,
             [NotNull] IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             [NotNull] ITransactionService transactionService,
-            [NotNull] AppSettings.EthereumSettings settings,
+            [NotNull] EthereumSettings settings,
             TimeSpan retryTimeout)
         {
-            _log = log.CreateComponentScope(nameof(EthereumCommandHandler));
+            _log = logFactory.CreateLog(this);
             _srvEthereumHelper = srvEthereumHelper ?? throw new ArgumentNullException(nameof(srvEthereumHelper));
             _assetsServiceWithCache = assetsServiceWithCache ?? throw new ArgumentNullException(nameof(assetsServiceWithCache));
             _bcnClientCredentialsRepository = bcnClientCredentialsRepository ?? throw new ArgumentNullException(nameof(bcnClientCredentialsRepository));
@@ -84,7 +85,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 case OperationType.TransferBetweenTrusted:
                     return CommandHandlingResult.Ok();
                 default:
-                    _log.WriteError(nameof(TransferEthereumCommand), "Unknown transfer type", null);
+                    _log.Error(nameof(TransferEthereumCommand), message: "Unknown transfer type");
                     return CommandHandlingResult.Fail(_retryTimeout);
             }
 
@@ -99,7 +100,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 response.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
             {
                 var errorMessage = response.Error.ToJson();
-                _log.WriteError(nameof(TransferEthereumCommand), new Exception(errorMessage));
+                _log.Error(nameof(TransferEthereumCommand), new Exception(errorMessage));
                 return CommandHandlingResult.Fail(_retryTimeout);
             }
 

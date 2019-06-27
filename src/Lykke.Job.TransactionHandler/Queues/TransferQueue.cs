@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Autofac;
 using Common.Log;
-using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Settings;
 using Lykke.MatchingEngine.Connector.Models.Events;
 using Lykke.MatchingEngine.Connector.Models.Events.Common;
 using Lykke.RabbitMq.Mongo.Deduplicator;
@@ -13,37 +15,39 @@ using Lykke.RabbitMqBroker.Subscriber;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public sealed class TransferQueue : IQueueSubscriber
+    public sealed class TransferQueue : IStartable, IDisposable
     {
         private const bool QueueDurable = true;
 
         private readonly ILog _log;
+        private readonly MongoDeduplicatorSettings _deduplicatorSettings;
+        private readonly RabbitMqSettings _rabbitMqSettings;
+        private readonly ILogFactory _logFactory;
         private readonly ICqrsEngine _cqrsEngine;
-        private readonly AppSettings.RabbitMqSettings _rabbitConfig;
-        private readonly AppSettings.TransactionHandlerSettings _settings;
 
         private RabbitMqSubscriber<CashTransferEvent> _subscriber;
 
         public TransferQueue(
-            [NotNull] AppSettings.RabbitMqSettings config,
-            [NotNull] ILog log,
-            [NotNull] ICqrsEngine cqrsEngine,
-            [NotNull] AppSettings.TransactionHandlerSettings settings
+            MongoDeduplicatorSettings deduplicatorSettings,
+            RabbitMqSettings rabbitMqSettings,
+            ILogFactory logFactory,
+            ICqrsEngine cqrsEngine
             )
         {
-            _rabbitConfig = config ?? throw new ArgumentNullException(nameof(config));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
-            _cqrsEngine = cqrsEngine ?? throw new ArgumentNullException(nameof(cqrsEngine));
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _deduplicatorSettings = deduplicatorSettings;
+            _rabbitMqSettings = rabbitMqSettings;
+            _logFactory = logFactory;
+            _log = logFactory.CreateLog(this);
+            _cqrsEngine = cqrsEngine;
         }
 
         public void Start()
         {
             var settings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _rabbitConfig.NewMeRabbitConnString,
-                QueueName = $"{_rabbitConfig.EventsExchange}.transfers.txhandler",
-                ExchangeName = _rabbitConfig.EventsExchange,
+                ConnectionString = _rabbitMqSettings.NewMeRabbitConnString,
+                QueueName = $"{_rabbitMqSettings.EventsExchange}.transfers.txhandler",
+                ExchangeName = _rabbitMqSettings.EventsExchange,
                 RoutingKey = ((int)MessageType.CashTransfer).ToString(),
                 IsDurable = QueueDurable
             };
@@ -51,36 +55,30 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             try
             {
-                _subscriber = new RabbitMqSubscriber<CashTransferEvent>(
+                _subscriber = new RabbitMqSubscriber<CashTransferEvent>(_logFactory,
                         settings,
-                        new ResilientErrorHandlingStrategy(_log, settings,
+                        new ResilientErrorHandlingStrategy(_logFactory, settings,
                             retryTimeout: TimeSpan.FromSeconds(20),
                             retryNum: 3,
-                            next: new DeadQueueErrorHandlingStrategy(_log, settings)))
+                            next: new DeadQueueErrorHandlingStrategy(_logFactory, settings)))
                     .SetMessageDeserializer(new ProtobufMessageDeserializer<CashTransferEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .SetAlternativeExchange(_rabbitConfig.AlternateConnectionString)
-                    .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
+                    .SetAlternativeExchange(_rabbitMqSettings.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                     .Subscribe(ProcessMessage)
                     .CreateDefaultBinding()
-                    .SetLogger(_log)
                     .Start();
             }
             catch (Exception ex)
             {
-                _log.WriteError(nameof(TransferQueue), nameof(Start), ex);
+                _log.Error(ex);
                 throw;
             }
         }
 
-        public void Stop()
-        {
-            _subscriber?.Stop();
-        }
-
         public void Dispose()
         {
-            Stop();
+            _subscriber?.Stop();
         }
 
         private Task ProcessMessage(CashTransferEvent transfer)

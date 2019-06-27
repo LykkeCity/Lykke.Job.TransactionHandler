@@ -1,11 +1,9 @@
 ﻿using Autofac;
-using Autofac.Extensions.DependencyInjection;
 using AutoMapper;
 using AzureStorage.Blob;
 using AzureStorage.Queue;
 using AzureStorage.Tables;
 using AzureStorage.Tables.Templates.Index;
-using Common.Log;
 using Lykke.Bitcoin.Api.Client;
 using Lykke.Job.TransactionHandler.AzureRepositories.BitCoin;
 using Lykke.Job.TransactionHandler.AzureRepositories.Blockchain;
@@ -18,13 +16,11 @@ using Lykke.Job.TransactionHandler.AzureRepositories.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Domain.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Clients;
-using Lykke.Job.TransactionHandler.Core.Domain.Clients.Core.Clients;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.Exchange;
 using Lykke.Job.TransactionHandler.Core.Domain.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Domain.Offchain;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
-using Lykke.Job.TransactionHandler.Core.Services;
 using Lykke.Job.TransactionHandler.Core.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Core.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Services.Fee;
@@ -32,7 +28,6 @@ using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email.Sender;
 using Lykke.Job.TransactionHandler.Core.Services.Offchain;
 using Lykke.Job.TransactionHandler.Queues;
-using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.BitCoin;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
 using Lykke.Job.TransactionHandler.Services.Fee;
@@ -47,54 +42,34 @@ using Lykke.Service.OperationsRepository.Client;
 using Lykke.Service.PersonalData.Client;
 using Lykke.Service.PersonalData.Contract;
 using Lykke.SettingsReader;
-using Microsoft.Extensions.DependencyInjection;
 using System;
+using Autofac.Extensions.DependencyInjection;
+using JetBrains.Annotations;
+using Lykke.Common.Log;
+using Lykke.Job.TransactionHandler.Services;
+using Lykke.Job.TransactionHandler.Settings;
+using Lykke.JobTriggers.Extenstions;
+using Lykke.JobTriggers.Triggers;
+using Lykke.Sdk;
 
 namespace Lykke.Job.TransactionHandler.Modules
 {
+    [UsedImplicitly]
     public class JobModule : Module
     {
         private readonly AppSettings _settings;
-        private readonly AppSettings.TransactionHandlerSettings _jobSettings;
-        private readonly IReloadingManager<AppSettings.DbSettings> _dbSettingsManager;
-        private readonly ILog _log;
-        // NOTE: you can remove it if you don't need to use IServiceCollection extensions to register service specific dependencies
-        private readonly IServiceCollection _services;
+        private readonly TransactionHandlerSettings _jobSettings;
+        private readonly IReloadingManager<DbSettings> _dbSettingsManager;
 
-        public JobModule(AppSettings settings, IReloadingManager<AppSettings.DbSettings> dbSettingsManagerManager, ILog log)
+        public JobModule(IReloadingManager<AppSettings> appSettings)
         {
-            _settings = settings;
+            _settings = appSettings.CurrentValue;
             _jobSettings = _settings.TransactionHandlerJob;
-            _dbSettingsManager = dbSettingsManagerManager;
-            _log = log;
-
-            _services = new ServiceCollection();
+            _dbSettingsManager = appSettings.Nested(x => x.TransactionHandlerJob.Db);
         }
 
         protected override void Load(ContainerBuilder builder)
         {
-            builder.RegisterInstance(_settings.TransactionHandlerJob)
-                .SingleInstance();
-
-            builder.RegisterInstance(_log)
-                .As<ILog>()
-                .SingleInstance();
-
-            builder.RegisterType<HealthService>()
-                .As<IHealthService>()
-                .SingleInstance()
-                .WithParameter(TypedParameter.From(TimeSpan.FromSeconds(30)));
-
-            // NOTE: You can implement your own poison queue notifier. See https://github.com/LykkeCity/JobTriggers/blob/master/readme.md
-            // builder.Register<PoisionQueueNotifierImplementation>().As<IPoisionQueueNotifier>();
-
-            builder.RegisterInstance(_settings.Ethereum).SingleInstance();
-
-            _services.RegisterAssetsClient(
-                AssetServiceSettings.Create(new Uri(_settings.Assets.ServiceUrl), _jobSettings.AssetsCache.ExpirationPeriod),
-                _log,
-                true);
-
             Mapper.Initialize(cfg =>
             {
                 cfg.CreateMap<IBcnCredentialsRecord, BcnCredentialsRecordEntity>().IgnoreTableEntityFields();
@@ -105,28 +80,52 @@ namespace Lykke.Job.TransactionHandler.Modules
 
             Mapper.Configuration.AssertConfigurationIsValid();
 
+            builder.Register(ctx =>
+                {
+                    var scope = ctx.Resolve<ILifetimeScope>();
+                    var host = new TriggerHost(new AutofacServiceProvider(scope));
+                    return host;
+                }).As<TriggerHost>()
+                .SingleInstance();
+
+            builder.RegisterType<StartupManager>()
+                .As<IStartupManager>()
+                .SingleInstance();
+
+            builder.RegisterType<ShutdownManager>()
+                .As<IShutdownManager>()
+                .SingleInstance();
+
+            if (string.IsNullOrWhiteSpace(_jobSettings.Db.BitCoinQueueConnectionString))
+            {
+                builder.AddTriggers();
+            }
+            else
+            {
+                builder.AddTriggers(pool =>
+                {
+                    pool.AddDefaultConnection(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString));
+                });
+            }
+
             BindRabbitMq(builder);
             BindRepositories(builder);
             BindServices(builder);
             BindClients(builder);
-
-            builder.Populate(_services);
         }
 
         private void BindClients(ContainerBuilder builder)
         {
+            builder.RegisterAssetsClient(
+                AssetServiceSettings.Create(new Uri(_settings.Assets.ServiceUrl),
+                    _jobSettings.AssetsCache.ExpirationPeriod));
+
             builder.RegisterType<PersonalDataService>()
                 .As<IPersonalDataService>()
                 .WithParameter(TypedParameter.From(_settings.PersonalDataServiceSettings));
 
             builder.RegisterLykkeServiceClient(_settings.ClientAccountClient.ServiceUrl);
             builder.RegisterOperationsClient(_settings.TransactionHandlerJob.Services.OperationsUrl);
-        }
-
-        private void BindServices(ContainerBuilder builder)
-        {
-            builder.RegisterType<OffchainRequestService>().As<IOffchainRequestService>();
-
             builder.RegisterExchangeOperationsClient(_jobSettings.ExchangeOperationsServiceUrl);
 
             builder.Register<IEthereumCoreAPI>(x =>
@@ -136,93 +135,163 @@ namespace Lykke.Job.TransactionHandler.Modules
                 return api;
             }).SingleInstance();
 
+            builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient);
+            builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
+
+            builder.RegisterMeClient(_settings.MatchingEngineClient.IpEndpoint.GetClientIpEndPoint());
+        }
+
+        private void BindServices(ContainerBuilder builder)
+        {
+            builder.RegisterType<OffchainRequestService>().As<IOffchainRequestService>().SingleInstance();
+
             builder.RegisterType<SrvEthereumHelper>().As<ISrvEthereumHelper>().SingleInstance();
 
             builder.RegisterType<EmailSender>().As<IEmailSender>().SingleInstance();
+
             builder.RegisterType<SrvEmailsFacade>().As<ISrvEmailsFacade>().SingleInstance();
 
             builder.RegisterType<TransactionService>().As<ITransactionService>().SingleInstance();
-
-            builder.RegisterOperationsRepositoryClients(_settings.OperationsRepositoryServiceClient);
-
-            builder.RegisterBitcoinApiClient(_settings.BitCoinCore.BitcoinCoreApiUrl);
 
             builder.RegisterType<FeeCalculationService>().As<IFeeCalculationService>().SingleInstance();
         }
 
         private void BindRepositories(ContainerBuilder builder)
         {
-            builder.RegisterInstance<ITransactionsRepository>(
+            builder.Register<ITransactionsRepository>(ctx =>
                 new TransactionsRepository(
-                    AzureTableStorage<BitCoinTransactionEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "BitCoinTransactions", _log)));
+                    AzureTableStorage<BitCoinTransactionEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString),
+                        "BitCoinTransactions", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IWalletCredentialsRepository>(
+            builder.Register<IWalletCredentialsRepository>(ctx =>
                 new WalletCredentialsRepository(
-                    AzureTableStorage<WalletCredentialsEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "WalletCredentials", _log)));
+                    AzureTableStorage<WalletCredentialsEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString),
+                        "WalletCredentials", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IBcnClientCredentialsRepository>(
+            builder.Register<IBcnClientCredentialsRepository>(ctx =>
                 new BcnClientCredentialsRepository(
-                    AzureTableStorage<BcnCredentialsRecordEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "BcnClientCredentials", _log)));
+                    AzureTableStorage<BcnCredentialsRecordEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString),
+                        "BcnClientCredentials", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IClientCacheRepository>(
+            builder.Register<IClientCacheRepository>(ctx =>
                 new ClientCacheRepository(
-                    AzureTableStorage<ClientCacheEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "ClientCache", _log)));
+                    AzureTableStorage<ClientCacheEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString),
+                        "ClientCache", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IEthereumTransactionRequestRepository>(
+            builder.Register<IEthereumTransactionRequestRepository>(ctx =>
                 new EthereumTransactionRequestRepository(
-                    AzureTableStorage<EthereumTransactionReqEntity>.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "EthereumTxRequest", _log)));
+                    AzureTableStorage<EthereumTransactionReqEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString),
+                        "EthereumTxRequest", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IBitcoinCashinRepository>(
+            builder.Register<IBitcoinCashinRepository>(ctx =>
                 new BitcoinCashinRepository(
                     AzureTableStorage<BitcoinCashinEntity>.Create(
-                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "BitcoinCashin", _log)));
+                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString),
+                        "BitcoinCashin", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IMarketOrdersRepository>(
-                new MarketOrdersRepository(AzureTableStorage<MarketOrderEntity>.Create(_dbSettingsManager.ConnectionString(x => x.HMarketOrdersConnString), "MarketOrders", _log)));
+            builder.Register<IMarketOrdersRepository>(ctx =>
+                new MarketOrdersRepository(AzureTableStorage<MarketOrderEntity>.Create(
+                    _dbSettingsManager.ConnectionString(x => x.HMarketOrdersConnString),
+                    "MarketOrders", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<ILimitOrdersRepository>(
-                new LimitOrdersRepository(AzureTableStorage<LimitOrderEntity>.Create(_dbSettingsManager.ConnectionString(x => x.HMarketOrdersConnString), "LimitOrders", _log)));
+            builder.Register<ILimitOrdersRepository>(ctx =>
+                new LimitOrdersRepository(AzureTableStorage<LimitOrderEntity>.Create(
+                    _dbSettingsManager.ConnectionString(x => x.HMarketOrdersConnString),
+                    "LimitOrders", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
             builder.RegisterInstance<IEmailCommandProducer>(
-                new EmailCommandProducer(AzureQueueExt.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "emailsqueue")));
+                new EmailCommandProducer(AzureQueueExt.Create(
+                    _dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString),
+                    "emailsqueue")));
 
-            builder.RegisterInstance<IOffchainRequestRepository>(
+            builder.Register<IOffchainRequestRepository>(ctx =>
                 new OffchainRequestRepository(
-                    AzureTableStorage<OffchainRequestEntity>.Create(_dbSettingsManager.ConnectionString(x => x.OffchainConnString), "OffchainRequests", _log)));
+                    AzureTableStorage<OffchainRequestEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.OffchainConnString),
+                        "OffchainRequests", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IOffchainTransferRepository>(
+            builder.Register<IOffchainTransferRepository>(ctx =>
                 new OffchainTransferRepository(
-                    AzureTableStorage<OffchainTransferEntity>.Create(_dbSettingsManager.ConnectionString(x => x.OffchainConnString), "OffchainTransfers", _log)));
+                    AzureTableStorage<OffchainTransferEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.OffchainConnString),
+                        "OffchainTransfers", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IPaymentTransactionsRepository>(
+            builder.Register<IPaymentTransactionsRepository>(ctx =>
                 new PaymentTransactionsRepository(
-                    AzureTableStorage<PaymentTransactionEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "PaymentTransactions", _log),
-                    AzureTableStorage<AzureMultiIndex>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "PaymentTransactions", _log)));
+                    AzureTableStorage<PaymentTransactionEntity>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString),
+                        "PaymentTransactions", ctx.Resolve<ILogFactory>()),
+                    AzureTableStorage<AzureMultiIndex>.Create(
+                        _dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString),
+                        "PaymentTransactions", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance(new BitcoinTransactionContextBlobStorage(AzureBlobStorage.Create(_dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString))))
+            builder.RegisterInstance(
+                    new BitcoinTransactionContextBlobStorage(AzureBlobStorage.Create(
+                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString))))
                 .As<IBitcoinTransactionContextBlobStorage>();
 
-            builder.RegisterInstance<IEthererumPendingActionsRepository>(
+            builder.Register<IEthererumPendingActionsRepository>(ctx =>
               new EthererumPendingActionsRepository(
                   AzureTableStorage<EthererumPendingActionEntity>.Create(
-                      _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), "EthererumPendingActions", _log)));
+                      _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString),
+                      "EthererumPendingActions", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IClientCommentsRepository>(
-                new ClientCommentsRepository(AzureTableStorage<ClientCommentEntity>.Create(_dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString), "ClientComments", _log)));
+            builder.Register<IClientCommentsRepository>(ctx =>
+                new ClientCommentsRepository(AzureTableStorage<ClientCommentEntity>.Create(
+                    _dbSettingsManager.ConnectionString(x => x.ClientPersonalInfoConnString),
+                    "ClientComments", ctx.Resolve<ILogFactory>())))
+                .SingleInstance();
 
-            builder.RegisterInstance<IEthereumCashinAggregateRepository>(
+            builder.Register(ctx =>
                     EthereumCashinAggregateRepository.Create(
-                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString), _log));
+                        _dbSettingsManager.ConnectionString(x => x.BitCoinQueueConnectionString),
+                        ctx.Resolve<ILogFactory>()))
+                .As<IEthereumCashinAggregateRepository>()
+                .SingleInstance();
         }
 
         private void BindRabbitMq(ContainerBuilder builder)
         {
-            builder.RegisterInstance(_settings.EthRabbitMq);
+            builder.RegisterInstance(_jobSettings.MongoDeduplicator);
             builder.RegisterInstance(_settings.RabbitMq);
-            builder.RegisterType<CashInOutQueue>().SingleInstance();
-            builder.RegisterType<TransferQueue>().SingleInstance();
-            builder.RegisterType<TradeQueue>().SingleInstance();
-            builder.RegisterType<EthereumEventsQueue>().SingleInstance();
+            builder.RegisterInstance(_settings.EthRabbitMq);
+
+            builder.RegisterType<CashInOutQueue>()
+                .As<IStartable>()
+                .AutoActivate()
+                .SingleInstance();
+
+            builder.RegisterType<TransferQueue>()
+                .As<IStartable>()
+                .AutoActivate()
+                .SingleInstance();
+
+            builder.RegisterType<TradeQueue>()
+                .As<IStartable>()
+                .AutoActivate()
+                .SingleInstance();
+
+            builder.RegisterType<EthereumEventsQueue>()
+                .As<IStartable>()
+                .AutoActivate()
+                .SingleInstance();
         }
     }
 }

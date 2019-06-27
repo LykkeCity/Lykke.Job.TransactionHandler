@@ -1,18 +1,18 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <TargetFramework>netcoreapp2.2</TargetFramework>
     <Version>1.0.1</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Lykke.Bitcoin.Api.Client" Version="1.0.23" />
-    <PackageReference Include="Lykke.Common" Version="7.3.1" />
+    <PackageReference Include="Lykke.Common" Version="7.4.0" />
     <PackageReference Include="Lykke.Cqrs" Version="8.1.0" />
     <PackageReference Include="Lykke.Service.ClientAccount.Client" Version="2.2.3" />
     <PackageReference Include="Lykke.Service.EthereumCore.Client" Version="1.1.12" />
     <PackageReference Include="Lykke.Service.OperationsRepository.Client" Version="2.0.0" />
     <PackageReference Include="Lykke.Service.PersonalData" Version="2.1.1" />
     <PackageReference Include="Lykke.Service.PushNotifications.Contract" Version="1.4.0" />
-    <PackageReference Include="Lykke.SettingsReader" Version="4.3.0" />
+    <PackageReference Include="Lykke.SettingsReader" Version="5.2.0" />
     <PackageReference Include="System.ComponentModel" Version="4.3.0" />
   </ItemGroup>
   <ItemGroup>

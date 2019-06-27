@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Autofac;
 using Common.Log;
-using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Sagas;
+using Lykke.Job.TransactionHandler.Settings;
 using Lykke.MatchingEngine.Connector.Models.Events;
 using Lykke.MatchingEngine.Connector.Models.Events.Common;
 using Lykke.RabbitMq.Mongo.Deduplicator;
@@ -13,100 +15,97 @@ using Lykke.RabbitMqBroker.Subscriber;
 
 namespace Lykke.Job.TransactionHandler.Queues
 {
-    public sealed class CashInOutQueue : IQueueSubscriber
+    public sealed class CashInOutQueue : IStartable, IDisposable
     {
         private const bool QueueDurable = true;
 
         private readonly ILog _log;
+        private readonly MongoDeduplicatorSettings _deduplicatorSettings;
+        private readonly RabbitMqSettings _rabbitMqSettings;
+        private readonly ILogFactory _logFactory;
         private readonly CashInOutMessageProcessor _messageProcessor;
-        private readonly AppSettings.TransactionHandlerSettings _settings;
-        private readonly AppSettings.RabbitMqSettings _rabbitConfig;
 
         private RabbitMqSubscriber<CashInEvent> _cashinSubscriber;
         private RabbitMqSubscriber<CashOutEvent> _cashoutSubscriber;
 
         public CashInOutQueue(
-            [NotNull] ILog log,
-            [NotNull] AppSettings.RabbitMqSettings config,
-            [NotNull] CashInOutMessageProcessor messageProcessor,
-            [NotNull] AppSettings.TransactionHandlerSettings settings)
+            MongoDeduplicatorSettings deduplicatorSettings,
+            RabbitMqSettings rabbitMqSettings,
+            ILogFactory logFactory,
+            CashInOutMessageProcessor messageProcessor)
         {
-            _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
-            _rabbitConfig = config ?? throw new ArgumentNullException(nameof(config));
-            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _deduplicatorSettings = deduplicatorSettings;
+            _rabbitMqSettings = rabbitMqSettings;
+            _logFactory = logFactory;
+            _messageProcessor = messageProcessor;
+            _log = logFactory.CreateLog(this);
         }
 
         public void Start()
         {
             var cashinSettings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _rabbitConfig.NewMeRabbitConnString,
-                QueueName = $"{_rabbitConfig.EventsExchange}.cashin.txhandler",
-                ExchangeName = _rabbitConfig.EventsExchange,
+                ConnectionString = _rabbitMqSettings.NewMeRabbitConnString,
+                QueueName = $"{_rabbitMqSettings.EventsExchange}.cashin.txhandler",
+                ExchangeName = _rabbitMqSettings.EventsExchange,
                 RoutingKey = ((int)MessageType.CashIn).ToString(),
                 IsDurable = QueueDurable
             };
+
             cashinSettings.DeadLetterExchangeName = $"{cashinSettings.QueueName}.dlx";
 
             var cashoutSettings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _rabbitConfig.NewMeRabbitConnString,
-                QueueName = $"{_rabbitConfig.EventsExchange}.cashout.txhandler",
-                ExchangeName = _rabbitConfig.EventsExchange,
+                ConnectionString = _rabbitMqSettings.NewMeRabbitConnString,
+                QueueName = $"{_rabbitMqSettings.EventsExchange}.cashout.txhandler",
+                ExchangeName = _rabbitMqSettings.EventsExchange,
                 RoutingKey = ((int)MessageType.CashOut).ToString(),
                 IsDurable = QueueDurable
             };
+
             cashoutSettings.DeadLetterExchangeName = $"{cashoutSettings.QueueName}.dlx";
 
             try
             {
-                _cashinSubscriber = new RabbitMqSubscriber<CashInEvent>(
+                _cashinSubscriber = new RabbitMqSubscriber<CashInEvent>(_logFactory,
                         cashinSettings,
-                        new ResilientErrorHandlingStrategy(_log, cashinSettings,
+                        new ResilientErrorHandlingStrategy(_logFactory, cashinSettings,
                             retryTimeout: TimeSpan.FromSeconds(20),
                             retryNum: 3,
-                            next: new DeadQueueErrorHandlingStrategy(_log, cashinSettings)))
+                            next: new DeadQueueErrorHandlingStrategy(_logFactory, cashinSettings)))
                     .SetMessageDeserializer(new ProtobufMessageDeserializer<CashInEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .SetAlternativeExchange(_rabbitConfig.AlternateConnectionString)
-                    .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
+                    .SetAlternativeExchange(_rabbitMqSettings.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                     .Subscribe(ProcessCashinMessage)
                     .CreateDefaultBinding()
-                    .SetLogger(_log)
                     .Start();
 
-                _cashoutSubscriber = new RabbitMqSubscriber<CashOutEvent>(
+                _cashoutSubscriber = new RabbitMqSubscriber<CashOutEvent>(_logFactory,
                         cashoutSettings,
-                        new ResilientErrorHandlingStrategy(_log, cashoutSettings,
+                        new ResilientErrorHandlingStrategy(_logFactory, cashoutSettings,
                             retryTimeout: TimeSpan.FromSeconds(20),
                             retryNum: 3,
-                            next: new DeadQueueErrorHandlingStrategy(_log, cashoutSettings)))
+                            next: new DeadQueueErrorHandlingStrategy(_logFactory, cashoutSettings)))
                     .SetMessageDeserializer(new ProtobufMessageDeserializer<CashOutEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .SetAlternativeExchange(_rabbitConfig.AlternateConnectionString)
-                    .SetDeduplicator(MongoStorageDeduplicator.Create(_settings.MongoDeduplicator.ConnectionString, _settings.MongoDeduplicator.CollectionName))
+                    .SetAlternativeExchange(_rabbitMqSettings.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                     .Subscribe(ProcessCashoutMessage)
                     .CreateDefaultBinding()
-                    .SetLogger(_log)
                     .Start();
             }
             catch (Exception ex)
             {
-                _log.WriteError(nameof(CashInOutQueue), nameof(Start), ex);
+                _log.Error(ex);
                 throw;
             }
         }
 
-        public void Stop()
+        public void Dispose()
         {
             _cashinSubscriber?.Stop();
             _cashoutSubscriber?.Stop();
-        }
-
-        public void Dispose()
-        {
-            Stop();
         }
 
         private async Task ProcessCashinMessage(CashInEvent cashinEvent)
@@ -148,4 +147,3 @@ namespace Lykke.Job.TransactionHandler.Queues
         }
     }
 }
-

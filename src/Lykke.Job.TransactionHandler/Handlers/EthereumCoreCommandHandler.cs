@@ -2,11 +2,11 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using Lykke.Common.Log;
 using Lykke.Job.TransactionHandler.Core.Domain.Blockchain;
 using Lykke.Job.TransactionHandler.Core.Domain.Ethereum;
 using Lykke.Job.TransactionHandler.Core.Domain.PaymentSystems;
 using Lykke.Job.TransactionHandler.Core.Services.Messages.Email;
-using Lykke.Job.TransactionHandler.Services;
 using Lykke.Job.TransactionHandler.Services.Ethereum;
 using Lykke.MatchingEngine.Connector.Abstractions.Services;
 using Lykke.Service.Assets.Client;
@@ -50,7 +50,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly IClientCommentsRepository _clientCommentsRepository;
         private readonly IPersonalDataService _personalDataService;
 
-        public EthereumCoreCommandHandler(AppSettings.RabbitMqSettings config, ILog log,
+        public EthereumCoreCommandHandler(
+            ILogFactory logFactory,
             IMatchingEngineClient matchingEngineClient,
             ICashOperationsRepositoryClient cashOperationsRepositoryClient,
             IClientAccountClient clientAccountClient,
@@ -68,7 +69,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             IClientCommentsRepository clientCommentsRepository,
             IPersonalDataService personalDataService)
         {
-            _log = log.CreateComponentScope(nameof(EthereumCoreCommandHandler));
+            _log = logFactory.CreateLog(this);
             _matchingEngineClient = matchingEngineClient;
             _cashOperationsRepositoryClient = cashOperationsRepositoryClient;
             _clientAccountClient = clientAccountClient;
@@ -95,11 +96,11 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 switch (command.EventType)
                 {
-                    case EthereumCore.Contracts.Enums.HotWalletEventType.CashinCompleted:
+                    case HotWalletEventType.CashinCompleted:
                         await ProcessHotWalletCashin(command, eventPublisher);
                         break;
 
-                    case EthereumCore.Contracts.Enums.HotWalletEventType.CashoutCompleted:
+                    case HotWalletEventType.CashoutCompleted:
                         await ProcessHotWalletCashout(command);
                         break;
 
@@ -111,7 +112,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(ProcessHotWalletErc20EventCommand), command, e);
+                _log.Error(nameof(ProcessHotWalletErc20EventCommand), e, context: command);
                 throw;
             }
         }
@@ -130,7 +131,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                         await ProcessOutcomeOperation(command);
                         break;
                     case CoinEventType.CashoutFailed:
-                        await ProcessFailedCashout(command, eventPublisher);
+                        await ProcessFailedCashout(command);
                         break;
 
                     case CoinEventType.CashinStarted:
@@ -147,7 +148,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(ProcessEthCoinEventCommand), command, e);
+                _log.Error(nameof(ProcessEthCoinEventCommand), e, context: command);
                 throw;
             }
         }
@@ -170,8 +171,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                 if (exists)
                 {
-                    _log.WriteWarning(command.TransactionHash ?? "Empty", command,
-                            $"Transaction already handled {hash}");
+                    _log.Warning(command.TransactionHash ?? "Empty", $"Transaction already handled {hash}",
+                            context: command);
 
                     return CommandHandlingResult.Ok();
                 }
@@ -194,7 +195,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                    (result.Status != MeStatusCodes.Ok &&
                     result.Status != MeStatusCodes.Duplicate))
                 {
-                    _log.WriteWarning(command.TransactionHash ?? "Empty", result, "ME error");
+                    _log.Warning(command.TransactionHash ?? "Empty", "ME error", context: result);
 
                     return CommandHandlingResult.Fail(TimeSpan.FromMinutes(1));
                 }
@@ -212,7 +213,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(EnrollEthCashinToMatchingEngineCommand), command, e);
+                _log.Error(nameof(EnrollEthCashinToMatchingEngineCommand), e, context: command);
                 throw;
             }
         }
@@ -257,7 +258,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             }
             catch (Exception e)
             {
-                _log.WriteError(nameof(SaveEthInHistoryCommand), command, e);
+                _log.Error(nameof(SaveEthInHistoryCommand), e, context: command);
                 throw;
             }
         }
@@ -274,9 +275,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
             var token = await _assetsService.Erc20TokenGetByAddressAsync(tokenAddress);
             if (token == null)
             {
-                _log.WriteError(nameof(ProcessHotWalletErc20EventCommand),
-                    queueMessage,
-                    new Exception($"Skipping cashin. Unsupported Erc 20 token - {tokenAddress}"));
+                _log.Error(new Exception($"Skipping cashin. Unsupported Erc 20 token - {tokenAddress}"),
+                    context: queueMessage);
 
                 return;
             }
@@ -295,10 +295,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
             if (context == null)
             {
-                _log.WriteError(
-                    nameof(ProcessHotWalletCashout),
-                    queueMessage.ToJson(),
-                    new NullReferenceException("Context is null for hotwallet cashout"));
+                _log.Error(new NullReferenceException("Context is null for hotwallet cashout"),
+                    context: queueMessage.ToJson());
 
                 return;
             }
@@ -357,7 +355,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         }
 
         //TODO: Split wth the help of the process management
-        private async Task ProcessFailedCashout(ProcessEthCoinEventCommand queueMessage, IEventPublisher eventPublisher)
+        private async Task ProcessFailedCashout(ProcessEthCoinEventCommand queueMessage)
         {
             CashOutContextData context = await _transactionService.GetTransactionContext<CashOutContextData>(queueMessage.OperationId);
 
@@ -381,7 +379,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                                 asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing));
                     if (pt == null)
                     {
-                        _log.WriteWarning($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}", hash, "Transaction already handled");
+                        _log.Warning($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}", "Transaction already handled", context: hash);
                         return; //if was handled previously
                     }
 
@@ -412,12 +410,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                     if (!exResult.IsOk())
                     {
-                        _log.WriteWarning($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}",
-                            new {
+                        _log.Warning($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}",
+                            "ME operation failed",
+                            context: new {
                                 ExchangeServiceResponse = exResult,
                                 QueueMessage = queueMessage
-                            }.ToJson(),
-                            "ME operation failed");
+                            }.ToJson());
                     }
 
                     await _clientCommentsRepository.AddClientCommentAsync(newComment);
@@ -427,13 +425,13 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 }
                 catch (Exception e)
                 {
-                    _log.WriteErrorAsync($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}", queueMessage.ToJson(), e);
+                    _log.Error($"{nameof(EthereumCoreCommandHandler)}:{nameof(ProcessFailedCashout)}", e, context: queueMessage.ToJson());
                     throw;
                 }
             }
             else
             {
-                _log.WriteWarning(nameof(EthereumCoreCommandHandler), nameof(ProcessFailedCashout), queueMessage.ToJson());
+                _log.Warning("Can't get a context", context: queueMessage.ToJson());
             }
         }
 
@@ -487,7 +485,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 return;
             }
 
-            eventPublisher.PublishEvent(new CashinDetectedEvent()
+            eventPublisher.PublishEvent(new CashinDetectedEvent
             {
                 ClientId = clientId,
                 ClientAddress = clientAddress,
