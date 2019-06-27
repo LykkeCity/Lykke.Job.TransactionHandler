@@ -24,7 +24,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly ILog _log;
         private readonly ISrvEthereumHelper _srvEthereumHelper;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
-        private readonly AppSettings.EthereumSettings _settings;
+        private readonly EthereumSettings _settings;
         private readonly TimeSpan _retryTimeout;
         private readonly IBcnClientCredentialsRepository _bcnClientCredentialsRepository;
         private readonly IEthereumTransactionRequestRepository _ethereumTransactionRequestRepository;
@@ -37,7 +37,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
             [NotNull] IBcnClientCredentialsRepository bcnClientCredentialsRepository,
             [NotNull] IEthereumTransactionRequestRepository ethereumTransactionRequestRepository,
             [NotNull] ITransactionService transactionService,
-            [NotNull] AppSettings.EthereumSettings settings,
+            [NotNull] EthereumSettings settings,
             TimeSpan retryTimeout)
         {
             _log = logFactory.CreateLog(this);

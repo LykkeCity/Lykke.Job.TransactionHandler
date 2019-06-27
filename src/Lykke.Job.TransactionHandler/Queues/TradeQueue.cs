@@ -8,6 +8,7 @@ using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
+using Lykke.Job.TransactionHandler.Settings;
 using Lykke.MatchingEngine.Connector.Models.Events;
 using Lykke.MatchingEngine.Connector.Models.Events.Common;
 using Lykke.RabbitMq.Mongo.Deduplicator;
@@ -22,11 +23,8 @@ namespace Lykke.Job.TransactionHandler.Queues
         private const bool QueueDurable = true;
 
         private readonly ILog _log;
-        private readonly string _mongoConnectionString;
-        private readonly string _mongoCollectionName;
-        private readonly string _alternateConnectionString;
-        private readonly string _newMeRabbitConnString;
-        private readonly string _eventsExchange;
+        private readonly MongoDeduplicatorSettings _deduplicatorSettings;
+        private readonly RabbitMqSettings _rabbitMqSettings;
         private readonly ILogFactory _logFactory;
         private readonly ICqrsEngine _cqrsEngine;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
@@ -34,21 +32,15 @@ namespace Lykke.Job.TransactionHandler.Queues
         private RabbitMqSubscriber<ExecutionEvent> _subscriber;
 
         public TradeQueue(
-            string mongoConnectionString,
-            string mongoCollectionName,
-            string alternateConnectionString,
-            string newMeRabbitConnString,
-            string eventsExchange,
+            MongoDeduplicatorSettings deduplicatorSettings,
+            RabbitMqSettings rabbitMqSettings,
             ILogFactory logFactory,
             ICqrsEngine cqrsEngine,
             IAssetsServiceWithCache assetsServiceWithCache
             )
         {
-            _mongoConnectionString = mongoConnectionString;
-            _mongoCollectionName = mongoCollectionName;
-            _alternateConnectionString = alternateConnectionString;
-            _newMeRabbitConnString = newMeRabbitConnString;
-            _eventsExchange = eventsExchange;
+            _deduplicatorSettings = deduplicatorSettings;
+            _rabbitMqSettings = rabbitMqSettings;
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
             _cqrsEngine = cqrsEngine;
@@ -59,9 +51,9 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             var settings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _newMeRabbitConnString,
-                QueueName = $"{_eventsExchange}.orders.txhandler",
-                ExchangeName = _eventsExchange,
+                ConnectionString = _rabbitMqSettings.NewMeRabbitConnString,
+                QueueName = $"{_rabbitMqSettings.EventsExchange}.orders.txhandler",
+                ExchangeName = _rabbitMqSettings.EventsExchange,
                 RoutingKey = ((int)MessageType.Order).ToString(),
                 IsDurable = QueueDurable
             };
@@ -78,8 +70,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                             next: new DeadQueueErrorHandlingStrategy(_logFactory, settings)))
                     .SetMessageDeserializer(new ProtobufMessageDeserializer<ExecutionEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .SetAlternativeExchange(_alternateConnectionString)
-                    .SetDeduplicator(MongoStorageDeduplicator.Create(_mongoConnectionString, _mongoCollectionName))
+                    .SetAlternativeExchange(_rabbitMqSettings.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                     .Subscribe(ProcessMessage)
                     .CreateDefaultBinding()
                     .SetPrefetchCount(300)

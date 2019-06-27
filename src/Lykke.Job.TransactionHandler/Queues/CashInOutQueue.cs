@@ -6,6 +6,7 @@ using Lykke.Common.Log;
 using Lykke.Job.TransactionHandler.Core.Contracts;
 using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Sagas;
+using Lykke.Job.TransactionHandler.Settings;
 using Lykke.MatchingEngine.Connector.Models.Events;
 using Lykke.MatchingEngine.Connector.Models.Events.Common;
 using Lykke.RabbitMq.Mongo.Deduplicator;
@@ -19,11 +20,8 @@ namespace Lykke.Job.TransactionHandler.Queues
         private const bool QueueDurable = true;
 
         private readonly ILog _log;
-        private readonly string _mongoConnectionString;
-        private readonly string _mongoCollectionName;
-        private readonly string _alternateConnectionString;
-        private readonly string _newMeRabbitConnString;
-        private readonly string _eventsExchange;
+        private readonly MongoDeduplicatorSettings _deduplicatorSettings;
+        private readonly RabbitMqSettings _rabbitMqSettings;
         private readonly ILogFactory _logFactory;
         private readonly CashInOutMessageProcessor _messageProcessor;
 
@@ -31,19 +29,13 @@ namespace Lykke.Job.TransactionHandler.Queues
         private RabbitMqSubscriber<CashOutEvent> _cashoutSubscriber;
 
         public CashInOutQueue(
-            string mongoConnectionString,
-            string mongoCollectionName,
-            string alternateConnectionString,
-            string newMeRabbitConnString,
-            string eventsExchange,
+            MongoDeduplicatorSettings deduplicatorSettings,
+            RabbitMqSettings rabbitMqSettings,
             ILogFactory logFactory,
             CashInOutMessageProcessor messageProcessor)
         {
-            _mongoConnectionString = mongoConnectionString;
-            _mongoCollectionName = mongoCollectionName;
-            _alternateConnectionString = alternateConnectionString;
-            _newMeRabbitConnString = newMeRabbitConnString;
-            _eventsExchange = eventsExchange;
+            _deduplicatorSettings = deduplicatorSettings;
+            _rabbitMqSettings = rabbitMqSettings;
             _logFactory = logFactory;
             _messageProcessor = messageProcessor;
             _log = logFactory.CreateLog(this);
@@ -53,9 +45,9 @@ namespace Lykke.Job.TransactionHandler.Queues
         {
             var cashinSettings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _newMeRabbitConnString,
-                QueueName = $"{_eventsExchange}.cashin.txhandler",
-                ExchangeName = _eventsExchange,
+                ConnectionString = _rabbitMqSettings.NewMeRabbitConnString,
+                QueueName = $"{_rabbitMqSettings.EventsExchange}.cashin.txhandler",
+                ExchangeName = _rabbitMqSettings.EventsExchange,
                 RoutingKey = ((int)MessageType.CashIn).ToString(),
                 IsDurable = QueueDurable
             };
@@ -64,9 +56,9 @@ namespace Lykke.Job.TransactionHandler.Queues
 
             var cashoutSettings = new RabbitMqSubscriptionSettings
             {
-                ConnectionString = _newMeRabbitConnString,
-                QueueName = $"{_eventsExchange}.cashout.txhandler",
-                ExchangeName = _eventsExchange,
+                ConnectionString = _rabbitMqSettings.NewMeRabbitConnString,
+                QueueName = $"{_rabbitMqSettings.EventsExchange}.cashout.txhandler",
+                ExchangeName = _rabbitMqSettings.EventsExchange,
                 RoutingKey = ((int)MessageType.CashOut).ToString(),
                 IsDurable = QueueDurable
             };
@@ -83,8 +75,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                             next: new DeadQueueErrorHandlingStrategy(_logFactory, cashinSettings)))
                     .SetMessageDeserializer(new ProtobufMessageDeserializer<CashInEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .SetAlternativeExchange(_alternateConnectionString)
-                    .SetDeduplicator(MongoStorageDeduplicator.Create(_mongoConnectionString, _mongoCollectionName))
+                    .SetAlternativeExchange(_rabbitMqSettings.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                     .Subscribe(ProcessCashinMessage)
                     .CreateDefaultBinding()
                     .Start();
@@ -97,8 +89,8 @@ namespace Lykke.Job.TransactionHandler.Queues
                             next: new DeadQueueErrorHandlingStrategy(_logFactory, cashoutSettings)))
                     .SetMessageDeserializer(new ProtobufMessageDeserializer<CashOutEvent>())
                     .SetMessageReadStrategy(new MessageReadQueueStrategy())
-                    .SetAlternativeExchange(_alternateConnectionString)
-                    .SetDeduplicator(MongoStorageDeduplicator.Create(_mongoConnectionString, _mongoCollectionName))
+                    .SetAlternativeExchange(_rabbitMqSettings.AlternateConnectionString)
+                    .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                     .Subscribe(ProcessCashoutMessage)
                     .CreateDefaultBinding()
                     .Start();

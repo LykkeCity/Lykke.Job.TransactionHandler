@@ -8,6 +8,7 @@ using Lykke.RabbitMqBroker.Subscriber;
 using Lykke.Job.EthereumCore.Contracts.Events;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.EthereumCore;
+using Lykke.Job.TransactionHandler.Settings;
 using Lykke.RabbitMq.Mongo.Deduplicator;
 
 namespace Lykke.Job.TransactionHandler.Queues
@@ -18,28 +19,22 @@ namespace Lykke.Job.TransactionHandler.Queues
         private const string HotWalletQueueName = "lykke.transactionhandler.ethereum.hotwallet.events";
 
         private readonly ILog _log;
-        private readonly string _mongoConnectionString;
-        private readonly string _mongoCollectionName;
-        private readonly string _connectionString;
-        private readonly string _exchangeEthereumEvents;
+        private readonly MongoDeduplicatorSettings _deduplicatorSettings;
+        private readonly EthRabbitMqSettings _rabbitMqSettings;
         private readonly ILogFactory _logFactory;
         private readonly ICqrsEngine _cqrsEngine;
         private RabbitMqSubscriber<CoinEvent> _subscriber;
         private RabbitMqSubscriber<HotWalletEvent> _subscriberHotWallet;
 
         public EthereumEventsQueue(
-            string mongoConnectionString,
-            string mongoCollectionName,
-            string connectionString,
-            string exchangeEthereumEvents,
+            MongoDeduplicatorSettings deduplicatorSettings,
+            EthRabbitMqSettings rabbitMqSettings,
             ILogFactory logFactory,
             ICqrsEngine cqrsEngine
             )
         {
-            _mongoConnectionString = mongoConnectionString;
-            _mongoCollectionName = mongoCollectionName;
-            _connectionString = connectionString;
-            _exchangeEthereumEvents = exchangeEthereumEvents;
+            _deduplicatorSettings = deduplicatorSettings;
+            _rabbitMqSettings = rabbitMqSettings;
             _logFactory = logFactory;
             _log = logFactory.CreateLog(this);
             _cqrsEngine = cqrsEngine;
@@ -50,10 +45,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             {
                 var settings = new RabbitMqSubscriptionSettings
                 {
-                    ConnectionString = _connectionString,
+                    ConnectionString = _rabbitMqSettings.ConnectionString,
                     QueueName = QueueName,
-                    ExchangeName = _exchangeEthereumEvents,
-                    DeadLetterExchangeName = $"{_exchangeEthereumEvents}.dlx",
+                    ExchangeName = _rabbitMqSettings.ExchangeEthereumEvents,
+                    DeadLetterExchangeName = $"{_rabbitMqSettings.ExchangeEthereumEvents}.dlx",
                     RoutingKey = "",
                     IsDurable = true
                 };
@@ -69,7 +64,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                         .SetMessageDeserializer(new JsonMessageDeserializer<CoinEvent>())
                         .SetMessageReadStrategy(new MessageReadQueueStrategy())
                         .SetAlternativeExchange(settings.ConnectionString)
-                        .SetDeduplicator(MongoStorageDeduplicator.Create(_mongoConnectionString, _mongoCollectionName))
+                        .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                         .Subscribe(SendEventToCqrs)
                         .CreateDefaultBinding()
                         .Start();
@@ -84,10 +79,10 @@ namespace Lykke.Job.TransactionHandler.Queues
             #region HotWallet
 
             {
-                string exchangeName = $"{_exchangeEthereumEvents}.hotwallet";
+                string exchangeName = $"{_rabbitMqSettings.ExchangeEthereumEvents}.hotwallet";
                 var settings = new RabbitMqSubscriptionSettings
                 {
-                    ConnectionString = _connectionString,
+                    ConnectionString = _rabbitMqSettings.ConnectionString,
                     QueueName = HotWalletQueueName,
                     ExchangeName = exchangeName,
                     DeadLetterExchangeName = $"{exchangeName}.dlx",
@@ -107,7 +102,7 @@ namespace Lykke.Job.TransactionHandler.Queues
                         .SetMessageDeserializer(new JsonMessageDeserializer<HotWalletEvent>())
                         .SetMessageReadStrategy(new MessageReadQueueStrategy())
                         .SetAlternativeExchange(settings.ConnectionString)
-                        .SetDeduplicator(MongoStorageDeduplicator.Create(_mongoConnectionString, _mongoCollectionName))
+                        .SetDeduplicator(MongoStorageDeduplicator.Create(_deduplicatorSettings.ConnectionString, _deduplicatorSettings.CollectionName))
                         .Subscribe(SendHotWalletEventToCqrs)
                         .CreateDefaultBinding()
                         .Start();

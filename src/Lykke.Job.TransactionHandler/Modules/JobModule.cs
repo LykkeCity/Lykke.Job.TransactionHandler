@@ -58,8 +58,8 @@ namespace Lykke.Job.TransactionHandler.Modules
     public class JobModule : Module
     {
         private readonly AppSettings _settings;
-        private readonly AppSettings.TransactionHandlerSettings _jobSettings;
-        private readonly IReloadingManager<AppSettings.DbSettings> _dbSettingsManager;
+        private readonly TransactionHandlerSettings _jobSettings;
+        private readonly IReloadingManager<DbSettings> _dbSettingsManager;
 
         public JobModule(IReloadingManager<AppSettings> appSettings)
         {
@@ -269,41 +269,26 @@ namespace Lykke.Job.TransactionHandler.Modules
 
         private void BindRabbitMq(ContainerBuilder builder)
         {
+            builder.RegisterInstance(_jobSettings.MongoDeduplicator);
+            builder.RegisterInstance(_settings.RabbitMq);
+            builder.RegisterInstance(_settings.EthRabbitMq);
+
             builder.RegisterType<CashInOutQueue>()
-                .WithParameter("mongoConnectionString", _jobSettings.MongoDeduplicator.ConnectionString)
-                .WithParameter("mongoCollectionName", _jobSettings.MongoDeduplicator.CollectionName)
-                .WithParameter("alternateConnectionString", _settings.RabbitMq.AlternateConnectionString)
-                .WithParameter("newMeRabbitConnString", _settings.RabbitMq.NewMeRabbitConnString)
-                .WithParameter("eventsExchange", _settings.RabbitMq.EventsExchange)
                 .As<IStartable>()
                 .AutoActivate()
                 .SingleInstance();
 
             builder.RegisterType<TransferQueue>()
-                .WithParameter("mongoConnectionString", _jobSettings.MongoDeduplicator.ConnectionString)
-                .WithParameter("mongoCollectionName", _jobSettings.MongoDeduplicator.CollectionName)
-                .WithParameter("alternateConnectionString", _settings.RabbitMq.AlternateConnectionString)
-                .WithParameter("newMeRabbitConnString", _settings.RabbitMq.NewMeRabbitConnString)
-                .WithParameter("eventsExchange", _settings.RabbitMq.EventsExchange)
                 .As<IStartable>()
                 .AutoActivate()
                 .SingleInstance();
 
             builder.RegisterType<TradeQueue>()
-                .WithParameter("mongoConnectionString", _jobSettings.MongoDeduplicator.ConnectionString)
-                .WithParameter("mongoCollectionName", _jobSettings.MongoDeduplicator.CollectionName)
-                .WithParameter("alternateConnectionString", _settings.RabbitMq.AlternateConnectionString)
-                .WithParameter("newMeRabbitConnString", _settings.RabbitMq.NewMeRabbitConnString)
-                .WithParameter("eventsExchange", _settings.RabbitMq.EventsExchange)
                 .As<IStartable>()
                 .AutoActivate()
                 .SingleInstance();
 
             builder.RegisterType<EthereumEventsQueue>()
-                .WithParameter("mongoConnectionString", _jobSettings.MongoDeduplicator.ConnectionString)
-                .WithParameter("mongoCollectionName", _jobSettings.MongoDeduplicator.CollectionName)
-                .WithParameter("connectionString", _settings.EthRabbitMq.ConnectionString)
-                .WithParameter("exchangeEthereumEvents", _settings.EthRabbitMq.ExchangeEthereumEvents)
                 .As<IStartable>()
                 .AutoActivate()
                 .SingleInstance();
