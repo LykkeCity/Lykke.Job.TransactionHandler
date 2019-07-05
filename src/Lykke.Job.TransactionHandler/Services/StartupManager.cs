@@ -10,6 +10,8 @@ namespace Lykke.Job.TransactionHandler.Services
         private readonly TriggerHost _triggerHost;
         private readonly ICqrsEngine _cqrsEngine;
 
+        public static Task TriggerHostTask;
+
         public StartupManager(
             TriggerHost triggerHost,
             ICqrsEngine cqrsEngine)
@@ -17,12 +19,14 @@ namespace Lykke.Job.TransactionHandler.Services
             _triggerHost = triggerHost;
             _cqrsEngine = cqrsEngine;
         }
-        public async Task StartAsync()
+        public Task StartAsync()
         {
-            await _triggerHost.Start();
-
             _cqrsEngine.StartSubscribers();
             _cqrsEngine.StartProcesses();
+
+            TriggerHostTask = _triggerHost.Start();
+
+            return Task.CompletedTask;
         }
     }
 }
