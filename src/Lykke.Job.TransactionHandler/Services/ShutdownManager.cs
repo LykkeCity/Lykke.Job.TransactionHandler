@@ -14,11 +14,12 @@ namespace Lykke.Job.TransactionHandler.Services
             _triggerHost = triggerHost;
         }
 
-        public Task StopAsync()
+        public async Task StopAsync()
         {
             _triggerHost.Cancel();
 
-            return Task.CompletedTask;
+            if (StartupManager.TriggerHostTask != null)
+                await StartupManager.TriggerHostTask;
         }
     }
 }
