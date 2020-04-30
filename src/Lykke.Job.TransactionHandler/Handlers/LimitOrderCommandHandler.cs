@@ -54,7 +54,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                      _trusted[clientId] = (await _clientAccountClient.IsTrustedAsync(clientId)).Value;
 
                  _log.Info("LimitOrderProcessing", new { TxHandler = new { Step = "01. Client account is trusted", Time = stepWatch.ElapsedMilliseconds}});
-                 stepWatch.Reset();
+                 stepWatch.Restart();
 
                  var isTrustedClient = _trusted[clientId];
 
@@ -78,12 +78,12 @@ namespace Lykke.Job.TransactionHandler.Handlers
                  }
 
                  _log.Info("LimitOrderProcessing", new { TxHandler = new { Step = "02. Is not trusted client", Time = stepWatch.ElapsedMilliseconds}});
-                 stepWatch.Reset();
+                 stepWatch.Restart();
 
                  await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
 
                  _log.Info("LimitOrderProcessing", new { TxHandler = new { Step = "03. Upsert limit order", Time = stepWatch.ElapsedMilliseconds}});
-                 stepWatch.Reset();
+                 stepWatch.Restart();
 
                  var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), command.LimitOrder.Order.Status);
 
@@ -102,7 +102,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                  }
 
                  _log.Info("LimitOrderProcessing", new { TxHandler = new { Step = "04. Create trades", Time = stepWatch.ElapsedMilliseconds}});
-                 stepWatch.Reset();
+                 stepWatch.Restart();
 
                  eventPublisher.PublishEvent(limitOrderExecutedEvent);
 
