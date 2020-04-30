@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Diagnostics;
+using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
 using Lykke.Common.Log;
@@ -26,14 +27,28 @@ namespace Lykke.Job.TransactionHandler.Handlers
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(UpdateLimitOrdersCountCommand command, IEventPublisher eventPublisher)
         {
-            var activeLimitOrdersCount = await _limitOrdersRepository.GetActiveOrdersCountAsync(command.ClientId);
-            await _clientCacheRepository.UpdateLimitOrdersCount(command.ClientId, activeLimitOrdersCount);
+            var sw = new Stopwatch();
+            sw.Start();
 
-            ChaosKitty.Meow();
+            try
+            {
+                var activeLimitOrdersCount = await _limitOrdersRepository.GetActiveOrdersCountAsync(command.ClientId);
+                await _clientCacheRepository.UpdateLimitOrdersCount(command.ClientId, activeLimitOrdersCount);
 
-            _log.Info(nameof(UpdateLimitOrdersCountCommand), $"Client {command.ClientId}. Limit orders cache updated: {activeLimitOrdersCount} active orders");
+                ChaosKitty.Meow();
 
-            return CommandHandlingResult.Ok();
+                _log.Info(nameof(UpdateLimitOrdersCountCommand), $"Client {command.ClientId}. Limit orders cache updated: {activeLimitOrdersCount} active orders");
+
+                return CommandHandlingResult.Ok();
+            }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { TxHandler = new { Handler = nameof(HistoryCommandHandler),  Command = nameof(UpdateLimitOrdersCountCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
+            }
         }
     }
 }

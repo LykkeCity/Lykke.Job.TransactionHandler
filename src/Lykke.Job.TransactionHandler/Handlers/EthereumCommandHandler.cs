@@ -12,6 +12,7 @@ using Lykke.Job.TransactionHandler.Queues.Models;
 using Lykke.Job.TransactionHandler.Utils;
 using Lykke.Service.Assets.Client;
 using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Lykke.Common.Log;
 using Lykke.Job.TransactionHandler.Settings;
@@ -52,64 +53,77 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(TransferEthereumCommand command, IEventPublisher eventPublisher)
         {
-            var txRequest = await _ethereumTransactionRequestRepository.GetAsync(command.TransactionId);
+            var sw = new Stopwatch();
+            sw.Start();
 
-            // todo: udpate txRequest in separated command
-            var context = await _transactionService.GetTransactionContext<TransferContextData>(command.TransactionId.ToString());
-            txRequest.OperationIds = new[] { context.Transfers[0].OperationId, context.Transfers[1].OperationId };
-            await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
-
-            ChaosKitty.Meow();
-
-            var clientAddress = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
-            var hotWalletAddress = _settings.HotwalletAddress;
-
-            string addressFrom;
-            string addressTo;
-            Guid transferId;
-            string sign;
-            switch (txRequest.OperationType)
+            try
             {
-                case OperationType.TransferToTrusted:
-                    addressFrom = clientAddress;
-                    addressTo = hotWalletAddress;
-                    transferId = txRequest.SignedTransfer.Id;
-                    sign = txRequest.SignedTransfer.Sign;
-                    break;
-                case OperationType.TransferFromTrusted:
-                    addressFrom = hotWalletAddress;
-                    addressTo = clientAddress;
-                    transferId = txRequest.Id;
-                    sign = string.Empty;
-                    break;
-                case OperationType.TransferBetweenTrusted:
-                    return CommandHandlingResult.Ok();
-                default:
-                    _log.Error(nameof(TransferEthereumCommand), message: "Unknown transfer type");
+                var txRequest = await _ethereumTransactionRequestRepository.GetAsync(command.TransactionId);
+
+                // todo: udpate txRequest in separated command
+                var context = await _transactionService.GetTransactionContext<TransferContextData>(command.TransactionId.ToString());
+                txRequest.OperationIds = new[] { context.Transfers[0].OperationId, context.Transfers[1].OperationId };
+                await _ethereumTransactionRequestRepository.UpdateAsync(txRequest);
+
+                ChaosKitty.Meow();
+
+                var clientAddress = await _bcnClientCredentialsRepository.GetClientAddress(txRequest.ClientId);
+                var hotWalletAddress = _settings.HotwalletAddress;
+
+                string addressFrom;
+                string addressTo;
+                Guid transferId;
+                string sign;
+                switch (txRequest.OperationType)
+                {
+                    case OperationType.TransferToTrusted:
+                        addressFrom = clientAddress;
+                        addressTo = hotWalletAddress;
+                        transferId = txRequest.SignedTransfer.Id;
+                        sign = txRequest.SignedTransfer.Sign;
+                        break;
+                    case OperationType.TransferFromTrusted:
+                        addressFrom = hotWalletAddress;
+                        addressTo = clientAddress;
+                        transferId = txRequest.Id;
+                        sign = string.Empty;
+                        break;
+                    case OperationType.TransferBetweenTrusted:
+                        return CommandHandlingResult.Ok();
+                    default:
+                        _log.Error(nameof(TransferEthereumCommand), message: "Unknown transfer type");
+                        return CommandHandlingResult.Fail(_retryTimeout);
+                }
+
+                var asset = await _assetsServiceWithCache.TryGetAssetAsync(txRequest.AssetId);
+                var response = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
+                    addressTo, txRequest.Volume);
+
+                ChaosKitty.Meow();
+
+                if (response.HasError &&
+                    response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists &&
+                    response.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
+                {
+                    var errorMessage = response.Error.ToJson();
+                    _log.Error(nameof(TransferEthereumCommand), new Exception(errorMessage));
                     return CommandHandlingResult.Fail(_retryTimeout);
+                }
+
+                eventPublisher.PublishEvent(new EthereumTransferSentEvent { TransferId = transferId });
+
+                ChaosKitty.Meow();
+
+                return CommandHandlingResult.Ok();
             }
-
-            var asset = await _assetsServiceWithCache.TryGetAssetAsync(txRequest.AssetId);
-            var response = await _srvEthereumHelper.SendTransferAsync(transferId, sign, asset, addressFrom,
-                addressTo, txRequest.Volume);
-
-            ChaosKitty.Meow();
-
-            if (response.HasError &&
-                response.Error.ErrorCode != ErrorCode.OperationWithIdAlreadyExists &&
-                response.Error.ErrorCode != ErrorCode.EntityAlreadyExists)
+            finally
             {
-                var errorMessage = response.Error.ToJson();
-                _log.Error(nameof(TransferEthereumCommand), new Exception(errorMessage));
-                return CommandHandlingResult.Fail(_retryTimeout);
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { TxHandler = new { Handler = nameof(EthereumCommandHandler),  Command = nameof(TransferEthereumCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
-
-            eventPublisher.PublishEvent(new EthereumTransferSentEvent { TransferId = transferId });
-
-            ChaosKitty.Meow();
-
-            return CommandHandlingResult.Ok();
         }
-
     }
 }
