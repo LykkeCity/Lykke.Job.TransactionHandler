@@ -32,9 +32,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(ForwardWithdrawalCommandHandler),  Command = nameof(Commands.SetLinkedCashInOperationCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(ForwardWithdrawalCommandHandler),  Command = nameof(Commands.SetLinkedCashInOperationCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
     }

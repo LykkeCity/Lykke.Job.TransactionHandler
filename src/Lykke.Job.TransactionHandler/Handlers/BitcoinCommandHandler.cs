@@ -50,9 +50,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(BitcoinCommandHandler),  Command = nameof(Commands.SegwitTransferCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(BitcoinCommandHandler),  Command = nameof(Commands.SegwitTransferCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
     }

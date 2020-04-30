@@ -124,9 +124,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(ProcessHotWalletErc20EventCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(ProcessHotWalletErc20EventCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
 
@@ -172,9 +172,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(ProcessEthCoinEventCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(ProcessEthCoinEventCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
 
@@ -251,9 +251,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(EnrollEthCashinToMatchingEngineCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(EnrollEthCashinToMatchingEngineCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
 
@@ -308,9 +308,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(SaveEthInHistoryCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(SaveEthInHistoryCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
 

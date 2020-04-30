@@ -81,9 +81,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(TradeCommandHandler),  Command = nameof(CreateTradeCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(TradeCommandHandler),  Command = nameof(CreateTradeCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
 
@@ -104,12 +104,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(TradeCommandHandler),  Command = nameof(CreateTransactionCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
-
+                    context: new { TxHandler = new { Handler = nameof(TradeCommandHandler),  Command = nameof(CreateTransactionCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
-
         }
     }
 }

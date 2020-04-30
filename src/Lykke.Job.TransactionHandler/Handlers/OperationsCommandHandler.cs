@@ -59,9 +59,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveCashoutOperationStateCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveCashoutOperationStateCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
 
@@ -82,9 +82,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveIssueOperationStateCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveIssueOperationStateCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
 
@@ -102,9 +102,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveManualOperationStateCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveManualOperationStateCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
 
@@ -166,11 +166,10 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveTransferOperationStateCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveTransferOperationStateCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
-
         }
 
         private async Task SaveState(BaseCommand command, BaseContextData context)
@@ -201,9 +200,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.CompleteOperationCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.CompleteOperationCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
     }

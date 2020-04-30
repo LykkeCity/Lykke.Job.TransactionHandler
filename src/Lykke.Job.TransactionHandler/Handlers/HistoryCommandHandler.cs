@@ -45,9 +45,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 sw.Stop();
                 _log.Info("Command execution time",
-                    context: new { Handler = nameof(HistoryCommandHandler),  Command = nameof(UpdateLimitOrdersCountCommand),
-                        Time = $"{sw.ElapsedMilliseconds} msec."
-                    });
+                    context: new { TxHandler = new { Handler = nameof(HistoryCommandHandler),  Command = nameof(UpdateLimitOrdersCountCommand),
+                        Time = sw.ElapsedMilliseconds
+                    }});
             }
         }
     }
