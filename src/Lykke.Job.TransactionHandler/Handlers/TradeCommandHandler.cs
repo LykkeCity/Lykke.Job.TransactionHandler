@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Common.Log;
 using JetBrains.Annotations;
@@ -38,47 +39,77 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(CreateTradeCommand command, IEventPublisher eventPublisher)
         {
-            var queueMessage = command.QueueMessage;
+            var sw = new Stopwatch();
+            sw.Start();
 
-            var clientId = queueMessage.Order.ClientId;
-
-            if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                _log.Info($"{nameof(TradeSaga)}:{nameof(TradeCommandHandler)}", "Message processing being aborted, due to order status is not matched",
-                    queueMessage.ToJson());
+                var queueMessage = command.QueueMessage;
+
+                var clientId = queueMessage.Order.ClientId;
+
+                if (!queueMessage.Order.Status.Equals("matched", StringComparison.OrdinalIgnoreCase))
+                {
+                    _log.Info($"{nameof(TradeSaga)}:{nameof(TradeCommandHandler)}", "Message processing being aborted, due to order status is not matched",
+                        queueMessage.ToJson());
+
+                    return CommandHandlingResult.Ok();
+                }
+
+                var context = await _transactionService.GetTransactionContext<SwapOffchainContextData>(queueMessage.Order.Id) ?? new SwapOffchainContextData();
+
+                await _contextFactory.FillTradeContext(context, queueMessage.Order, queueMessage.Trades, clientId);
+
+                ChaosKitty.Meow();
+
+                await _transactionService.SetTransactionContext(queueMessage.Order.Id, context);
+
+                ChaosKitty.Meow();
+
+                eventPublisher.PublishEvent(new TradeCreatedEvent
+                {
+                    OrderId = queueMessage.Order.Id,
+                    IsTrustedClient = context.IsTrustedClient,
+                    MarketOrder = context.Order,
+                    ClientTrades = context.ClientTrades,
+                    QueueMessage = queueMessage
+                });
 
                 return CommandHandlingResult.Ok();
             }
-
-            var context = await _transactionService.GetTransactionContext<SwapOffchainContextData>(queueMessage.Order.Id) ?? new SwapOffchainContextData();
-
-            await _contextFactory.FillTradeContext(context, queueMessage.Order, queueMessage.Trades, clientId);
-
-            ChaosKitty.Meow();
-
-            await _transactionService.SetTransactionContext(queueMessage.Order.Id, context);
-
-            ChaosKitty.Meow();
-
-            eventPublisher.PublishEvent(new TradeCreatedEvent
+            finally
             {
-                OrderId = queueMessage.Order.Id,
-                IsTrustedClient = context.IsTrustedClient,
-                MarketOrder = context.Order,
-                ClientTrades = context.ClientTrades,
-                QueueMessage = queueMessage
-            });
-
-            return CommandHandlingResult.Ok();
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(TradeCommandHandler),  Command = nameof(CreateTradeCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
 
         public async Task<CommandHandlingResult> Handle(CreateTransactionCommand command)
         {
-            await _transactionsRepository.TryCreateAsync(command.OrderId, BitCoinCommands.SwapOffchain, "", null, "");
+            var sw = new Stopwatch();
+            sw.Start();
 
-            ChaosKitty.Meow();
+            try
+            {
+                await _transactionsRepository.TryCreateAsync(command.OrderId, BitCoinCommands.SwapOffchain, "", null, "");
 
-            return CommandHandlingResult.Ok();
+                ChaosKitty.Meow();
+
+                return CommandHandlingResult.Ok();
+            }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(TradeCommandHandler),  Command = nameof(CreateTransactionCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+
+            }
+
         }
     }
 }

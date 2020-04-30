@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -43,77 +44,133 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveCashoutOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            await SaveState(command.Command, command.Context);
+            var sw = new Stopwatch();
+            sw.Start();
 
-            eventPublisher.PublishEvent(new CashoutTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
+            try
+            {
+                await SaveState(command.Command, command.Context);
 
-            return CommandHandlingResult.Ok();
+                eventPublisher.PublishEvent(new CashoutTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
+
+                return CommandHandlingResult.Ok();
+            }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveCashoutOperationStateCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveIssueOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            await SaveState(command.Command, command.Context);
+            var sw = new Stopwatch();
+            sw.Start();
 
-            eventPublisher.PublishEvent(new IssueTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
+            try
+            {
+                await SaveState(command.Command, command.Context);
 
-            return CommandHandlingResult.Ok();
+                eventPublisher.PublishEvent(new IssueTransactionStateSavedEvent { Message = command.Message, Command = command.Command });
+
+                return CommandHandlingResult.Ok();
+            }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveIssueOperationStateCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveManualOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            eventPublisher.PublishEvent(new ManualTransactionStateSavedEvent { Message = command.Message });
+            var sw = new Stopwatch();
+            sw.Start();
 
-            return CommandHandlingResult.Ok();
+            try
+            {
+                eventPublisher.PublishEvent(new ManualTransactionStateSavedEvent { Message = command.Message });
+                return CommandHandlingResult.Ok();
+            }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveManualOperationStateCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
 
         public async Task<CommandHandlingResult> Handle(Commands.SaveTransferOperationStateCommand command, IEventPublisher eventPublisher)
         {
-            var message = command.QueueMessage;
-            var transactionId = message.Id;
+            var sw = new Stopwatch();
+            sw.Start();
 
-            var transaction = await _transactionsRepository.FindByTransactionIdAsync(transactionId);
-            if (transaction == null)
+            try
             {
-                _log.Error(nameof(Commands.SaveManualOperationStateCommand), new Exception($"unknown transaction {transactionId}"), context: command);
+                var message = command.QueueMessage;
+                var transactionId = message.Id;
+
+                var transaction = await _transactionsRepository.FindByTransactionIdAsync(transactionId);
+                if (transaction == null)
+                {
+                    _log.Error(nameof(Commands.SaveManualOperationStateCommand), new Exception($"unknown transaction {transactionId}"), context: command);
+                    return CommandHandlingResult.Ok();
+                }
+
+                var amountNoFee = await _feeCalculationService.GetAmountNoFeeAsync(message);
+
+                var context = await _transactionService.GetTransactionContext<TransferContextData>(transactionId) ??
+                              TransferContextData.Create(
+                                  message.FromClientId,
+                                  new TransferContextData.TransferModel
+                                  {
+                                      ClientId = message.ToClientid
+                                  },
+                                  new TransferContextData.TransferModel
+                                  {
+                                      ClientId = message.FromClientId
+                                  });
+
+                context.Transfers[0].OperationId = Guid.NewGuid().ToString();
+                context.Transfers[1].OperationId = Guid.NewGuid().ToString();
+
+                var destWallet = await _walletCredentialsRepository.GetAsync(message.ToClientid);
+                var sourceWallet = await _walletCredentialsRepository.GetAsync(message.FromClientId);
+
+                var contextJson = context.ToJson();
+                var cmd = new TransferCommand
+                {
+                    Amount = amountNoFee,
+                    AssetId = message.AssetId,
+                    Context = contextJson,
+                    SourceAddress = sourceWallet?.MultiSig,
+                    DestinationAddress = destWallet?.MultiSig,
+                    TransactionId = Guid.Parse(transactionId)
+                };
+
+                await SaveState(cmd, context);
+
+                eventPublisher.PublishEvent(new TransferOperationStateSavedEvent { TransactionId = transactionId, QueueMessage = message, AmountNoFee = (double) amountNoFee });
+
                 return CommandHandlingResult.Ok();
             }
-
-            var amountNoFee = await _feeCalculationService.GetAmountNoFeeAsync(message);
-
-            var context = await _transactionService.GetTransactionContext<TransferContextData>(transactionId) ??
-                          TransferContextData.Create(
-                              message.FromClientId,
-                              new TransferContextData.TransferModel
-                              {
-                                  ClientId = message.ToClientid
-                              },
-                              new TransferContextData.TransferModel
-                              {
-                                  ClientId = message.FromClientId
-                              });
-
-            context.Transfers[0].OperationId = Guid.NewGuid().ToString();
-            context.Transfers[1].OperationId = Guid.NewGuid().ToString();
-
-            var destWallet = await _walletCredentialsRepository.GetAsync(message.ToClientid);
-            var sourceWallet = await _walletCredentialsRepository.GetAsync(message.FromClientId);
-
-            var contextJson = context.ToJson();
-            var cmd = new TransferCommand
+            finally
             {
-                Amount = amountNoFee,
-                AssetId = message.AssetId,
-                Context = contextJson,
-                SourceAddress = sourceWallet?.MultiSig,
-                DestinationAddress = destWallet?.MultiSig,
-                TransactionId = Guid.Parse(transactionId)
-            };
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.SaveTransferOperationStateCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
 
-            await SaveState(cmd, context);
-
-            eventPublisher.PublishEvent(new TransferOperationStateSavedEvent { TransactionId = transactionId, QueueMessage = message, AmountNoFee = (double) amountNoFee });
-
-            return CommandHandlingResult.Ok();
         }
 
         private async Task SaveState(BaseCommand command, BaseContextData context)
@@ -132,9 +189,22 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.CompleteOperationCommand command, IEventPublisher eventPublisher)
         {
-            await _operationsClient.Complete(command.CommandId);
+            var sw = new Stopwatch();
+            sw.Start();
 
-            return CommandHandlingResult.Ok();
+            try
+            {
+                await _operationsClient.Complete(command.CommandId);
+                return CommandHandlingResult.Ok();
+            }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(OperationsCommandHandler),  Command = nameof(Commands.CompleteOperationCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
     }
 }

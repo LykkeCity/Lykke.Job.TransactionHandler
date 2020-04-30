@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Common.Log;
 using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Lykke.Cqrs;
 using Lykke.Job.TransactionHandler.Commands.LimitTrades;
 using Lykke.Job.TransactionHandler.Core.Contracts;
@@ -20,67 +23,85 @@ namespace Lykke.Job.TransactionHandler.Handlers
         private readonly ILimitOrdersRepository _limitOrdersRepository;
         private readonly IAssetsServiceWithCache _assetsServiceWithCache;
         readonly Dictionary<string, bool> _trusted = new Dictionary<string, bool>();
+        private readonly ILog _log;
 
         public LimitOrderCommandHandler(
             IClientAccountClient clientAccountClient,
             ILimitOrdersRepository limitOrdersRepository,
-            IAssetsServiceWithCache assetsServiceWithCache)
+            IAssetsServiceWithCache assetsServiceWithCache,
+            ILogFactory logFactory
+            )
         {
             _clientAccountClient = clientAccountClient;
             _limitOrdersRepository = limitOrdersRepository;
             _assetsServiceWithCache = assetsServiceWithCache;
+            _log = logFactory.CreateLog(this);
         }
 
         [UsedImplicitly]
         public async Task<CommandHandlingResult> Handle(ProcessLimitOrderCommand command, IEventPublisher eventPublisher)
         {
-            var clientId = command.LimitOrder.Order.ClientId;
+            var sw = new Stopwatch();
+            sw.Start();
 
-            if (!_trusted.ContainsKey(clientId))
-                _trusted[clientId] = (await _clientAccountClient.IsTrustedAsync(clientId)).Value;
-
-            var isTrustedClient = _trusted[clientId];
-
-            var limitOrderExecutedEvent = new LimitOrderExecutedEvent
+            try
             {
-                IsTrustedClient = isTrustedClient,
-                LimitOrder = command.LimitOrder
-            };
+                var clientId = command.LimitOrder.Order.ClientId;
 
-            var tradesWerePerformed = command.LimitOrder.Trades != null && command.LimitOrder.Trades.Any();
-            if (!isTrustedClient)
-            {
-                // need previous order state for not trusted clients
-                var prevOrderState = await _limitOrdersRepository.GetOrderAsync(command.LimitOrder.Order.ClientId, command.LimitOrder.Order.Id);
+                 if (!_trusted.ContainsKey(clientId))
+                     _trusted[clientId] = (await _clientAccountClient.IsTrustedAsync(clientId)).Value;
 
-                var isImmediateTrade = tradesWerePerformed && command.LimitOrder.Trades.First().Timestamp == command.LimitOrder.Order.Registered;
-                limitOrderExecutedEvent.HasPrevOrderState = prevOrderState != null && !isImmediateTrade;
-                limitOrderExecutedEvent.PrevRemainingVolume = prevOrderState?.RemainingVolume;
+                 var isTrustedClient = _trusted[clientId];
 
-                limitOrderExecutedEvent.Aggregated = AggregateSwaps(limitOrderExecutedEvent.LimitOrder.Trades);
+                 var limitOrderExecutedEvent = new LimitOrderExecutedEvent
+                 {
+                     IsTrustedClient = isTrustedClient,
+                     LimitOrder = command.LimitOrder
+                 };
+
+                 var tradesWerePerformed = command.LimitOrder.Trades != null && command.LimitOrder.Trades.Any();
+                 if (!isTrustedClient)
+                 {
+                     // need previous order state for not trusted clients
+                     var prevOrderState = await _limitOrdersRepository.GetOrderAsync(command.LimitOrder.Order.ClientId, command.LimitOrder.Order.Id);
+
+                     var isImmediateTrade = tradesWerePerformed && command.LimitOrder.Trades.First().Timestamp == command.LimitOrder.Order.Registered;
+                     limitOrderExecutedEvent.HasPrevOrderState = prevOrderState != null && !isImmediateTrade;
+                     limitOrderExecutedEvent.PrevRemainingVolume = prevOrderState?.RemainingVolume;
+
+                     limitOrderExecutedEvent.Aggregated = AggregateSwaps(limitOrderExecutedEvent.LimitOrder.Trades);
+                 }
+
+                 await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
+
+                 var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), command.LimitOrder.Order.Status);
+
+                 // workaround: ME sends wrong status
+                 if (status == OrderStatus.Processing && !tradesWerePerformed)
+                     status = OrderStatus.InOrderBook;
+                 else if (status == OrderStatus.PartiallyMatched && !tradesWerePerformed)
+                     status = OrderStatus.Placed;
+
+                 if (status == OrderStatus.Processing
+                     || status == OrderStatus.PartiallyMatched // new version of Processing
+                     || status == OrderStatus.Matched
+                     || status == OrderStatus.Cancelled)
+                 {
+                     limitOrderExecutedEvent.Trades = await CreateTrades(command.LimitOrder);
+                 }
+
+                 eventPublisher.PublishEvent(limitOrderExecutedEvent);
+
+                 return CommandHandlingResult.Ok();
             }
-
-            await _limitOrdersRepository.CreateOrUpdateAsync(command.LimitOrder.Order);
-
-            var status = (OrderStatus)Enum.Parse(typeof(OrderStatus), command.LimitOrder.Order.Status);
-
-            // workaround: ME sends wrong status
-            if (status == OrderStatus.Processing && !tradesWerePerformed)
-                status = OrderStatus.InOrderBook;
-            else if (status == OrderStatus.PartiallyMatched && !tradesWerePerformed)
-                status = OrderStatus.Placed;
-
-            if (status == OrderStatus.Processing
-                || status == OrderStatus.PartiallyMatched // new version of Processing
-                || status == OrderStatus.Matched
-                || status == OrderStatus.Cancelled)
+            finally
             {
-                limitOrderExecutedEvent.Trades = await CreateTrades(command.LimitOrder);
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(LimitOrderCommandHandler),  Command = nameof(ProcessLimitOrderCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
             }
-
-            eventPublisher.PublishEvent(limitOrderExecutedEvent);
-
-            return CommandHandlingResult.Ok();
         }
 
         private async Task<ClientTrade[]> CreateTrades(LimitQueueItem.LimitOrderWithTrades limitOrderWithTrades)

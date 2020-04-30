@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -92,6 +93,9 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(ProcessHotWalletErc20EventCommand command, IEventPublisher eventPublisher)
         {
+            var sw = new Stopwatch();
+            sw.Start();
+
             try
             {
                 switch (command.EventType)
@@ -105,7 +109,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                         break;
 
                     default:
-                        throw new ArgumentOutOfRangeException($"{command.EventType} - is not supported for processing {command.ToJson()}. ");
+                        throw new ArgumentOutOfRangeException(
+                            $"{command.EventType} - is not supported for processing {command.ToJson()}. ");
                 }
 
                 return CommandHandlingResult.Ok();
@@ -115,10 +120,21 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 _log.Error(nameof(ProcessHotWalletErc20EventCommand), e, context: command);
                 throw;
             }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(ProcessHotWalletErc20EventCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
 
         public async Task<CommandHandlingResult> Handle(ProcessEthCoinEventCommand command, IEventPublisher eventPublisher)
         {
+            var sw = new Stopwatch();
+            sw.Start();
+
             try
             {
                 switch (command.CoinEventType)
@@ -141,7 +157,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
                         break;
 
                     default:
-                        throw new ArgumentOutOfRangeException($"{command.CoinEventType} - is not supported for processing {command.ToJson()}. ");
+                        throw new ArgumentOutOfRangeException(
+                            $"{command.CoinEventType} - is not supported for processing {command.ToJson()}. ");
                 }
 
                 return CommandHandlingResult.Ok();
@@ -151,10 +168,21 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 _log.Error(nameof(ProcessEthCoinEventCommand), e, context: command);
                 throw;
             }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(ProcessEthCoinEventCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
 
         public async Task<CommandHandlingResult> Handle(EnrollEthCashinToMatchingEngineCommand command, IEventPublisher eventPublisher)
         {
+            var sw = new Stopwatch();
+            sw.Start();
+
             try
             {
                 var cashinId = command.CashinOperationId.ToString("N");
@@ -164,7 +192,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 var asset = await _assetsServiceWithCache.TryGetAssetAsync(command.AssetId);
                 var createPendingActions = command.CreatePendingActions;
                 var paymentTransaction = PaymentTransaction.Create(hash,
-                    CashInPaymentSystem.Ethereum, clientId.ToString(), (double)amount,
+                    CashInPaymentSystem.Ethereum, clientId.ToString(), (double) amount,
                     asset.DisplayId ?? asset.Id, status: PaymentStatus.Processing);
 
                 var exists = await _paymentTransactionsRepository.CheckExistsAsync(paymentTransaction);
@@ -172,28 +200,31 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 if (exists)
                 {
                     _log.Warning(command.TransactionHash ?? "Empty", $"Transaction already handled {hash}",
-                            context: command);
+                        context: command);
 
                     return CommandHandlingResult.Ok();
                 }
 
                 if (createPendingActions && asset.IsTrusted)
                 {
-                    await _ethererumPendingActionsRepository.CreateAsync(clientId.ToString(), Guid.NewGuid().ToString());
+                    await _ethererumPendingActionsRepository.CreateAsync(clientId.ToString(),
+                        Guid.NewGuid().ToString());
                 }
 
                 ChaosKitty.Meow();
 
                 MeResponseModel result = null;
 
-                await ExecuteWithTimeoutHelper.ExecuteWithTimeoutAsync(async () =>
+                await ExecuteWithTimeoutHelper.ExecuteWithTimeoutAsync(
+                    async () =>
                     {
-                        result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId.ToString(), asset.Id, (double)amount);
+                        result = await _matchingEngineClient.CashInOutAsync(cashinId, clientId.ToString(), asset.Id,
+                            (double) amount);
                     }, 5 * 60 * 1000); // 5 min in ms
 
                 if (result == null ||
-                   (result.Status != MeStatusCodes.Ok &&
-                    result.Status != MeStatusCodes.Duplicate))
+                    (result.Status != MeStatusCodes.Ok &&
+                     result.Status != MeStatusCodes.Duplicate))
                 {
                     _log.Warning(command.TransactionHash ?? "Empty", "ME error", context: result);
 
@@ -216,10 +247,21 @@ namespace Lykke.Job.TransactionHandler.Handlers
                 _log.Error(nameof(EnrollEthCashinToMatchingEngineCommand), e, context: command);
                 throw;
             }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(EnrollEthCashinToMatchingEngineCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
 
         public async Task<CommandHandlingResult> Handle(SaveEthInHistoryCommand command, IEventPublisher eventPublisher)
         {
+            var sw = new Stopwatch();
+            sw.Start();
+
             try
             {
                 var cashinId = command.CashinOperationId.ToString("N");
@@ -233,7 +275,7 @@ namespace Lykke.Job.TransactionHandler.Handlers
                     Id = cashinId,
                     ClientId = clientId.ToString(),
                     AssetId = command.AssetId,
-                    Amount = (double)amount,
+                    Amount = (double) amount,
                     BlockChainHash = hash,
                     DateTime = DateTime.UtcNow,
                     AddressTo = clientAddress,
@@ -244,7 +286,8 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
                 var clientAcc = await _clientAccountClient.GetByIdAsync(clientId.ToString());
                 var clientEmail = await _personalDataService.GetEmailAsync(clientId.ToString());
-                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientEmail, amount, command.AssetId);
+                await _srvEmailsFacade.SendNoRefundDepositDoneMail(clientAcc.PartnerId, clientEmail, amount,
+                    command.AssetId);
                 await _paymentTransactionsRepository.SetStatus(hash, PaymentStatus.NotifyProcessed);
 
                 ChaosKitty.Meow();
@@ -260,6 +303,14 @@ namespace Lykke.Job.TransactionHandler.Handlers
             {
                 _log.Error(nameof(SaveEthInHistoryCommand), e, context: command);
                 throw;
+            }
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(EthereumCoreCommandHandler),  Command = nameof(SaveEthInHistoryCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
             }
         }
 

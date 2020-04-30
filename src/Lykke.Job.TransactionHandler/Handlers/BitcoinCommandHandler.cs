@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
@@ -29,16 +30,30 @@ namespace Lykke.Job.TransactionHandler.Handlers
 
         public async Task<CommandHandlingResult> Handle(Commands.SegwitTransferCommand command)
         {
-            var response = await _bitcoinApiClient.SegwitTransfer(Guid.Parse(command.Id), command.Address);
-            if (response.HasError && response.Error.ErrorCode != ErrorCode.DuplicateTransactionId)
+            var sw = new Stopwatch();
+            sw.Start();
+
+            try
             {
-                _log.Error($"{nameof(BitcoinCommandHandler)}:{nameof(Commands.SegwitTransferCommand)}", new Exception(response.ToJson()), context: command.ToJson());
-                return CommandHandlingResult.Fail(_retryTimeout);
+                var response = await _bitcoinApiClient.SegwitTransfer(Guid.Parse(command.Id), command.Address);
+                if (response.HasError && response.Error.ErrorCode != ErrorCode.DuplicateTransactionId)
+                {
+                    _log.Error($"{nameof(BitcoinCommandHandler)}:{nameof(Commands.SegwitTransferCommand)}", new Exception(response.ToJson()), context: command.ToJson());
+                    return CommandHandlingResult.Fail(_retryTimeout);
+                }
+
+                ChaosKitty.Meow();
+
+                return CommandHandlingResult.Ok();
             }
-
-            ChaosKitty.Meow();
-
-            return CommandHandlingResult.Ok();
+            finally
+            {
+                sw.Stop();
+                _log.Info("Command execution time",
+                    context: new { Handler = nameof(BitcoinCommandHandler),  Command = nameof(Commands.SegwitTransferCommand),
+                        Time = $"{sw.ElapsedMilliseconds} msec."
+                    });
+            }
         }
     }
 }
